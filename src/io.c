@@ -1,0 +1,55 @@
+/*
+ * io.c - I/O handling for T-962 reflow controller
+ *
+ * Copyright (C) 2014 Werner Johansson, wj@unifiedengineering.se
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "lpc214x.h"
+#include <stdint.h>
+#include "t962.h"
+#include "io.h"
+
+void Set_Heater(uint8_t enable) {
+	PWMMR6 = 0xff - enable;
+	PWMLER |= (1<<6);
+}
+
+void Set_Fan(uint8_t enable) {
+	PWMMR4 = 0xff - enable;
+	PWMLER |= (1<<4);
+}
+
+void IO_Init(void) {
+	SCS = 0b11; // Enable fast GPIO on both port 0 and 1
+
+	PINSEL0 = 0b10100000000001010101; // PWM6 + PWM4 + I2C0 + UART0
+	PINSEL1 = 0b00000101000000000000000000000000; // ADC0 1+2
+
+	FIO0MASK = 0b01001101000000100000010001100000; // Mask out all unknown/unused pins
+	FIO1MASK = 0b11111111000000001111111111111111; // Only LCD D0-D7
+
+	FIO0DIR = 0b10000000011011000011101100000001; // Default output pins
+	FIO1DIR = 0b00000000000000000000000000000000;
+
+	FIO0PIN = 0x00; // Turn LED on
+
+	PWMPR = PCLKFREQ/(256*5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
+	PWMMCR = (1<<1); // Reset TC on mr0 overflow (period time)
+	PWMMR0 = 0xff; // Period time
+	PWMLER = (1<<0); // Enable latch on mr0 (Do I really need to do this?)
+	PWMPCR = (1<<12) | (1<<14); // Enable PWM4 and 6
+	PWMTCR = (1<<3) | (1<<0); // Enable timer in PWM mode
+}

@@ -31,3 +31,7 @@ As mentioned elsewhere, make sure the protective earth/ground wire from the main
 This is very much a quick hack to get only the basic functionality needed up and running. Everything in here is released under the GPLv3 license in hopes that it might be interesting for others to improve on this. Feedback is welcome!
 
 Happy hacking!
+
+This project is using the C PID Library - Version 1.0.1, GPLv3
+ * modified my Matthew Blythe <mblythester@gmail.com> mjblythe.com/hacks
+ * originally by Brett Beauregard <br3ttb@gmail.com> brettbeauregard.com
