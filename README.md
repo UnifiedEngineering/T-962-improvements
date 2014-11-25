@@ -1,7 +1,7 @@
 ﻿T-962 reflow oven improvements
 ==============================
 
-Please see the <a href="UnifiedEngineering/T-962-improvements/wiki">Wiki</a> for more info.
+Please see the <a href="https://github.com/UnifiedEngineering/T-962-improvements/wiki">Wiki</a> for more info.
 
 As we had use for a small reflow oven for a small prototype run we settled for the T-962 even after having seen the negative reviews of it as there were plenty of suggestions all across the Internet on how it could be improved including replacing the existing controller and display(!). After having had a closer look at the hardware (replacing the masking tape inside with Kapton tape first) it was obvious that there was a simple way to improve the software disaster that is the T-962.
 
