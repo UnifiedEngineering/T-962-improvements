@@ -113,10 +113,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	if(out<248) { // Fan in reverse
 		*pfan=255-out;
 		*pheat=0;
-		if(*pfan==255) *pfan=254;
 	} else {
 		*pheat=out-248;
-		if(*pheat>192) *pfan=3; else *pfan=8; // When heating like crazy make sure we can reach our setpoint
+		if(*pheat>192) *pfan=2; else *pfan=4; // When heating like crazy make sure we can reach our setpoint
 	}
 	return retval;
 }

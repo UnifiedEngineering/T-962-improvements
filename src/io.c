@@ -23,11 +23,23 @@
 #include "io.h"
 
 void Set_Heater(uint8_t enable) {
+	if( enable < 0xff ) {
+		PINSEL0 |= (2<<18); // Make sure PWM6 function is enabled
+	} else { // Fully on is dealt with separately to avoid output glitch
+		PINSEL0 &= ~(2<<18); // Disable PWM6 function on pin
+		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
+	}
 	PWMMR6 = 0xff - enable;
 	PWMLER |= (1<<6);
 }
 
 void Set_Fan(uint8_t enable) {
+	if( enable < 0xff ) {
+		PINSEL0 |= (2<<16); // Make sure PWM4 function is enabled
+	} else { // Fully on is dealt with separately to avoid output glitch
+		PINSEL0 &= ~(2<<16); // Disable PWM4 function on pin
+		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
+	}
 	PWMMR4 = 0xff - enable;
 	PWMLER |= (1<<4);
 }
@@ -44,7 +56,7 @@ void IO_Init(void) {
 	FIO0DIR = 0b10000000011011000011101100000001; // Default output pins
 	FIO1DIR = 0b00000000000000000000000000000000;
 
-	FIO0PIN = 0x00; // Turn LED on
+	FIO0PIN = 0x00; // Turn LED on and make PWM outputs active when in GPIO mode (to help 100% duty cycle issue)
 
 	PWMPR = PCLKFREQ/(256*5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
 	PWMMCR = (1<<1); // Reset TC on mr0 overflow (period time)
