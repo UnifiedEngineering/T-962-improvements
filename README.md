@@ -26,7 +26,7 @@ Please refer to the firmware source for other GPIO assignments.
 
 This has only been tested on a fairly recent build of the T-962 (smallest version), build time on the back panel states 14.07 which I assume means 2014 July (or less likely week 7 of 2014).
 
-As mentioned elsewhere, make sure the protective earth/ground wire from the main input actually makes contact with the back panel of the chassis and also that tha back panel makes contact both with the top and bottom haöves of the oven!
+As mentioned elsewhere, make sure the protective earth/ground wire from the main input actually makes contact with the back panel of the chassis and also that the back panel makes contact both with the top and bottom halves of the oven!
 
 This is very much a quick hack to get only the basic functionality needed up and running. Everything in here is released under the GPLv3 license in hopes that it might be interesting for others to improve on this. Feedback is welcome!
 
