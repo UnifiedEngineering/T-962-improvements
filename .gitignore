@@ -29,3 +29,4 @@
 *.hex
 
 Debug/
+Release/
