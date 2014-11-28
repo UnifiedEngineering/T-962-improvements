@@ -129,6 +129,8 @@ float OneWire_GetTemperature(void) {
 		printf(" (%.1f C)",retval);
 	} else {
 		printf("\nNo sensor found!");
+		retval = 25.0f; // Compatibility with ovens without cold-junction mod, assume 25C ambient
+		BusyWait8(94000<<3); // Maintain timing
 	}
 	return retval;
 }
