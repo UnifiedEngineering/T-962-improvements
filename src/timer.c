@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lpc214x.h"
+#include "LPC214x.h"
 #include <stdint.h>
 #include "timer.h"
 

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "lpc214x.h"
+#include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "t962.h"
@@ -32,7 +32,7 @@ void EEPROM_Init( void ) {
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
 	printf("\nEEPROM contents:\n");
-	for(int foo=0;foo<sizeof(dumpbuf);foo++) {
+	for(int foo=0; foo < sizeof(dumpbuf); foo++) {
 		printf(" 0x%02x",dumpbuf[foo]);
 	}
 #endif
