@@ -16,11 +16,12 @@ LPCXpresso requires activation but is free for everything but large code sizes (
 The MCU is an LPC2134/01 with 128kB flash/16kB RAM, stated to be capable of running at up to 60MHz. Unfortunately the PLL in this chip is not that clever so with the supplied XTAL at 11.0592MHz we can only reach 55.296MHz (5x multiplier).
 
 ISP pinout from left to right if looking at the board so the ISP text can be read:
-1:n_ISP (connected to GPIO0.14, ground during reset to enter ISP mode)
-2:n_RESET (active low reset input)
-3:TXD0 (UART0 output to host, LVTTL 3.3V)
-4:RXD0 (UART0 input to MCU, LVTTL 3.3V)
-5:Ground (this ground is floating with respect to earth ground in the mains connector and chassis)
+
+1. n_ISP (connected to GPIO0.14, ground during reset to enter ISP mode)
+2. n_RESET (active low reset input)
+3. TXD0 (UART0 output to host, LVTTL 3.3V)
+4. RXD0 (UART0 input to MCU, LVTTL 3.3V)
+5. Ground (this ground is floating with respect to earth ground in the mains connector and chassis)
 
 Please refer to the firmware source for other GPIO assignments.
 
