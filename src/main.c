@@ -31,6 +31,7 @@
 #include "eeprom.h"
 #include "keypad.h"
 #include "reflow.h"
+#include "timer.h"
 
 extern uint8_t logobmp[];
 
@@ -74,7 +75,7 @@ int main(void) {
 	temperature[1]=0.0f;
 	uint32_t setpoint=30;
 
-	while(!(Keypad_Poll() & KEY_S)); // Wait for S-key, just to be as annoying as the original code.. :)
+	BusyWait8( 2000000 << 3 ); // Delay 2 seconds
 
 	while(1) {
 		int len;
