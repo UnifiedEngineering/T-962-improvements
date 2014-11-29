@@ -41,6 +41,12 @@ typedef struct {
 	const uint16_t temperatures[48];
 } profile;
 
+// Amtech 4300 63Sn/37Pb leaded profile
+const profile am4300profile = { "4300 63SN/37PB",
+	{40, 40, 47, 60, 73, 86,100,113,126,140,143,147,150,154,157,161,  // 0-150s
+	164,168,171,175,179,183,195,207,215,207,195,183,168,154,140,125,  // Adjust peak from 205 to 220C
+	111, 97, 82, 68, 54, 40, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+
 // NC-31 low-temp lead-free profile
 const profile nc31profile = { "NC-31 LOW-TEMP LF",
 	{40, 40, 40, 40, 55, 70, 85, 90, 95,100,102,105,107,110,112,115,  // 0-150s
@@ -59,7 +65,7 @@ const profile ee1 = { "CUSTOM #1" };
 // EEPROM profile 2
 const profile ee2 = { "CUSTOM #2" };
 
-const profile* profiles[] = { &syntechlfprofile, &nc31profile /*, &ee1, &ee2*/ };
+const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile /*, &ee1, &ee2*/ };
 #define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
 uint8_t profileidx=0;
 
