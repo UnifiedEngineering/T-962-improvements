@@ -187,8 +187,9 @@ uint8_t LCD_BMPDisplay(uint8_t* thebmp,uint8_t xoffset,uint8_t yoffset) {
 		for(uint8_t x=0; x<bmhdr->biWidth; x+=8) {
 			uint8_t pixel=*(thebmp+(pixeloffset++));
 			if(inverted) pixel^=0xff;
-
-			for(uint8_t b=0; b<8; b++) {
+			uint8_t max_b = bmhdr->biWidth - x;
+			if(max_b>8) max_b = 8;
+			for(uint8_t b=0; b<max_b; b++) {
 				if(pixel&0x80) {
 					FB[pagenum][x+b+xoffset]|=pixelval;
 				}
