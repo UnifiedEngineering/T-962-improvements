@@ -253,7 +253,7 @@ int main(void) {
 
 		LCD_FB_Update();
 
-		if(mode != 5 && mode != 4 && avgtemp > 40) fan=0x80; // Force cooldown if still warm
+		if(mode != 5 && mode != 3 && avgtemp > 40) fan=0x80; // Force cooldown if still warm
 
 		Set_Heater(heat);
 		Set_Fan(fan);
