@@ -20,6 +20,7 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "t962.h"
 #include "eeprom.h"
 #include "i2c.h"
@@ -50,6 +51,40 @@ int32_t EEPROM_Read(uint8_t* dest, uint32_t startpos, uint32_t len) {
 }
 
 int32_t EEPROM_Write(uint32_t startdestpos, uint8_t* src, uint32_t len) {
-	// FIXME, implement this
+	int32_t retval=0;
+	if(startdestpos<256 && len && len<=256) {
+		uint8_t tmpbuf[9];
+		uint8_t i = startdestpos;
+		while(len) {
+			uint32_t loopcnt=0;
+			uint8_t startoffset = i & 0x07;
+			uint8_t maxcopysize = 8 - startoffset;
+			uint8_t bytestocopy = (len>maxcopysize)?maxcopysize:len; // up to 8 bytes at a time depending on alignment
+			tmpbuf[0] = i;
+			memcpy(tmpbuf+1, src, bytestocopy);
+			retval = I2C_Xfer(EEADDR, tmpbuf, bytestocopy + 1, 1); // Set address pointer and provide up to 8 bytes of data for page write
+			if(!retval) {
+				do {
+					retval = I2C_Xfer(EEADDR, tmpbuf, 1, 1); // Dummy write to poll timed write cycle completion
+					loopcnt++;
+				} while(retval && loopcnt<400); // 5ms max write cycle. 200kHz bus freq & 10 bits per poll makes this a 20ms timeout
+				if(retval) {
+					printf("\nTimeout getting ACK from EEPROM during write!");
+					break;
+				}
+				len -= bytestocopy;
+				i += bytestocopy;
+				src += bytestocopy;
+			} else {
+				printf("\nFailed to write to EEPROM!");
+				retval = -2;
+				break;
+			}
+		}
+	} else {
+		printf("\nInvalid EEPROM addressing");
+		retval = -3;
+	}
+	return retval;
 }
 
