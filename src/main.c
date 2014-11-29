@@ -86,22 +86,50 @@ int main(void) {
 		//LCD_disp_str((uint8_t*)buf, len, 0, 63-5, FONT6X6);
 		//LCD_FB_Update();
 
-		// Sort this out, must support alternate sensors
-		coldjunction=OneWire_GetTemperature();
-		temp[0]=ADC_Read(1);
-		if(temp[0]>=0) temp[1]=temp[0];
-		temp[0]=ADC_Read(2);
-		if(temp[0]>=0) temp[2]=temp[0];
-		printf("\nADC readout 0x%03x 0x%03x ",temp[1],temp[2]);
-		temperature[0] = (float)temp[1];
-		temperature[1] = (float)temp[2];
-		// Change gain here
-		temperature[0] += coldjunction -6.0f; // Offset adjust
-		temperature[1] += coldjunction -2.0f;
+		float avgtemp; // The feedback temperature
 
-		float avgtemp=(temperature[0]+temperature[1])/2;
-		printf("L=%03.1fC R=%03.1fC AVG=%03.1fC SP=%03dC CJ=%03.1fC Heat=0x%02x Fan=0x%02x",
-				temperature[0],temperature[1],avgtemp,setpoint,coldjunction,heat,fan);
+		// Initiate temperature conversion on all connected 1-wire sensors
+		OneWire_PerformTemperatureConversion();
+
+		printf("\n");
+
+		// These are the temperature readings we get from the thermocouple interfaces
+		// Right now it is assumed that if they are indeed present the first two channels will be used as feedback
+		float tctemp[4];
+		uint8_t tcpresent[4];
+		for( int i=0; i<4; i++ ) { // Get 4 TC channels
+			tcpresent[i] = 0;
+			tctemp[i] = OneWire_GetTCReading( i );
+			if( tctemp[i] < 999.0f && tctemp[i] != 0.0f ) tcpresent[i] = 1;
+			if( tcpresent[i] ) {
+				printf("(TC%x %.1fC)",i,tctemp[i]);
+			} else {
+				//printf("(TC%x ---C)",i);
+			}
+		}
+		if(tcpresent[0] && tcpresent[1]) {
+			avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
+			coldjunction = 0.0f; // Todo, actually read out CJ temp from TC IF
+		} else {
+			// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
+			coldjunction=OneWire_GetTempSensorReading();
+			temp[0]=ADC_Read(1);
+			if(temp[0]>=0) temp[1]=temp[0];
+			temp[0]=ADC_Read(2);
+			if(temp[0]>=0) temp[2]=temp[0];
+			printf("(ADC readout 0x%03x 0x%03x) ",temp[1],temp[2]);
+			temperature[0] = (float)temp[1];
+			temperature[1] = (float)temp[2];
+			// Change gain here
+			temperature[0] += coldjunction -6.0f; // Offset adjust, this will definitely have to be calibrated per device
+			temperature[1] += coldjunction -2.0f;
+
+			avgtemp=(temperature[0]+temperature[1]) / 2.0f;
+			printf("L=%03.1fC R=%03.1fC CJ=%03.1fC",
+				temperature[0],temperature[1],coldjunction);
+		}
+		printf(" AVG=%03.1fC SP=%03dC Heat=0x%02x Fan=0x%02x",
+			avgtemp,setpoint,heat,fan);
 
 		// Sort out this "state machine"
 		if(mode==1) {
