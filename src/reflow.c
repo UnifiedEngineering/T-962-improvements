@@ -41,6 +41,11 @@ typedef struct {
 	const uint16_t temperatures[48];
 } profile;
 
+typedef struct {
+	const char* name;
+	uint16_t temperatures[48];
+} ramprofile;
+
 // Amtech 4300 63Sn/37Pb leaded profile
 const profile am4300profile = { "4300 63SN/37PB",
 	{40, 40, 47, 60, 73, 86,100,113,126,140,143,147,150,154,157,161,  // 0-150s
@@ -60,18 +65,29 @@ const profile syntechlfprofile = { "AMTECH SYNTECH-LF",
 	184,177,157,137,117, 97, 77, 57, 37,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
 // EEPROM profile 1
-const profile ee1 = { "CUSTOM #1" };
+ramprofile ee1 = { "CUSTOM #1" };
 
 // EEPROM profile 2
-const profile ee2 = { "CUSTOM #2" };
+ramprofile ee2 = { "CUSTOM #2" };
 
-const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile /*, &ee1, &ee2*/ };
+const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile , (profile*)&ee1, (profile*)&ee2 };
 #define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
 uint8_t profileidx=0;
+
+static void ByteswapTempProfile(uint16_t* buf) {
+	for(int i=0; i<48; i++) {
+		uint16_t word=buf[i];
+		buf[i] = word>>8 | word << 8;
+	}
+}
 
 void Reflow_Init(void) {
 //	PID_init(&PID,16,0.1,2,PID_Direction_Direct);
 	PID_init(&PID,17,0.11,2,PID_Direction_Direct);
+	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
+	ByteswapTempProfile(ee1.temperatures);
+	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
+	ByteswapTempProfile(ee2.temperatures);
 	intsetpoint = 30;
 	PID.mySetpoint = 30.0f; // Default setpoint
 	PID_SetOutputLimits(&PID, 0,255+248);
