@@ -36,20 +36,32 @@ uint16_t profilebuf[48];
 PidType PID;
 uint16_t intsetpoint;
 
+typedef struct {
+	const char* name;
+	const uint16_t temperatures[48];
+} profile;
+
 // NC-31 low-temp lead-free profile
-const uint16_t nc31profile[48] = {
-	 40, 40, 40, 40, 55, 70, 85, 90, 95,100,102,105,107,110,112,115, // 0-150s
-	117,120,122,127,132,138,148,158,160,158,148,138,130,122,114,106, // Adjust peak from 158 to 165C
-	 98, 90, 82, 74, 66, 58, 50, 42, 34,  0,  0,  0,  0,  0,  0,  0};// 320-470s
+const profile nc31profile = { "NC-31 LOW-TEMP LF",
+	{40, 40, 40, 40, 55, 70, 85, 90, 95,100,102,105,107,110,112,115,  // 0-150s
+	117,120,122,127,132,138,148,158,160,158,148,138,130,122,114,106,  // Adjust peak from 158 to 165C
+	 98, 90, 82, 74, 66, 58, 50, 42, 34,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
 // SynTECH-LF normal temp lead-free profile
-const uint16_t syntechlfprofile[48] = {
-	 40, 40, 40, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166, // 0-150s
-	175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191, // Adjust peak from 230 to 249C
-	184,177,157,137,117, 97, 77, 57, 37,  0,  0,  0,  0,  0,  0,  0};// 320-470s
+const profile syntechlfprofile = { "AMTECH SYNTECH-LF",
+	{40, 40, 40, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166,  // 0-150s
+	175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191,  // Adjust peak from 230 to 249C
+	184,177,157,137,117, 97, 77, 57, 37,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
-//const uint16_t* profileptr = nc31profile;
-const uint16_t* profileptr = syntechlfprofile;
+// EEPROM profile 1
+const profile ee1 = { "CUSTOM #1" };
+
+// EEPROM profile 2
+const profile ee2 = { "CUSTOM #2" };
+
+const profile* profiles[] = { &syntechlfprofile, &nc31profile /*, &ee1, &ee2*/ };
+#define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
+uint8_t profileidx=0;
 
 void Reflow_Init(void) {
 //	PID_init(&PID,16,0.1,2,PID_Direction_Direct);
@@ -67,10 +79,29 @@ void Reflow_PlotProfile() {
 	LCD_BMPDisplay(graphbmp,0,0);
 	for(int x=1; x<48; x++) { // No need to plot first value as it is obscured by Y-axis
 		int realx = (x << 1) + XAXIS;
-		int y=profileptr[x] / 5;
+		int y=profiles[profileidx]->temperatures[x] / 5;
 		y = YAXIS-y;
 		LCD_SetPixel(realx,y);
 	}
+}
+
+int Reflow_GetProfileIdx(void) {
+	return profileidx;
+}
+
+int Reflow_SelectProfileIdx(int idx) {
+	if(idx >= NUMPROFILES) {
+		profileidx = 0;
+	} else if(idx < 0) {
+		profileidx = (NUMPROFILES - 1);
+	} else {
+		profileidx = idx;
+	}
+	return profileidx;
+}
+
+const char* Reflow_GetProfileName(void) {
+	return profiles[profileidx]->name;
 }
 
 uint16_t Reflow_GetSetpoint(void) {
@@ -86,9 +117,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		uint16_t start = idx * 10;
 		uint16_t offset = thetime-start;
 		if(idx<47) {
-			uint32_t value = profileptr[idx];
+			uint32_t value = profiles[profileidx]->temperatures[idx];
 			if(value>0) {
-				uint32_t value2 = profileptr[idx+1];
+				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
 				printf(" setpoint %uC",avg);
 				intsetpoint = avg; // Keep this for UI
@@ -101,11 +132,13 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		}
 	}
 
-	// Plot actual temperature on top of desired profile
-	int realx = (thetime / 5) + XAXIS;
-	int y=(uint16_t)(meastemp * 0.2f);
-	y = YAXIS-y;
-	LCD_SetPixel(realx,y);
+	if(!manualsetpoint) {
+		// Plot actual temperature on top of desired profile
+		int realx = (thetime / 5) + XAXIS;
+		int y=(uint16_t)(meastemp * 0.2f);
+		y = YAXIS-y;
+		LCD_SetPixel(realx,y);
+	}
 
 	PID.myInput=meastemp;
 	PID_Compute(&PID);
