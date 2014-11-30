@@ -97,13 +97,19 @@ void Reflow_Init(void) {
 	RTC_Zero();
 }
 
-void Reflow_PlotProfile() {
+void Reflow_PlotProfile(int highlight) {
 	LCD_BMPDisplay(graphbmp,0,0);
 	for(int x=1; x<48; x++) { // No need to plot first value as it is obscured by Y-axis
 		int realx = (x << 1) + XAXIS;
 		int y=profiles[profileidx]->temperatures[x] / 5;
 		y = YAXIS-y;
 		LCD_SetPixel(realx,y);
+		if(highlight == x) {
+			LCD_SetPixel(realx-1,y-1);
+			LCD_SetPixel(realx+1,y+1);
+			LCD_SetPixel(realx-1,y+1);
+			LCD_SetPixel(realx+1,y-1);
+		}
 	}
 }
 
@@ -122,8 +128,46 @@ int Reflow_SelectProfileIdx(int idx) {
 	return profileidx;
 }
 
+int Reflow_SelectEEProfileIdx(int idx) {
+	if(idx==1) profileidx = (NUMPROFILES - 2);
+	if(idx==2) profileidx = (NUMPROFILES - 1);
+	return profileidx;
+}
+
+int Reflow_SaveEEProfile(void) {
+	int retval = 0;
+	uint8_t offset;
+	uint16_t* tempptr;
+	if(profileidx == (NUMPROFILES - 2)) {
+		offset = 0;
+		tempptr = ee1.temperatures;
+	} else if( profileidx == (NUMPROFILES - 1)) {
+		offset = 128;
+		tempptr = ee2.temperatures;
+	} else {
+		return -1;
+	}
+	offset += 2; // Skip "magic"
+	ByteswapTempProfile(tempptr);
+	retval = EEPROM_Write(offset, (uint8_t*)tempptr, 96); // Store
+	ByteswapTempProfile(tempptr);
+	return retval;
+}
+
 const char* Reflow_GetProfileName(void) {
 	return profiles[profileidx]->name;
+}
+
+uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
+	if(idx>47) return 0;
+	return profiles[profileidx]->temperatures[idx];
+}
+
+void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
+	if(idx>47) return;
+	if(value>300) return;
+	uint16_t* temp = (uint16_t*)&profiles[profileidx]->temperatures[idx];
+	if(temp>=(uint16_t*)0x40000000) *temp = value; // If RAM-based
 }
 
 uint16_t Reflow_GetSetpoint(void) {
