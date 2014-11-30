@@ -30,20 +30,36 @@
 #define F4KEY_PORTBIT (1<<4)
 #define S_KEY_PORTBIT (1<<20)
 
+#define KEYREPEATDELAY (6)
+
 uint32_t Keypad_Poll(void) {
 	static uint32_t laststate = 0;
+	static uint16_t laststateunchangedctr = 0;
 	uint32_t retval = 0;
-	uint32_t inverted = ~FIO0PIN;
+	uint32_t inverted = ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
 	uint32_t changed = inverted ^ laststate;
+
+	// At this point we only care about when button is pressed, not released
+	changed &= inverted;
+
+	if( laststate != inverted ) {
+		laststate = inverted;
+		laststateunchangedctr = 0;
+	} else {
+		laststateunchangedctr++;
+		if(laststateunchangedctr > KEYREPEATDELAY) {
+			changed = laststate; // Feed key repeat
+			retval |= ((laststateunchangedctr-KEYREPEATDELAY)<<16); // For accelerating key repeats
+		}
+	}
+
 	if(changed) {
-		// At this point we only care about when button is pressed, not released
-		changed &= inverted;
 		if(changed & F1KEY_PORTBIT) retval |= KEY_F1;
 		if(changed & F2KEY_PORTBIT) retval |= KEY_F2;
 		if(changed & F3KEY_PORTBIT) retval |= KEY_F3;
 		if(changed & F4KEY_PORTBIT) retval |= KEY_F4;
 		if(changed & S_KEY_PORTBIT) retval |= KEY_S;
 	}
-	laststate = inverted;
+
 	return retval;
 }
