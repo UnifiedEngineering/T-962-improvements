@@ -358,6 +358,10 @@ float OneWire_GetTempSensorReading(void) {
 	return retval;
 }
 
+int OneWire_IsTCPresent(uint8_t tcid) {
+	if(tcid < sizeof(tcidmapping) && tcidmapping[tcid] >= 0) return 1; else return 0;
+}
+
 float OneWire_GetTCReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
 	if(tcid < sizeof(tcidmapping)) {
