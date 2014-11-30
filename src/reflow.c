@@ -112,10 +112,10 @@ int Reflow_GetProfileIdx(void) {
 }
 
 int Reflow_SelectProfileIdx(int idx) {
-	if(idx >= NUMPROFILES) {
-		profileidx = 0;
-	} else if(idx < 0) {
+	if(idx < 0) {
 		profileidx = (NUMPROFILES - 1);
+	} else if(idx >= NUMPROFILES) {
+		profileidx = 0;
 	} else {
 		profileidx = idx;
 	}
