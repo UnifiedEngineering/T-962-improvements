@@ -31,7 +31,6 @@
 #include "eeprom.h"
 #include "keypad.h"
 #include "reflow.h"
-#include "timer.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
