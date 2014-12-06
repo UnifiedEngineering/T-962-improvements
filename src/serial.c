@@ -19,7 +19,12 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
+#include <stdio.h>
 #include "serial.h"
+
+#ifdef __NEWLIB__
+#define __sys_write _write
+#endif
 
 static void uart_putc(char thebyte) {
 	if (thebyte == '\n')
@@ -45,4 +50,7 @@ void Serial_Init(void) {
 	U0DLL = 1; // Minimum allowed when running fractional brg is 3 according to UM10120 but this works just fine!
 	U0DLM = 0;
 	U0LCR &= ~0x80; // Divisor load done
+#ifdef __NEWLIB__
+	setbuf(stdout, NULL); // Needed to get rid of default line-buffering in newlib not present in redlib
+#endif
 }
