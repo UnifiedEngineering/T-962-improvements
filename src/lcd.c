@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
-#include "timer.h"
+#include "sched.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 uint8_t FB[FB_HEIGHT/8][FB_WIDTH];
@@ -219,9 +219,9 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN = cmdbyte << 16; // Cmd on pins
 	FIO0CLR = (1<<22); // RS low
 	FIO0SET = (1<<18); // E high
-	BusyWait8(4);
+	BusyWait(TICKS_US(0.5));
 	FIO0CLR = (1<<18); // E low
-	BusyWait8(4);
+	BusyWait(TICKS_US(0.5));
 	FIO0SET = (1<<22); // RS high
 	FIO0CLR = (1<<12) | (1<<13); // Both CS inactive
 }
@@ -231,9 +231,9 @@ static void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
 	FIO0SET = csmask; // CS active
 	FIO1PIN = databyte << 16; // Data on pins
 	FIO0SET = (1<<18); // E high
-	BusyWait8(4);
+	BusyWait(TICKS_US(0.5));
 	FIO0CLR = (1<<18); // E low
-	BusyWait8(4);
+	BusyWait(TICKS_US(0.5));
 	FIO0CLR = csmask; // CS inactive
 }
 

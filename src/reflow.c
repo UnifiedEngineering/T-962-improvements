@@ -27,6 +27,12 @@
 #include "lcd.h"
 #include "rtc.h"
 #include "PID_v1.h"
+#include "sched.h"
+#include "onewire.h"
+#include "adc.h"
+
+float adcgainadj[2] = { 1.0f, 1.0f }; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
+float adcoffsetadj[2] = { -6.0f, -5.0f }; // Offset adjust, this will definitely have to be calibrated per device
 
 extern uint8_t graphbmp[];
 #define YAXIS (57)
@@ -35,6 +41,9 @@ extern uint8_t graphbmp[];
 uint16_t profilebuf[48];
 PidType PID;
 uint16_t intsetpoint;
+int16_t intavgtemp;
+uint8_t reflowdone = 0;
+ReflowMode_t mymode = REFLOW_STANDBY;
 
 typedef struct {
 	const char* name;
@@ -81,9 +90,89 @@ static void ByteswapTempProfile(uint16_t* buf) {
 	}
 }
 
+static int32_t Reflow_Work( void ) {
+	static float temperature[2] = { 0.0f, 0.0f };
+	float avgtemp; // The feedback temperature
+	uint16_t temp[2];
+	float coldjunction;
+	uint8_t fan, heat;
+	uint32_t ticks=RTC_Read();
+
+	printf("\n");
+
+	// These are the temperature readings we get from the thermocouple interfaces
+	// Right now it is assumed that if they are indeed present the first two channels will be used as feedback
+	float tctemp[4], tccj[4];
+	uint8_t tcpresent[4];
+	for( int i=0; i<4; i++ ) { // Get 4 TC channels
+		tcpresent[i] = OneWire_IsTCPresent( i );
+		if( tcpresent[i] ) {
+			tctemp[i] = OneWire_GetTCReading( i );
+			tccj[i] = OneWire_GetTCColdReading( i );
+			printf("TC%x=%5.1fC ",i,tctemp[i]);
+		} else {
+			//printf("TC%x=---C ",i);
+		}
+	}
+	if(tcpresent[0] && tcpresent[1]) {
+		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
+		temperature[0] = tctemp[0];
+		temperature[1] = tctemp[1];
+		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
+	} else {
+		// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
+		coldjunction=OneWire_GetTempSensorReading();
+		temp[0]=ADC_Read(1);
+		temp[1]=ADC_Read(2);
+		//printf("(ADC readout 0x%04x 0x%04x) ",temp[0],temp[1]);
+		temperature[0] = ((float)temp[0]) / 16.0f; // ADC oversamples to supply 4 additional bits of resolution
+		temperature[1] = ((float)temp[1]) / 16.0f;
+
+		temperature[0] *= adcgainadj[0]; // Gain adjust
+		temperature[1] *= adcgainadj[1];
+
+		temperature[0] += coldjunction + adcoffsetadj[0]; // Offset adjust
+		temperature[1] += coldjunction + adcoffsetadj[1];
+
+		avgtemp=(temperature[0]+temperature[1]) / 2.0f;
+		printf("L=%5.1fC R=%5.1fC CJ=%5.1fC ",
+			temperature[0],temperature[1],coldjunction);
+	}
+
+	const char* modestr = "UNKNOWN";
+
+	// Depending on mode we should run this with different parameters
+	if(mymode == REFLOW_STANDBY) {
+		intsetpoint = 30;
+		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Keep at 30C but don't heat to get there in standby
+		heat=0;
+		if( fan < 16 ) fan = 0; // Suppress slow-running fan in standby
+		modestr = "STANDBY";
+	} else if(mymode == REFLOW_BAKE) {
+		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
+		modestr = "BAKE";
+	} else if(mymode == REFLOW_REFLOW) {
+		reflowdone = Reflow_Run(ticks, avgtemp, &heat, &fan, 0)?1:0;
+		modestr = "REFLOW";
+	} else {
+		heat = fan = 0;
+	}
+	Set_Heater(heat);
+	Set_Fan(fan);
+
+	printf("Setpoint=%3uC Actual=%5.1fC Heat=0x%02x Fan=0x%02x Mode=%s",
+		intsetpoint,avgtemp,heat,fan,modestr);
+
+	intavgtemp = (int16_t)avgtemp; // Keep for UI
+
+	return TICKS_MS( 250 );
+}
+
 void Reflow_Init(void) {
+	Sched_SetWorkfunc( REFLOW_WORK, Reflow_Work );
 //	PID_init(&PID,16,0.1,2,PID_Direction_Direct);
-	PID_init(&PID,17,0.11,2,PID_Direction_Direct);
+//	PID_init(&PID,17,0.11,2,PID_Direction_Direct);
+	PID_init(&PID,10,0.04,5,PID_Direction_Direct);
 	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
@@ -95,6 +184,23 @@ void Reflow_Init(void) {
 	PID.myOutput = 248; // Between fan and heat
 	PID_SetMode(&PID, PID_Mode_Automatic);
 	RTC_Zero();
+	Sched_SetState( REFLOW_WORK, 2, 0 ); // Start work
+}
+
+void Reflow_SetMode(ReflowMode_t themode) {
+	mymode = themode;
+}
+
+void Reflow_SetSetpoint(uint16_t thesetpoint) {
+	intsetpoint = thesetpoint;
+}
+
+int16_t Reflow_GetActualTemp(void) {
+	return intavgtemp;
+}
+
+uint8_t Reflow_IsDone(void) {
+	return reflowdone;
 }
 
 void Reflow_PlotProfile(int highlight) {
@@ -187,7 +293,6 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 			if(value>0) {
 				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
-				printf(" setpoint %uC",avg);
 				intsetpoint = avg; // Keep this for UI
 				PID.mySetpoint = (float)avg;
 			} else {
@@ -214,7 +319,8 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		*pheat=0;
 	} else {
 		*pheat=out-248;
-		if(*pheat>192) *pfan=2; else *pfan=4; // When heating like crazy make sure we can reach our setpoint
+		//if(*pheat>192) *pfan=2; else *pfan=2; // When heating like crazy make sure we can reach our setpoint
+		*pfan=2; // Run at a low fixed speed during heating for now
 	}
 	return retval;
 }

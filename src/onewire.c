@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "onewire.h"
-#include "timer.h"
+#include "sched.h"
 
 static inline void setpin0() {
 	FIO0CLR = (1<<7);
@@ -46,28 +46,28 @@ static inline uint32_t getpin() {
 static inline uint32_t xferbyte(uint32_t thebyte) {
 	for(uint32_t bits=0; bits<8; bits++) {
 		setpin0();
-		BusyWait8(12); // 1.5us
+		BusyWait(TICKS_US(1.5)); // 1.5us
 		if(thebyte&0x01) setpinhiz();
 		thebyte >>= 1;
-		BusyWait8(13<<3);
+		BusyWait(TICKS_US(13));
 		if(getpin()) thebyte |= 0x80;
-		BusyWait8(45<<3);
+		BusyWait(TICKS_US(45));
 		setpinhiz();
-		BusyWait8(10<<3);
+		BusyWait(TICKS_US(10));
 	}
 	return thebyte;
 }
 
 static inline uint32_t xferbit(uint32_t thebit) {
 	setpin0();
-	BusyWait8(12); // 1.5us
+	BusyWait(TICKS_US(1.5));
 	if(thebit) setpinhiz();
 	thebit = 0;
-	BusyWait8(13<<3);
+	BusyWait(TICKS_US(13));
 	if(getpin()) thebit = 0x01;
-	BusyWait8(45<<3);
+	BusyWait(TICKS_US(45));
 	setpinhiz();
-	BusyWait8(10<<3);
+	BusyWait(TICKS_US(10));
 	return thebit;
 }
 
@@ -75,11 +75,11 @@ static inline uint32_t resetbus(void) {
 	uint32_t devicepresent=0;
 
 	setpin0();
-	BusyWait8(480<<3);
+	BusyWait(TICKS_US(480));
 	setpinhiz();
-	BusyWait8(70<<3);
+	BusyWait(TICKS_US(70));
 	if(getpin() == 0) devicepresent=1;
-	BusyWait8(410<<3);
+	BusyWait(TICKS_US(410));
 
 	return devicepresent;
 }
@@ -97,6 +97,7 @@ static inline uint32_t resetbus(void) {
 #define MAX_OW_DEVICES (5)
 uint8_t owdeviceids[MAX_OW_DEVICES][8]; // uint64_t results in really odd code
 int16_t devreadout[MAX_OW_DEVICES]; // Keeps last readout from each device
+int16_t extrareadout[MAX_OW_DEVICES]; // Keeps last readout from each device
 int numowdevices = 0;
 int8_t tcidmapping[16]; // Map TC ID to ROM ID index
 int8_t tempidx; // Which ROM ID index that contains the temperature sensor
@@ -273,8 +274,44 @@ static void selectdevbyidx(int idx) {
 	}
 }
 
+static int32_t OneWire_Work( void ) {
+	static uint8_t mystate = 0;
+	uint8_t scratch[9];
+	int32_t retval = 0;
+
+	if( mystate == 0 ) {
+		if(resetbus()) {
+			xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
+			xferbyte(OW_CONVERT_T);
+			setpin1();
+			//retval = TICKS_MS(94); // For 9-bit resolution
+			retval = TICKS_MS(100); // TC interface needs max 100ms to be ready
+			mystate++;
+		}
+	} else if( mystate == 1 ) {
+		for( int i = 0; i < numowdevices; i++ ) {
+			selectdevbyidx(i);
+			xferbyte(OW_READ_SCRATCHPAD);
+			for(uint32_t iter=0; iter<4; iter++) { // Read four bytes
+				scratch[iter] = xferbyte(0xff);
+				//printf("%02x ",scratch[iter]);
+			}
+			int16_t tmp = scratch[1]<<8 | scratch[0];
+			devreadout[i] = tmp;
+			tmp = scratch[3]<<8 | scratch[2];
+			extrareadout[i] = tmp;
+		}
+		mystate = 0;
+	} else {
+		retval = -1;
+	}
+
+	return retval;
+}
+
 uint32_t OneWire_Init( void ) {
 	printf("\n%s called",__FUNCTION__);
+	Sched_SetWorkfunc( ONEWIRE_WORK, OneWire_Work );
 	printf("\nScanning 1-wire bus...");
 
 	tempidx = -1; // Assume we don't find a temperature sensor
@@ -319,29 +356,8 @@ uint32_t OneWire_Init( void ) {
 	} else {
 		printf(" No devices found!");
 	}
-	return numowdevices;
-}
-
-int OneWire_PerformTemperatureConversion(void) {
-	uint8_t scratch[9];
-
-	if(resetbus()) {
-		xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
-		xferbyte(OW_CONVERT_T);
-		setpin1();
-		BusyWait8(94000<<3); // For 9-bit resolution
-		for( int i = 0; i < numowdevices; i++ ) {
-			selectdevbyidx(i);
-			xferbyte(OW_READ_SCRATCHPAD);
-			for(uint32_t iter=0; iter<2; iter++) { // Only read two bytes
-				scratch[iter] = xferbyte(0xff);
-				//printf("%02x ",scratch[iter]);
-			}
-			int16_t tmp = scratch[1]<<8 | scratch[0];
-			devreadout[i] = tmp;
-		}
-	} else {
-		BusyWait8(94000<<3); // Maintain timing if no sensors are found for the time being
+	if( numowdevices ) {
+		Sched_SetState( ONEWIRE_WORK, 2, 0 ); // Enable OneWire task if there's at least one device
 	}
 	return numowdevices;
 }
@@ -372,6 +388,23 @@ float OneWire_GetTCReading(uint8_t tcid) {
 			} else {
 				retval=(float)(devreadout[idx] & 0xfffc); // Mask reserved bit
 				retval/=16;
+				//printf(" (%x=%.1f C)",tcid,retval);
+			}
+		}
+	}
+	return retval;
+}
+
+float OneWire_GetTCColdReading(uint8_t tcid) {
+	float retval = 0.0f; // Report 0C for missing sensors
+	if(tcid < sizeof(tcidmapping)) {
+		uint8_t idx = tcidmapping[tcid];
+		if( idx >=0 ) { // Is this ID present?
+			if(extrareadout[idx] & 0x07) { // Any fault detected
+				retval = 999.0f; // Invalid
+			} else {
+				retval=(float)(extrareadout[idx] & 0xfff0); // Mask reserved/fault bits
+				retval/=256;
 				//printf(" (%x=%.1f C)",tcid,retval);
 			}
 		}

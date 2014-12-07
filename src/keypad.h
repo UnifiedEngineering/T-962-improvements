@@ -7,6 +7,7 @@
 #define KEY_F4 (1<<3)
 #define KEY_S (1<<4)
 
-uint32_t Keypad_Poll(void);
+uint32_t Keypad_Get(void);
+void Keypad_Init( void );
 
 #endif /* KEYPAD_H_ */

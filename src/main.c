@@ -23,7 +23,7 @@
 #include "serial.h"
 #include "lcd.h"
 #include "io.h"
-#include "timer.h"
+#include "sched.h"
 #include "onewire.h"
 #include "adc.h"
 #include "i2c.h"
@@ -66,6 +66,8 @@ uint32_t partid,partrev;
 uint32_t command[1];
 uint32_t result[3];
 
+static int32_t Main_Work( void );
+
 int main(void) {
 	char buf[22];
 	int len;
@@ -82,7 +84,7 @@ int main(void) {
 	MAMTIM = 0x03; // 3 cycles flash access recommended >40MHz
 	MAMCR = 0x02; // Fully enable memory accelerator
 	
-	Timer_Init();
+	Sched_Init();
 	IO_Init();
 	Set_Heater(0);
 	Set_Fan(0);
@@ -113,6 +115,7 @@ int main(void) {
 	printf("\nRunning on an %s", buf);
 
 	LCD_FB_Update();
+	Keypad_Init();
 	ADC_Init();
 	I2C_Init();
 	EEPROM_Init();
@@ -120,230 +123,194 @@ int main(void) {
 	OneWire_Init();
 	Reflow_Init();
 
-	uint32_t mode=0;
-	uint8_t heat=0,fan=0;
-	int32_t temp[3];
+	BusyWait( TICKS_SECS( 2 ) ); // Delay 2 seconds
 
-	float temperature[2];
-	temperature[0]=0.0f;
-	temperature[1]=0.0f;
-	uint32_t setpoint=30;
-
-	uint8_t curidx=0;
-
-	BusyWait8( 2000000 << 3 ); // Delay 2 seconds
+	Sched_SetWorkfunc( MAIN_WORK, Main_Work );
+	Sched_SetState( MAIN_WORK, 2, 0 ); // Enable right away
 
 	while(1) {
-		float coldjunction;
-		uint32_t keyspressed=Keypad_Poll();
-		if(keyspressed & 0xffff) printf("\nKeypad %02x ",keyspressed);
-		//len = snprintf(buf,sizeof(buf),"timer:<%010d>",Timer_Get());
-		//LCD_disp_str((uint8_t*)buf, len, 0, 63-5, FONT6X6);
-		//LCD_FB_Update();
-
-		float avgtemp; // The feedback temperature
-
-		// Initiate temperature conversion on all connected 1-wire sensors
-		OneWire_PerformTemperatureConversion();
-
-		printf("\n");
-
-		// These are the temperature readings we get from the thermocouple interfaces
-		// Right now it is assumed that if they are indeed present the first two channels will be used as feedback
-		float tctemp[4];
-		uint8_t tcpresent[4];
-		for( int i=0; i<4; i++ ) { // Get 4 TC channels
-			tcpresent[i] = OneWire_IsTCPresent( i );
-			tctemp[i] = OneWire_GetTCReading( i );
-			if( tcpresent[i] ) {
-				printf("(TC%x %.1fC)",i,tctemp[i]);
-			} else {
-				//printf("(TC%x ---C)",i);
-			}
-		}
-		if(tcpresent[0] && tcpresent[1]) {
-			avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
-			coldjunction = 0.0f; // Todo, actually read out CJ temp from TC IF
-		} else {
-			// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
-			coldjunction=OneWire_GetTempSensorReading();
-			temp[0]=ADC_Read(1);
-			if(temp[0]>=0) temp[1]=temp[0];
-			temp[0]=ADC_Read(2);
-			if(temp[0]>=0) temp[2]=temp[0];
-			printf("(ADC readout 0x%03x 0x%03x) ",temp[1],temp[2]);
-			temperature[0] = (float)temp[1];
-			temperature[1] = (float)temp[2];
-			// Change gain here
-			temperature[0] += coldjunction -6.0f; // Offset adjust, this will definitely have to be calibrated per device
-			temperature[1] += coldjunction -2.0f;
-
-			avgtemp=(temperature[0]+temperature[1]) / 2.0f;
-			printf("L=%03.1fC R=%03.1fC CJ=%03.1fC",
-				temperature[0],temperature[1],coldjunction);
-		}
-		printf(" AVG=%03.1fC SP=%03dC Heat=0x%02x Fan=0x%02x",
-			avgtemp,setpoint,heat,fan);
-
-		// Sort out this "state machine"
-		if(mode==5) { // Run reflow
-			uint32_t ticks=RTC_Read();
-			//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
-			//LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
-			len = snprintf(buf,sizeof(buf),"%03u",Reflow_GetSetpoint());
-			LCD_disp_str((uint8_t*)"SET", 3, 110, 7, FONT6X6);
-			LCD_disp_str((uint8_t*)buf, len, 110, 13, FONT6X6);
-			len = snprintf(buf,sizeof(buf),"%03u",(uint16_t)avgtemp);
-			LCD_disp_str((uint8_t*)"ACT", 3, 110, 20, FONT6X6);
-			LCD_disp_str((uint8_t*)buf, len, 110, 26, FONT6X6);
-			len = snprintf(buf,sizeof(buf),"%03u",ticks);
-			LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
-			LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
-			if(Reflow_Run(ticks, avgtemp, &heat, &fan, 0) || keyspressed & KEY_S) { // Abort reflow
-				mode=0;
-			}
-		} else if(mode==4) { // Select profile
-			int curprofile = Reflow_GetProfileIdx();
-
-			LCD_FB_Clear();
-
-			if(keyspressed & KEY_F1) { // Prev profile
-				curprofile--;
-			}
-			if(keyspressed & KEY_F2) { // Next profile
-				curprofile++;
-			}
-			Reflow_SelectProfileIdx(curprofile);
-			Reflow_PlotProfile(-1);
-			LCD_BMPDisplay(selectbmp,127-17,0);
-			len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
-			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
-
-			if(keyspressed & KEY_S) { // Select current profile
-				mode=0;
-			}
-		} else if(mode==3) { // Bake
-			LCD_FB_Clear();
-			LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
-			int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
-			if( keyrepeataccel < 1) keyrepeataccel = 1;
-			if( keyrepeataccel > 30) keyrepeataccel = 30;
-
-			if(keyspressed & KEY_F1) { // Setpoint-
-				setpoint -= keyrepeataccel;
-				if(setpoint<30) setpoint = 30;
-			}
-			if(keyspressed & KEY_F2) { // Setpoint+
-				setpoint += keyrepeataccel;
-				if(setpoint>300) setpoint = 300;
-			}
-
-			len = snprintf(buf,sizeof(buf),"L=%03.1fC R=%03.0fC",temperature[0],temperature[1]);
-			LCD_disp_str((uint8_t*)buf, len, 0, 6, FONT6X6);
-
-			len = snprintf(buf,sizeof(buf),"AVG=%03.1fC",avgtemp);
-			LCD_disp_str((uint8_t*)buf, len, 0, 12, FONT6X6);
-
-			len = snprintf(buf,sizeof(buf),"SP=%03dC F1- F2+",setpoint);
-			LCD_disp_str((uint8_t*)buf, len, 0, 18, FONT6X6);
-
-			len = snprintf(buf,sizeof(buf),"CJ=%03.1fC",coldjunction);
-			LCD_disp_str((uint8_t*)buf, len, 0, 24, FONT6X6);
-
-			LCD_BMPDisplay(stopbmp,127-17,0);
-
-			len = snprintf(buf,sizeof(buf),"heat=0x%02x fan=0x%02x",heat,fan);
-			LCD_disp_str((uint8_t*)buf, len, 0, 63-5, FONT6X6);
-
-			// Add timer for bake at some point
-
-			Reflow_Run(0, avgtemp, &heat, &fan, setpoint);
-
-			if(keyspressed & KEY_S) { // Abort bake
-				mode=0;
-			}
-		} else if(mode==2 || mode==1) { // Edit ee1 or 2
-			LCD_FB_Clear();
-			int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
-			if( keyrepeataccel < 1) keyrepeataccel = 1;
-			if( keyrepeataccel > 30) keyrepeataccel = 30;
-
-			int16_t cursetpoint;
-			Reflow_SelectEEProfileIdx(mode);
-			if(keyspressed & KEY_F1 && curidx > 0) { // Prev time
-				curidx--;
-			}
-			if(keyspressed & KEY_F2 && curidx < 47) { // Next time
-				curidx++;
-			}
-			cursetpoint = Reflow_GetSetpointAtIdx( curidx );
-
-			if(keyspressed & KEY_F3) { // Decrease setpoint
-				cursetpoint -= keyrepeataccel;
-			}
-			if(keyspressed & KEY_F4) { // Increase setpoint
-				cursetpoint += keyrepeataccel;
-			}
-			if(cursetpoint<0) cursetpoint = 0;
-			if(cursetpoint>300) cursetpoint = 300;
-			Reflow_SetSetpointAtIdx( curidx, cursetpoint);
-
-			Reflow_PlotProfile(curidx);
-			LCD_BMPDisplay(editbmp,127-17,0);
-			len = snprintf(buf,sizeof(buf),"%02u0s %03uC",curidx, cursetpoint);
-			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
-			if(keyspressed & KEY_S) { // Done editing
-				Reflow_SaveEEProfile();
-				mode=0;
-			}
-		} else { // Main menu
-			LCD_FB_Clear();
-			heat=fan=0;
-
-			len = snprintf(buf,sizeof(buf),"MAIN MENU");
-			LCD_disp_str((uint8_t*)buf, len, 0, 6*0, FONT6X6);
-			LCD_disp_str((uint8_t*)"F1:EDIT CUSTOM 1", 16, 0, 6*2, FONT6X6);
-			LCD_disp_str((uint8_t*)"F2:EDIT CUSTOM 2", 16, 0, 6*3, FONT6X6);
-			LCD_disp_str((uint8_t*)"F3:BAKE/MANUAL MODE", 19, 0, 6*4, FONT6X6);
-			LCD_disp_str((uint8_t*)"F4:SELECT PROFILE", 17, 0, 6*5, FONT6X6);
-			LCD_disp_str((uint8_t*)"S :RUN REFLOW PROFILE", 21, 0, 6*7, FONT6X6);
-			len = snprintf(buf,sizeof(buf),"[%s]",Reflow_GetProfileName());
-			LCD_disp_str((uint8_t*)buf, len, 0, 6*8, FONT6X6);
-			len = snprintf(buf,sizeof(buf),"OVEN TEMP. %03.1fC",avgtemp);
-			LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
-
-			if(keyspressed & KEY_F1) { // Edit ee1
-				curidx=0;
-				mode=1;
-			}
-			if(keyspressed & KEY_F2) { // Edit ee2
-				curidx=0;
-				mode=2;
-			}
-			if(keyspressed & KEY_F3) { // Bake mode
-				mode=3;
-				Reflow_Init();
-			}
-			if(keyspressed & KEY_F4) { // Select profile
-				mode=4;
-			}
-			if(keyspressed & KEY_S) { // Start reflow
-				mode=5;
-				LCD_FB_Clear();
-				Reflow_Init();
-				Reflow_PlotProfile(-1);
-				LCD_BMPDisplay(stopbmp,127-17,0);
-				len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
-				LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
-			}
-		}
-
-		LCD_FB_Update();
-
-		if(mode != 5 && mode != 3 && avgtemp > 40) fan=0x80; // Force cooldown if still warm
-
-		Set_Heater(heat);
-		Set_Fan(fan);
+		int32_t sleeptime;
+		sleeptime=Sched_Do( 0 ); // No fast-forward support
+		//printf("\n%d ticks 'til next activity"),sleeptime);
 	}
 	return 0;
+}
+
+static int32_t Main_Work( void ) {
+	static uint32_t mode=0;
+	static uint32_t setpoint=30;
+	static uint8_t curidx=0;
+
+	char buf[22];
+	int len;
+
+	uint32_t keyspressed=Keypad_Get();
+
+	// Sort out this "state machine"
+	if(mode==5) { // Run reflow
+		uint32_t ticks=RTC_Read();
+		//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
+		//LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"%03u",Reflow_GetSetpoint());
+		LCD_disp_str((uint8_t*)"SET", 3, 110, 7, FONT6X6);
+		LCD_disp_str((uint8_t*)buf, len, 110, 13, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"%03u",Reflow_GetActualTemp());
+		LCD_disp_str((uint8_t*)"ACT", 3, 110, 20, FONT6X6);
+		LCD_disp_str((uint8_t*)buf, len, 110, 26, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"%03u",ticks);
+		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
+		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
+		if(Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
+			mode=0;
+			Reflow_SetMode(REFLOW_STANDBY);
+		}
+	} else if(mode==4) { // Select profile
+		int curprofile = Reflow_GetProfileIdx();
+
+		LCD_FB_Clear();
+
+		if(keyspressed & KEY_F1) { // Prev profile
+			curprofile--;
+		}
+		if(keyspressed & KEY_F2) { // Next profile
+			curprofile++;
+		}
+		Reflow_SelectProfileIdx(curprofile);
+		Reflow_PlotProfile(-1);
+		LCD_BMPDisplay(selectbmp,127-17,0);
+		len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
+		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
+
+		if(keyspressed & KEY_S) { // Select current profile
+			mode=0;
+		}
+	} else if(mode==3) { // Bake
+		LCD_FB_Clear();
+		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
+		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
+		if( keyrepeataccel < 1) keyrepeataccel = 1;
+		if( keyrepeataccel > 30) keyrepeataccel = 30;
+
+		if(keyspressed & KEY_F1) { // Setpoint-
+			setpoint -= keyrepeataccel;
+			if(setpoint<30) setpoint = 30;
+		}
+		if(keyspressed & KEY_F2) { // Setpoint+
+			setpoint += keyrepeataccel;
+			if(setpoint>300) setpoint = 300;
+		}
+
+//		len = snprintf(buf,sizeof(buf),"L=%03.1fC R=%03.1fC",temperature[0],temperature[1]);
+//		LCD_disp_str((uint8_t*)buf, len, 0, 6, FONT6X6);
+
+		len = snprintf(buf,sizeof(buf),"ACTUAL %03dC",Reflow_GetActualTemp());
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 12, FONT6X6);
+
+		len = snprintf(buf,sizeof(buf),"- SETPOINT %03uC +",setpoint);
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 18, FONT6X6);
+
+		LCD_disp_str((uint8_t*)"F1", 2, 0, 18, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"F2", 2, 127-12, 18, FONT6X6 | INVERT);
+
+		//		len = snprintf(buf,sizeof(buf),"CJ=%03.1fC",coldjunction);
+//		LCD_disp_str((uint8_t*)buf, len, 0, 24, FONT6X6);
+
+		LCD_BMPDisplay(stopbmp,127-17,0);
+
+//		len = snprintf(buf,sizeof(buf),"heat=0x%02x fan=0x%02x",heat,fan);
+//		LCD_disp_str((uint8_t*)buf, len, 0, 63-5, FONT6X6);
+
+		// Add timer for bake at some point
+
+		Reflow_SetSetpoint(setpoint);
+
+		if(keyspressed & KEY_S) { // Abort bake
+			mode=0;
+			Reflow_SetMode(REFLOW_STANDBY);
+		}
+	} else if(mode==2 || mode==1) { // Edit ee1 or 2
+		LCD_FB_Clear();
+		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
+		if( keyrepeataccel < 1) keyrepeataccel = 1;
+		if( keyrepeataccel > 30) keyrepeataccel = 30;
+
+		int16_t cursetpoint;
+		Reflow_SelectEEProfileIdx(mode);
+		if(keyspressed & KEY_F1 && curidx > 0) { // Prev time
+			curidx--;
+		}
+		if(keyspressed & KEY_F2 && curidx < 47) { // Next time
+			curidx++;
+		}
+		cursetpoint = Reflow_GetSetpointAtIdx( curidx );
+
+		if(keyspressed & KEY_F3) { // Decrease setpoint
+			cursetpoint -= keyrepeataccel;
+		}
+		if(keyspressed & KEY_F4) { // Increase setpoint
+			cursetpoint += keyrepeataccel;
+		}
+		if(cursetpoint<0) cursetpoint = 0;
+		if(cursetpoint>300) cursetpoint = 300;
+		Reflow_SetSetpointAtIdx( curidx, cursetpoint);
+
+		Reflow_PlotProfile(curidx);
+		LCD_BMPDisplay(editbmp,127-17,0);
+		len = snprintf(buf,sizeof(buf),"%02u0s %03uC",curidx, cursetpoint);
+		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
+		if(keyspressed & KEY_S) { // Done editing
+			Reflow_SaveEEProfile();
+			mode=0;
+		}
+	} else { // Main menu
+		LCD_FB_Clear();
+
+		len = snprintf(buf,sizeof(buf),"MAIN MENU");
+		LCD_disp_str((uint8_t*)buf, len, 0, 6*0, FONT6X6);
+		LCD_disp_str((uint8_t*)"F1", 2, 0, 8*1, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"EDIT CUSTOM 1", 13, 14, 8*1, FONT6X6);
+		LCD_disp_str((uint8_t*)"F2", 2, 0, 8*2, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"EDIT CUSTOM 2", 13, 14, 8*2, FONT6X6);
+		LCD_disp_str((uint8_t*)"F3", 2, 0, 8*3, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 14, 8*3, FONT6X6);
+		LCD_disp_str((uint8_t*)"F4", 2, 0, 8*4, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"SELECT PROFILE", 14, 14, 8*4, FONT6X6);
+		LCD_disp_str((uint8_t*)"S", 1, 3, 8*5, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, 8*5, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 8*6, FONT6X6 | INVERT);
+		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %3dC", Reflow_GetActualTemp());
+		LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
+
+		if(keyspressed & KEY_F1) { // Edit ee1
+			curidx=0;
+			mode=1;
+		}
+		if(keyspressed & KEY_F2) { // Edit ee2
+			curidx=0;
+			mode=2;
+		}
+		if(keyspressed & KEY_F3) { // Bake mode
+			mode=3;
+			Reflow_Init();
+			Reflow_SetMode(REFLOW_BAKE);
+		}
+		if(keyspressed & KEY_F4) { // Select profile
+			mode=4;
+		}
+		if(keyspressed & KEY_S) { // Start reflow
+			mode=5;
+			LCD_FB_Clear();
+			Reflow_Init();
+			Reflow_PlotProfile(-1);
+			LCD_BMPDisplay(stopbmp,127-17,0);
+			len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
+			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
+			Reflow_SetMode(REFLOW_REFLOW);
+		}
+	}
+
+	LCD_FB_Update();
+
+	return TICKS_MS(250);
 }

@@ -23,6 +23,7 @@
 #include "t962.h"
 #include "keypad.h"
 #include "io.h"
+#include "sched.h"
 
 #define F1KEY_PORTBIT (1<<23)
 #define F2KEY_PORTBIT (1<<15)
@@ -32,10 +33,12 @@
 
 #define KEYREPEATDELAY (6)
 
-uint32_t Keypad_Poll(void) {
+uint32_t latchedkeypadstate = 0;
+
+static int32_t Keypad_Work(void) {
 	static uint32_t laststate = 0;
 	static uint16_t laststateunchangedctr = 0;
-	uint32_t retval = 0;
+	uint32_t keypadstate = 0;
 	uint32_t inverted = ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
 	uint32_t changed = inverted ^ laststate;
 
@@ -49,17 +52,37 @@ uint32_t Keypad_Poll(void) {
 		laststateunchangedctr++;
 		if(laststateunchangedctr > KEYREPEATDELAY) {
 			changed = laststate; // Feed key repeat
-			retval |= ((laststateunchangedctr-KEYREPEATDELAY)<<16); // For accelerating key repeats
+			keypadstate |= ((laststateunchangedctr-KEYREPEATDELAY)<<16); // For accelerating key repeats
 		}
 	}
 
 	if(changed) {
-		if(changed & F1KEY_PORTBIT) retval |= KEY_F1;
-		if(changed & F2KEY_PORTBIT) retval |= KEY_F2;
-		if(changed & F3KEY_PORTBIT) retval |= KEY_F3;
-		if(changed & F4KEY_PORTBIT) retval |= KEY_F4;
-		if(changed & S_KEY_PORTBIT) retval |= KEY_S;
+		if(changed & F1KEY_PORTBIT) keypadstate |= KEY_F1;
+		if(changed & F2KEY_PORTBIT) keypadstate |= KEY_F2;
+		if(changed & F3KEY_PORTBIT) keypadstate |= KEY_F3;
+		if(changed & F4KEY_PORTBIT) keypadstate |= KEY_F4;
+		if(changed & S_KEY_PORTBIT) keypadstate |= KEY_S;
 	}
 
+	latchedkeypadstate &= 0xffff;
+	latchedkeypadstate |= keypadstate; // Make sure software actually sees the transitions
+
+	if(keypadstate & 0xff) {
+		//printf("[KEYPAD %02x]",keypadstate & 0xff);
+		Sched_SetState(MAIN_WORK, 2, 0); // Wake up main task to update UI
+	}
+
+	return TICKS_MS(100);
+}
+
+uint32_t Keypad_Get(void) {
+	uint32_t retval = latchedkeypadstate;
+	latchedkeypadstate = 0;
 	return retval;
 }
+
+void Keypad_Init( void ) {
+	Sched_SetWorkfunc( KEYPAD_WORK, Keypad_Work );
+	Sched_SetState( KEYPAD_WORK, 2, 0 ); // Enable right away
+}
+
