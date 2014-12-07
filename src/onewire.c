@@ -375,7 +375,10 @@ float OneWire_GetTempSensorReading(void) {
 }
 
 int OneWire_IsTCPresent(uint8_t tcid) {
-	if(tcid < sizeof(tcidmapping) && tcidmapping[tcid] >= 0) return 1; else return 0;
+	if(tcid < sizeof(tcidmapping) && tcidmapping[tcid] >= 0) {
+		if( !(devreadout[tcidmapping[tcid]] & 0x01) ) return 1; // A faulty/not connected TC will not be flagged as present
+	}
+	return 0;
 }
 
 float OneWire_GetTCReading(uint8_t tcid) {
