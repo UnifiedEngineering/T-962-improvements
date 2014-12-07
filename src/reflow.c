@@ -119,6 +119,7 @@ static int32_t Reflow_Work( void ) {
 		temperature[0] = tctemp[0];
 		temperature[1] = tctemp[1];
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
+		printf("CJ=%5.1fC ",coldjunction);
 	} else {
 		// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
 		coldjunction=OneWire_GetTempSensorReading();
@@ -293,8 +294,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 			if(value>0) {
 				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
-				intsetpoint = avg; // Keep this for UI
-				PID.mySetpoint = (float)avg;
+				intsetpoint = avg; // Keep this for UI...
+				//PID.mySetpoint = (float)avg;
+				PID.mySetpoint = (float)value2; // ...but using the future value for PID regulation produces better result
 			} else {
 				retval = -1;
 			}
