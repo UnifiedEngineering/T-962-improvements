@@ -28,7 +28,7 @@ int32_t requested_buzz_length;
 
 // The buzzer is hooked up to PWM5 output, but contains an oscillator of its own so volume and freq are ignored for now. :(
 
-static int16_t Buzzer_Work(void) {
+static int32_t Buzzer_Work(void) {
 	//wjprintf_P(PSTR("\nBuzzer work %d"),requested_buzz_freq);
 	if(requested_buzz_freq!=BUZZ_NONE) {
 		FIO0SET = (1<<21);
