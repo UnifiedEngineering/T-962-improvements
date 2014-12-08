@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include "t962.h"
 #include "io.h"
+#include "sched.h"
 
 void Set_Heater(uint8_t enable) {
 	if( enable < 0xff ) {
@@ -44,6 +45,19 @@ void Set_Fan(uint8_t enable) {
 	PWMLER |= (1<<4);
 }
 
+static int32_t Sleep_Work(void) {
+	//FIO0PIN ^= (1<<31); // Toggle debug LED
+	// For some reason P0.31 status cannot be read out, so the following is used instead:
+	static uint8_t flip = 0;
+	if( flip ) FIO0SET = (1<<31); else FIO0CLR = (1<<31);
+	flip ^= 1;
+
+	// If interrupts are used they must be disabled around the following two instructions!
+	WDFEED = 0xaa; // Feed watchdog
+	WDFEED = 0x55;
+	return TICKS_SECS(1);
+}
+
 void IO_Init(void) {
 	SCS = 0b11; // Enable fast GPIO on both port 0 and 1
 
@@ -64,4 +78,7 @@ void IO_Init(void) {
 	PWMLER = (1<<0); // Enable latch on mr0 (Do I really need to do this?)
 	PWMPCR = (1<<12) | (1<<14); // Enable PWM4 and 6
 	PWMTCR = (1<<3) | (1<<0); // Enable timer in PWM mode
+
+	Sched_SetWorkfunc(SLEEP_WORK, Sleep_Work);
+	Sched_SetState(SLEEP_WORK, 2, 0);
 }

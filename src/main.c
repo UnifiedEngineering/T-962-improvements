@@ -94,6 +94,17 @@ int main(void) {
 	LCD_Init();
 	LCD_BMPDisplay(logobmp,0,0);
 
+	// Setup watchdog
+	WDTC = PCLKFREQ / 3; // Some margin (PCLKFREQ/4 would be exactly the period the WD is fed by sleep_work)
+	WDMOD = 0x03; // Enable
+	WDFEED = 0xaa;
+	WDFEED = 0x55;
+
+	uint8_t resetreason = RSIR;
+	RSIR = 0x0f; // Clear it out
+	printf("\nReset reason(s): %s%s%s%s", (resetreason&(1<<0))?"[POR]":"", (resetreason&(1<<1))?"[EXTR]":"",
+			(resetreason&(1<<2))?"[WDTR]":"", (resetreason&(1<<3))?"[BODR]":"");
+
 	// Request part number
 	command[0] = IAP_READ_PART;
 	iap_entry(command, result);
