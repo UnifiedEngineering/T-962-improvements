@@ -304,8 +304,8 @@ static int32_t Main_Work( void ) {
 		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, 8*5, FONT6X6);
 		len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 8*6, FONT6X6 | INVERT);
-		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %3dC", Reflow_GetActualTemp());
-		LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %dC", Reflow_GetActualTemp());
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 64-6, FONT6X6);
 
 		if(keyspressed & KEY_F1) { // Edit ee1
 			curidx=0;
