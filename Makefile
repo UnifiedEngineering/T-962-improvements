@@ -63,7 +63,7 @@ $(BUILD_DIR)%.o: $(SRC_DIR)%.c create_build_dir
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.s
 	@echo 'Building file: $<'
-	$(CC) -c -x assembler-with-cpp -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
+	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
@@ -87,7 +87,7 @@ post-build:
 	-arm-none-eabi-objcopy -v -O ihex "$(TARGET)" "$(BUILD_DIR)$(BASE_NAME).hex"
 	-@echo ' '
 
-.PHONY: all clean dependents
+.PHONY: clean dependents
 .SECONDARY: post-build
 
 -include ../makefile.targets
