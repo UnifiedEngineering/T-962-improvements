@@ -48,8 +48,10 @@ void Buzzer_Init(void) {
 
 void Buzzer_Beep(BuzzFreq_t freq,uint8_t volume,int32_t ticks) {
 	//wjprintf_P(PSTR("\nBuzzer beep "));
-	requested_buzz_freq=freq;
-	requested_buzz_volume=volume;
-	requested_buzz_length=ticks;
-	Sched_SetState(BUZZER_WORK,2,0);
+	if( ticks > 0 ) {
+		requested_buzz_freq=freq;
+		requested_buzz_volume=volume;
+		requested_buzz_length=ticks;
+		Sched_SetState(BUZZER_WORK,2,0);
+	}
 }

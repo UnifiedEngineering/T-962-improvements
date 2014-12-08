@@ -32,6 +32,7 @@
 #include "keypad.h"
 #include "reflow.h"
 #include "buzzer.h"
+#include "nvstorage.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -90,6 +91,14 @@ int main(void) {
 	Set_Heater(0);
 	Set_Fan(0);
 	Serial_Init();
+	I2C_Init();
+	EEPROM_Init();
+	NV_Init();
+
+	if( NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255 ) {
+		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10); // Default 1 second beep length
+	}
+
 	printf("\nInitializing improved reflow oven...");
 	LCD_Init();
 	LCD_BMPDisplay(logobmp,0,0);
@@ -130,8 +139,6 @@ int main(void) {
 	Keypad_Init();
 	Buzzer_Init();
 	ADC_Init();
-	I2C_Init();
-	EEPROM_Init();
 	RTC_Init();
 	OneWire_Init();
 	Reflow_Init();
@@ -175,7 +182,7 @@ static int32_t Main_Work( void ) {
 		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
 		if(Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
-			if( Reflow_IsDone() ) Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_SECS(1) );
+			if( Reflow_IsDone() ) Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN) );
 			mode=0;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh

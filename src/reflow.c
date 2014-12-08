@@ -30,6 +30,7 @@
 #include "sched.h"
 #include "onewire.h"
 #include "adc.h"
+#include "nvstorage.h"
 
 float adcgainadj[2] = { 1.0f, 1.0f }; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2] = { -6.0f, -5.0f }; // Offset adjust, this will definitely have to be calibrated per device
@@ -195,6 +196,7 @@ void Reflow_Init(void) {
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
 	ByteswapTempProfile(ee2.temperatures);
+	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
 	intsetpoint = 30;
 	PID.mySetpoint = 30.0f; // Default setpoint
 	PID_SetOutputLimits(&PID, 0,255+248);
@@ -272,6 +274,7 @@ int Reflow_SelectProfileIdx(int idx) {
 	} else {
 		profileidx = idx;
 	}
+	NV_SetConfig(REFLOW_PROFILE, profileidx);
 	return profileidx;
 }
 
