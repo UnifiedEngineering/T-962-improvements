@@ -41,6 +41,11 @@ extern uint8_t graphbmp[];
 uint16_t profilebuf[48];
 PidType PID;
 uint16_t intsetpoint;
+float avgtemp; // The feedback temperature
+float coldjunction;
+float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+uint8_t cjsensorpresent = 0;
+uint8_t tempvalid = 0;
 int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
@@ -91,10 +96,7 @@ static void ByteswapTempProfile(uint16_t* buf) {
 }
 
 static int32_t Reflow_Work( void ) {
-	static float temperature[2] = { 0.0f, 0.0f };
-	float avgtemp; // The feedback temperature
 	uint16_t temp[2];
-	float coldjunction;
 	uint8_t fan, heat;
 	uint32_t ticks=RTC_Read();
 
@@ -104,25 +106,38 @@ static int32_t Reflow_Work( void ) {
 	// Right now it is assumed that if they are indeed present the first two channels will be used as feedback
 	float tctemp[4], tccj[4];
 	uint8_t tcpresent[4];
+	tempvalid = 0; // Assume no valid readings;
 	for( int i=0; i<4; i++ ) { // Get 4 TC channels
 		tcpresent[i] = OneWire_IsTCPresent( i );
 		if( tcpresent[i] ) {
 			tctemp[i] = OneWire_GetTCReading( i );
 			tccj[i] = OneWire_GetTCColdReading( i );
 			printf("TC%x=%5.1fC ",i,tctemp[i]);
+			if(i>1) {
+				temperature[i] = tctemp[i];
+				tempvalid |= (1<<i);
+			}
 		} else {
 			//printf("TC%x=---C ",i);
 		}
 	}
+	cjsensorpresent = 0; // Assume no CJ sensor
 	if(tcpresent[0] && tcpresent[1]) {
 		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
 		temperature[0] = tctemp[0];
 		temperature[1] = tctemp[1];
+		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
+		cjsensorpresent = 1;
 		printf("CJ=%5.1fC ",coldjunction);
 	} else {
 		// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
 		coldjunction=OneWire_GetTempSensorReading();
+		if( coldjunction < 127.0f ) {
+			cjsensorpresent = 1;
+		} else {
+			coldjunction = 25.0f; // Assume 25C ambient if not found
+		}
 		temp[0]=ADC_Read(1);
 		temp[1]=ADC_Read(2);
 		//printf("(ADC readout 0x%04x 0x%04x) ",temp[0],temp[1]);
@@ -134,6 +149,8 @@ static int32_t Reflow_Work( void ) {
 
 		temperature[0] += coldjunction + adcoffsetadj[0]; // Offset adjust
 		temperature[1] += coldjunction + adcoffsetadj[1];
+
+		tempvalid |= 0x03;
 
 		avgtemp=(temperature[0]+temperature[1]) / 2.0f;
 		printf("L=%5.1fC R=%5.1fC CJ=%5.1fC ",
@@ -198,6 +215,29 @@ void Reflow_SetSetpoint(uint16_t thesetpoint) {
 
 int16_t Reflow_GetActualTemp(void) {
 	return intavgtemp;
+}
+
+float Reflow_GetTempSensor(TempSensor_t sensor) {
+	if(sensor == TC_COLD_JUNCTION) {
+		return coldjunction;
+	} else if(sensor == TC_AVERAGE) {
+		return avgtemp;
+	} else if(sensor < TC_NUM_ITEMS) {
+		return temperature[sensor - TC_LEFT];
+	} else {
+		 return 0.0f;
+	}
+}
+
+uint8_t Reflow_IsTempSensorValid(TempSensor_t sensor) {
+	if(sensor == TC_COLD_JUNCTION) {
+		return cjsensorpresent;
+	} else if(sensor == TC_AVERAGE) {
+		return 1;
+	} else if(sensor >= TC_NUM_ITEMS) {
+		return 0;
+	}
+	return (tempvalid & (1<<(sensor - TC_LEFT))) ? 1:0;
 }
 
 uint8_t Reflow_IsDone(void) {

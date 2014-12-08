@@ -203,20 +203,37 @@ static int32_t Main_Work( void ) {
 			if(setpoint>300) setpoint = 300;
 		}
 
-//		len = snprintf(buf,sizeof(buf),"L=%03.1fC R=%03.1fC",temperature[0],temperature[1]);
-//		LCD_disp_str((uint8_t*)buf, len, 0, 6, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",setpoint);
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 10, FONT6X6);
 
-		len = snprintf(buf,sizeof(buf),"ACTUAL %03dC",Reflow_GetActualTemp());
-		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 12, FONT6X6);
+		LCD_disp_str((uint8_t*)"F1", 2, 0, 10, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"F2", 2, 127-12, 10, FONT6X6 | INVERT);
 
-		len = snprintf(buf,sizeof(buf),"- SETPOINT %03uC +",setpoint);
+		len = snprintf(buf,sizeof(buf),"ACTUAL %.1fC",Reflow_GetTempSensor(TC_AVERAGE));
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 18, FONT6X6);
 
-		LCD_disp_str((uint8_t*)"F1", 2, 0, 18, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"F2", 2, 127-12, 18, FONT6X6 | INVERT);
+		len = snprintf(buf,sizeof(buf),"L %.1fC",Reflow_GetTempSensor(TC_LEFT));
+		LCD_disp_str((uint8_t*)buf, len, 32-(len*3), 26, FONT6X6);
 
-		//		len = snprintf(buf,sizeof(buf),"CJ=%03.1fC",coldjunction);
-//		LCD_disp_str((uint8_t*)buf, len, 0, 24, FONT6X6);
+		len = snprintf(buf,sizeof(buf),"R %.1fC",Reflow_GetTempSensor(TC_RIGHT));
+		LCD_disp_str((uint8_t*)buf, len, 96-(len*3), 26, FONT6X6);
+
+		if( Reflow_IsTempSensorValid(TC_EXTRA1) ) {
+			len = snprintf(buf,sizeof(buf),"X1 %.1fC",Reflow_GetTempSensor(TC_EXTRA1));
+			LCD_disp_str((uint8_t*)buf, len, 32-(len*3), 34, FONT6X6);
+		}
+
+		if( Reflow_IsTempSensorValid(TC_EXTRA2) ) {
+			len = snprintf(buf,sizeof(buf),"X2 %.1fC",Reflow_GetTempSensor(TC_EXTRA2));
+			LCD_disp_str((uint8_t*)buf, len, 96-(len*3), 34, FONT6X6);
+		}
+
+		if( Reflow_IsTempSensorValid(TC_COLD_JUNCTION) ) {
+			len = snprintf(buf,sizeof(buf),"COLD-JUNCTION %.1fC",Reflow_GetTempSensor(TC_COLD_JUNCTION));
+		} else {
+			len = snprintf(buf,sizeof(buf),"NO COLD-JUNCTION TS!");
+		}
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 42, FONT6X6);
 
 		LCD_BMPDisplay(stopbmp,127-17,0);
 

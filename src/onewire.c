@@ -363,7 +363,7 @@ uint32_t OneWire_Init( void ) {
 }
 
 float OneWire_GetTempSensorReading(void) {
-	float retval = 25.0f; // Compatibility with ovens without cold-junction mod, assume 25C ambient
+	float retval = 999.0f; // Report invalid temp if not found
 	if(tempidx >= 0) {
 		retval=(float)devreadout[tempidx];
 		retval/=16;
