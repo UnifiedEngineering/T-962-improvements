@@ -31,6 +31,7 @@
 #include "eeprom.h"
 #include "keypad.h"
 #include "reflow.h"
+#include "buzzer.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -116,6 +117,7 @@ int main(void) {
 
 	LCD_FB_Update();
 	Keypad_Init();
+	Buzzer_Init();
 	ADC_Init();
 	I2C_Init();
 	EEPROM_Init();
@@ -123,10 +125,10 @@ int main(void) {
 	OneWire_Init();
 	Reflow_Init();
 
-	BusyWait( TICKS_SECS( 2 ) ); // Delay 2 seconds
-
 	Sched_SetWorkfunc( MAIN_WORK, Main_Work );
-	Sched_SetState( MAIN_WORK, 2, 0 ); // Enable right away
+	Sched_SetState( MAIN_WORK, 1, TICKS_SECS( 2 ) ); // Enable in 2 seconds
+
+	Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_MS(100) );
 
 	while(1) {
 		int32_t sleeptime;
@@ -161,6 +163,7 @@ static int32_t Main_Work( void ) {
 		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
 		if(Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
+			if( Reflow_IsDone() ) Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_SECS(1) );
 			mode=0;
 			Reflow_SetMode(REFLOW_STANDBY);
 		}
