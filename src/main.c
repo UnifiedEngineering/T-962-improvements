@@ -315,5 +315,5 @@ static int32_t Main_Work( void ) {
 
 	LCD_FB_Update();
 
-	return TICKS_MS(250);
+	return TICKS_MS(500);
 }
