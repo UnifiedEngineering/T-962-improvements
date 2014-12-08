@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
-#include "sched.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 uint8_t FB[FB_HEIGHT/8][FB_WIDTH];
@@ -214,27 +213,118 @@ void LCD_SetBacklight(uint8_t backlight) {
 	}
 }
 
+// No performance gain by inlining the command code
 static void LCD_WriteCmd(uint32_t cmdbyte) {
-	FIO0SET = (1<<12) | (1<<13); // Both CS active
+	// Start by making sure none of the display controllers are busy
+	FIO1DIR = 0x000000; // Data pins are now inputs
+	FIO0CLR = (1<<22) | (1<<13); // RS low, also make sure other CS is low
+	FIO0SET = (1<<12); // One CS at a time
+	FIO0SET = (1<<19); // RW must go high before E does
+	FIO0SET = (1<<18); // E high for read
+	FIO1PIN; // Need 320ns of timing margin here
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	while( FIO1PIN & 0x800000 ); // Wait for busy to clear
+	FIO0CLR = (1<<12); // Swap CS
+	FIO0CLR = (1<<18); // E low again
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO0SET = (1<<13); // One CS at a time
+	FIO0SET = (1<<18); // E high for read
+	FIO1PIN; // Need 320ns of timing margin here
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	while( FIO1PIN & 0x800000 ); // Wait for busy to clear
+	FIO0CLR = (1<<19) | (1<<18); // RW + E low again
+	FIO1DIR = 0xff0000; // Data pins output again
+
+	FIO0SET = (1<<12) | (1<<13); // Both CS active (one already activated above, doesn't matter)
 	FIO1PIN = cmdbyte << 16; // Cmd on pins
-	FIO0CLR = (1<<22); // RS low
+	FIO1PIN; // Need ~200ns of timing margin here
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
 	FIO0SET = (1<<18); // E high
-	BusyWait(TICKS_US(0.5));
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
 	FIO0CLR = (1<<18); // E low
-	BusyWait(TICKS_US(0.5));
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
 	FIO0SET = (1<<22); // RS high
-	FIO0CLR = (1<<12) | (1<<13); // Both CS inactive
 }
 
-static void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
+// Because of the cycle time requirements for E inlining actually does not boost performance
+//static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) __attribute__((always_inline));
+static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
+	// Start by making sure that the correct controller is selected, then make sure it's not busy
 	uint32_t csmask=chipnum?(1<<12):(1<<13);
+	uint32_t csmask2=chipnum?(1<<13):(1<<12);
 	FIO0SET = csmask; // CS active
+	FIO0CLR = csmask2; // CS inactive
+	FIO1DIR = 0x000000; // Data pins are now inputs
+	FIO0CLR = (1<<22); // RS low
+	FIO0SET = (1<<19); // RW must go high before E does
+	FIO0SET = (1<<18); // E high for read
+	FIO1PIN; // Need 320ns of timing margin here
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	while( FIO1PIN & 0x800000 ); // Wait for busy to clear
+	FIO0CLR = (1<<18) | (1<<19); // E and RW low
+	FIO0SET = (1<<22); // RS high
+	FIO1DIR = 0xff0000; // Data pins output again
 	FIO1PIN = databyte << 16; // Data on pins
+	FIO1PIN; // Need ~200ns of timing margin here
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
 	FIO0SET = (1<<18); // E high
-	BusyWait(TICKS_US(0.5));
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
 	FIO0CLR = (1<<18); // E low
-	BusyWait(TICKS_US(0.5));
-	FIO0CLR = csmask; // CS inactive
+/*	When inlining additional padding needs to be done
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;
+	FIO1PIN;*/
 }
 
 void LCD_Init(void) {
