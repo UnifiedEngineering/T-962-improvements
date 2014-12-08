@@ -142,6 +142,7 @@ static int32_t Main_Work( void ) {
 	static uint32_t mode=0;
 	static uint32_t setpoint=30;
 	static uint8_t curidx=0;
+	int32_t retval=TICKS_MS(500);
 
 	char buf[22];
 	int len;
@@ -166,6 +167,7 @@ static int32_t Main_Work( void ) {
 			if( Reflow_IsDone() ) Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_SECS(1) );
 			mode=0;
 			Reflow_SetMode(REFLOW_STANDBY);
+			retval = 0; // Force immediate refresh
 		}
 	} else if(mode==4) { // Select profile
 		int curprofile = Reflow_GetProfileIdx();
@@ -186,6 +188,7 @@ static int32_t Main_Work( void ) {
 
 		if(keyspressed & KEY_S) { // Select current profile
 			mode=0;
+			retval = 0; // Force immediate refresh
 		}
 	} else if(mode==3) { // Bake
 		LCD_FB_Clear();
@@ -247,6 +250,7 @@ static int32_t Main_Work( void ) {
 		if(keyspressed & KEY_S) { // Abort bake
 			mode=0;
 			Reflow_SetMode(REFLOW_STANDBY);
+			retval = 0; // Force immediate refresh
 		}
 	} else if(mode==2 || mode==1) { // Edit ee1 or 2
 		LCD_FB_Clear();
@@ -281,6 +285,7 @@ static int32_t Main_Work( void ) {
 		if(keyspressed & KEY_S) { // Done editing
 			Reflow_SaveEEProfile();
 			mode=0;
+			retval = 0; // Force immediate refresh
 		}
 	} else { // Main menu
 		LCD_FB_Clear();
@@ -305,18 +310,22 @@ static int32_t Main_Work( void ) {
 		if(keyspressed & KEY_F1) { // Edit ee1
 			curidx=0;
 			mode=1;
+			retval = 0; // Force immediate refresh
 		}
 		if(keyspressed & KEY_F2) { // Edit ee2
 			curidx=0;
 			mode=2;
+			retval = 0; // Force immediate refresh
 		}
 		if(keyspressed & KEY_F3) { // Bake mode
 			mode=3;
 			Reflow_Init();
 			Reflow_SetMode(REFLOW_BAKE);
+			retval = 0; // Force immediate refresh
 		}
 		if(keyspressed & KEY_F4) { // Select profile
 			mode=4;
+			retval = 0; // Force immediate refresh
 		}
 		if(keyspressed & KEY_S) { // Start reflow
 			mode=5;
@@ -327,10 +336,11 @@ static int32_t Main_Work( void ) {
 			len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
 			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 			Reflow_SetMode(REFLOW_REFLOW);
+			retval = 0; // Force immediate refresh
 		}
 	}
 
 	LCD_FB_Update();
 
-	return TICKS_MS(500);
+	return retval;
 }
