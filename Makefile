@@ -33,6 +33,7 @@ $(BUILD_DIR)io.o \
 $(BUILD_DIR)keypad.o \
 $(BUILD_DIR)lcd.o \
 $(BUILD_DIR)main.o \
+$(BUILD_DIR)nvstorage.o \
 $(BUILD_DIR)onewire.o \
 $(BUILD_DIR)reflow.o \
 $(BUILD_DIR)rtc.o \
