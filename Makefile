@@ -5,33 +5,23 @@
 ################################################################################
 BASE_NAME := T-962-controller
 
-SRC_DIR := src/
-BUILD_DIR := build/
+SRC_DIR := ./src/
+BUILD_DIR := ./build/
 TARGET := $(BUILD_DIR)$(BASE_NAME).axf
+
+vpath %.c $(SRC_DIR)
+vpath %.o $(BUILD_DIR)
+vpath %.d $(BUILD_DIR)
 
 CC := arm-none-eabi-gcc
 RM := rm -rf
 
 # Source files
-C_SRCS += \
-$(SRC_DIR)PID_v1.c \
-$(SRC_DIR)adc.c \
-$(SRC_DIR)crp.c \
-$(SRC_DIR)eeprom.c \
-$(SRC_DIR)i2c.c \
-$(SRC_DIR)io.c \
-$(SRC_DIR)keypad.c \
-$(SRC_DIR)lcd.c \
-$(SRC_DIR)main.c \
-$(SRC_DIR)onewire.c \
-$(SRC_DIR)reflow.c \
-$(SRC_DIR)rtc.c \
-$(SRC_DIR)sched.c \
-$(SRC_DIR)serial.c
+C_SRCS += $(wildcard src/*.c)
 
-S_SRCS += $(SRC_DIR)cr_startup_lpc21.s $(SRC_DIR)import.s
+S_SRCS += cr_startup_lpc21.s import.s
 
-OBJS += $(BUILD_DIR)PID_v1.o \
+OBJS := $(BUILD_DIR)PID_v1.o \
 $(BUILD_DIR)adc.o \
 $(BUILD_DIR)buzzer.o \
 $(BUILD_DIR)cr_startup_lpc21.o \
@@ -49,7 +39,7 @@ $(BUILD_DIR)rtc.o \
 $(BUILD_DIR)sched.o \
 $(BUILD_DIR)serial.o
 
-C_DEPS += PID_v1.d adc.d buzzer.c crp.d eeprom.d i2c.d io.d keypad.d lcd.d main.d onewire.d reflow.d rtc.d sched.d serial.d
+C_DEPS := $(wildcard *.d)
 
 all: axf
 
