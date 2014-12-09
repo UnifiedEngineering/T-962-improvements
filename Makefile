@@ -19,26 +19,9 @@ RM := rm -rf
 # Source files
 C_SRCS += $(wildcard $(SRC_DIR)*.c)
 
-S_SRCS += cr_startup_lpc21.s import.s
+S_SRCS += $(SRC_DIR)cr_startup_lpc21.s $(SRC_DIR)import.s
 
-OBJS := $(BUILD_DIR)PID_v1.o \
-$(BUILD_DIR)adc.o \
-$(BUILD_DIR)buzzer.o \
-$(BUILD_DIR)cr_startup_lpc21.o \
-$(BUILD_DIR)crp.o \
-$(BUILD_DIR)eeprom.o \
-$(BUILD_DIR)i2c.o \
-$(BUILD_DIR)import.o \
-$(BUILD_DIR)io.o \
-$(BUILD_DIR)keypad.o \
-$(BUILD_DIR)lcd.o \
-$(BUILD_DIR)main.o \
-$(BUILD_DIR)nvstorage.o \
-$(BUILD_DIR)onewire.o \
-$(BUILD_DIR)reflow.o \
-$(BUILD_DIR)rtc.o \
-$(BUILD_DIR)sched.o \
-$(BUILD_DIR)serial.o
+OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
 
