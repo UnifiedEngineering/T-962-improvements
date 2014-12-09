@@ -9,3 +9,9 @@ install:
 
 script:
   - make all
+
+notifications:
+  email: false
+
+git:
+  depth: 10
