@@ -17,7 +17,7 @@ CC := arm-none-eabi-gcc
 RM := rm -rf
 
 # Source files
-C_SRCS += $(wildcard src/*.c)
+C_SRCS += $(wildcard $(SRC_DIR)*.c)
 
 S_SRCS += cr_startup_lpc21.s import.s
 
