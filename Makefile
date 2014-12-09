@@ -19,7 +19,7 @@ RM := rm -rf
 # Source files
 C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
 
-S_SRCS += $(SRC_DIR)cr_startup_lpc21.s $(SRC_DIR)import.s
+S_SRCS += $(wildcard $(SRC_DIR)*.s)
 
 OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
 
