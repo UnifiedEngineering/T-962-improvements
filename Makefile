@@ -17,7 +17,7 @@ CC := arm-none-eabi-gcc
 RM := rm -rf
 
 # Source files
-C_SRCS += $(wildcard $(SRC_DIR)*.c)
+C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
 
 S_SRCS += $(SRC_DIR)cr_startup_lpc21.s $(SRC_DIR)import.s
 
@@ -26,6 +26,13 @@ OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR
 C_DEPS := $(wildcard *.d)
 
 all: axf
+
+$(BUILD_DIR)version.c:
+	git describe --always --dirty | \
+		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
+
+# Always regenerate the git version
+.PHONY: $(BUILD_DIR)version.c
 
 create_build_dir:
 	mkdir -p $(BUILD_DIR)
