@@ -1,0 +1,17 @@
+language: c
+
+before_install:
+  - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
+  - sudo apt-get update -qq
+
+install:
+  - sudo apt-get install gcc-arm-none-eabi
+
+script:
+  - make all
+
+notifications:
+  email: false
+
+git:
+  depth: 10
