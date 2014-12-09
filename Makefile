@@ -43,7 +43,7 @@ $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Finished building: $<'
 	@echo ' '
 
-$(BUILD_DIR)%.o: $(SRC_DIR)%.s
+$(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
 	@echo 'Building file: $<'
 	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
 	@echo 'Finished building: $<'
