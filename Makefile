@@ -27,17 +27,18 @@ C_DEPS := $(wildcard *.d)
 
 all: axf
 
-$(BUILD_DIR)version.c:
+$(BUILD_DIR)version.c: $(BUILD_DIR)tag
 	git describe --always --dirty | \
 		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
 
 # Always regenerate the git version
 .PHONY: $(BUILD_DIR)version.c
 
-create_build_dir:
+$(BUILD_DIR)tag:
 	mkdir -p $(BUILD_DIR)
+	touch $(BUILD_DIR)tag
 
-$(BUILD_DIR)%.o: $(SRC_DIR)%.c create_build_dir
+$(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
