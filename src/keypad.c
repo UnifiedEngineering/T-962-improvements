@@ -35,11 +35,15 @@
 
 uint32_t latchedkeypadstate = 0;
 
+static uint32_t Keypad_GetRaw(void) {
+	return ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
+}
+
 static int32_t Keypad_Work(void) {
 	static uint32_t laststate = 0;
 	static uint16_t laststateunchangedctr = 0;
 	uint32_t keypadstate = 0;
-	uint32_t inverted = ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
+	uint32_t inverted = Keypad_GetRaw();
 	uint32_t changed = inverted ^ laststate;
 
 	// At this point we only care about when button is pressed, not released
@@ -83,6 +87,11 @@ uint32_t Keypad_Get(void) {
 
 void Keypad_Init( void ) {
 	Sched_SetWorkfunc( KEYPAD_WORK, Keypad_Work );
+	printf("\nWaiting for keys to be released... ");
+	// Note that if this takes longer than ~1 second the watchdog will bite
+	while( Keypad_GetRaw() );
+	printf("Done!");
+	// Potential noise gets suppressed as well
 	Sched_SetState( KEYPAD_WORK, 1, TICKS_MS( 250 ) ); // Wait 250ms before starting to scan the keypad
 }
 
