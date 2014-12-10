@@ -10,6 +10,7 @@ typedef enum eNVItem { // Only append to the end of this list to avoid backwards
 	TC_LEFT_OFFSET,
 	TC_RIGHT_GAIN,
 	TC_RIGHT_OFFSET,
+	REFLOW_MIN_FAN_SPEED,
 	NVITEM_NUM_ITEMS // Last value
 } NVItem_t;
 
