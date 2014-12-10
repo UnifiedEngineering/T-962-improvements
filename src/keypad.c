@@ -83,6 +83,6 @@ uint32_t Keypad_Get(void) {
 
 void Keypad_Init( void ) {
 	Sched_SetWorkfunc( KEYPAD_WORK, Keypad_Work );
-	Sched_SetState( KEYPAD_WORK, 2, 0 ); // Enable right away
+	Sched_SetState( KEYPAD_WORK, 1, TICKS_MS( 250 ) ); // Wait 250ms before starting to scan the keypad
 }
 
