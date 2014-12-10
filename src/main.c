@@ -99,6 +99,10 @@ int main(void) {
 		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10); // Default 1 second beep length
 	}
 
+	if( NV_GetConfig(REFLOW_MIN_FAN_SPEED) == 255 ) {
+		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8); // Default fan speed is now 8
+	}
+
 	printf("\nInitializing improved reflow oven...");
 	LCD_Init();
 	LCD_BMPDisplay(logobmp,0,0);

@@ -365,7 +365,7 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	} else {
 		*pheat=out-248;
 		//if(*pheat>192) *pfan=2; else *pfan=2; // When heating like crazy make sure we can reach our setpoint
-		*pfan=2; // Run at a low fixed speed during heating for now
+		*pfan = NV_GetConfig(REFLOW_MIN_FAN_SPEED); // Run at a low fixed speed during heating for now
 	}
 	return retval;
 }
