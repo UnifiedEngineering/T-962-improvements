@@ -50,13 +50,13 @@ typedef struct {
 } partmapStruct;
 
 partmapStruct partmap[] = {
-		{"LPC2131(/01)", 0x0002ff01},
+		{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
 		{"LPC2132(/01)", 0x0002ff11},
 		{"LPC2134(/01)", 0x0002ff12},
 		{"LPC2136(/01)", 0x0002ff23},
 		{"LPC2138(/01)", 0x0002ff25},
 
-		{"LPC2141", 0x0402ff01},
+		{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
 		{"LPC2142", 0x0402ff11},
 		{"LPC2144", 0x0402ff12},
 		{"LPC2146", 0x0402ff23},
