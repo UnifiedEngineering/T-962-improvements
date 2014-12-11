@@ -436,6 +436,10 @@ static int32_t Main_Work( void ) {
 		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %dC", Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 64-6, FONT6X6);
 
+		if( keyspressed ) { // Make sure reflow complete beep is silenced when pressing any key
+			Buzzer_Beep( BUZZ_NONE, 0, 0 );
+		}
+
 		if(keyspressed & KEY_F1) { // About
 			mode=6;
 			retval = 0; // Force immediate refresh
