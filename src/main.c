@@ -33,11 +33,17 @@
 #include "reflow.h"
 #include "buzzer.h"
 #include "nvstorage.h"
+#include "version.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
 extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
+
+// No version.c file generated for LPCXpresso builds, fall back to this
+__attribute__((weak)) const char* Version_GetGitVersion(void) {
+    return "no version info";
+}
 
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [],unsigned int[]);
@@ -91,6 +97,11 @@ int main(void) {
 	Set_Heater(0);
 	Set_Fan(0);
 	Serial_Init();
+	printf(	"\nT-962-controller open source firmware (%s)" \
+			"\n" \
+			"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
+			"\n" \
+			"\nInitializing improved reflow oven...", Version_GetGitVersion());
 	I2C_Init();
 	EEPROM_Init();
 	NV_Init();
@@ -103,7 +114,6 @@ int main(void) {
 		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8); // Default fan speed is now 8
 	}
 
-	printf("\nInitializing improved reflow oven...");
 	LCD_Init();
 	LCD_BMPDisplay(logobmp,0,0);
 
@@ -138,6 +148,9 @@ int main(void) {
 	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,partrev);
 	LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
 	printf("\nRunning on an %s", buf);
+
+	len = snprintf(buf,sizeof(buf),"%s",Version_GetGitVersion());
+	LCD_disp_str((uint8_t*)buf, len, 128-(len*6), 0, FONT6X6);
 
 	LCD_FB_Update();
 	Keypad_Init();
