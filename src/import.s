@@ -33,3 +33,10 @@ editbmp:
 	.incbin "../src/images/editprofile-18x64.bmp"
 editbmpsize:
 	.word .-editbmp
+
+	.global f3editbmp
+	.global f3editbmpsize
+f3editbmp:
+	.incbin "../src/images/f3edit-18x16.bmp"
+f3editbmpsize:
+	.word .-f3editbmp
