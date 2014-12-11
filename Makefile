@@ -28,7 +28,7 @@ C_DEPS := $(wildcard *.d)
 all: axf
 
 $(BUILD_DIR)version.c: $(BUILD_DIR)tag
-	git describe --always --dirty | \
+	git describe --tag --always --dirty | \
 		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
 
 # Always regenerate the git version
