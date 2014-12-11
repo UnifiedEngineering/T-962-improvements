@@ -9,11 +9,13 @@ Here are a few improvements made to the cheap T-962 reflow oven utilizing the _e
 
 It turns out that both an analog input and at least one generic GPIO pin is available on unpopulated pads on the board. GPIO0.7 in particular was very convenient for 1-wire operation as there was an adjacent pad with 3.3V so a 4k7 pull-up resistor could be placed there, then a jumper wire is run from GPIO0.7 pad to the Dq pin of a cheap DS18B20 1-wire temperature sensor that gets epoxied to the terminal block, soldering both Vcc and ground pins to the ground plane conveniently located right next to it. Pictures showing the modifications are available in this repository and the replacement firmware (also here) makes use of this sensor for cold-junction compensation. Some hot-glue may have to be removed to actually get to the side of the connector and the ground plane, someone seems to have been really trigger-happy with the glue gun!
 
-The firmware is built with LPCXpresso 7.5.0 as I've never dealt with the LPC2000-series NXP microcontrollers before so I just wanted something that wouldn't require TOO much of work to actually produce a flashable image. Philips LPC2000 Flash Utility v2.2.3 was used to flash the controller through the ISP header present on the board.
+The firmware was originally built with LPCXpresso 7.5.0 as I've never dealt with the LPC2000-series NXP microcontrollers before so I just wanted something that wouldn't require TOO much of work to actually produce a flashable image. Philips LPC2000 Flash Utility v2.2.3 was used to flash the controller through the ISP header present on the board.
 
-LPCXpresso requires activation but is free for everything but large code sizes (the limit is larger than the 128kB flash size on this controller anyway so it's not really an issue). The flash utility unfortunately only runs on Windows but Flash Magic seems to be an alternative (that was not investigated).
+LPCXpresso requires activation but is free for everything but large code sizes (the limit is larger than the 128kB flash size on this controller anyway so it's not really an issue). The flash utility unfortunately only runs on Windows but Flash Magic is an alternative (see Wiki for more flashing instructions).
 
-The MCU is an LPC2134/01 with 128kB flash/16kB RAM, stated to be capable of running at up to 60MHz. Unfortunately the PLL in this chip is not that clever so with the supplied XTAL at 11.0592MHz we can only reach 55.296MHz (5x multiplier).
+With help from the community the project now also builds standalone using the standard gcc-arm-none-eabi toolchain, see COMPILING.md for more information.
+
+The MCU in this particular oven is an LPC2134/01 with 128kB flash/16kB RAM, stated to be capable of running at up to 60MHz. Unfortunately the PLL in this chip is not that clever so with the supplied XTAL at 11.0592MHz we can only reach 55.296MHz (5x multiplier). Other variants exist, the Wiki has more information about this.
 
 ISP pinout from left to right if looking at the board so the ISP text can be read:
 
@@ -23,9 +25,9 @@ ISP pinout from left to right if looking at the board so the ISP text can be rea
 4. RXD0 (UART0 input to MCU, LVTTL 3.3V)
 5. Ground (this ground is floating with respect to earth ground in the mains connector and chassis)
 
-Please refer to the firmware source for other GPIO assignments.
+Please refer to the firmware source (t962.h) for other GPIO assignments.
 
-This has only been tested on a fairly recent build of the T-962 (smallest version), build time on the back panel states 14.07 which I assume means 2014 July (or less likely week 7 of 2014).
+This is mainly tested on a fairly recent build of the T-962 (smallest version), build time on the back panel states 14.07 which I assume means 2014 July (or less likely week 7 of 2014), success/failure reports from other users are welcome!
 
 As mentioned elsewhere, make sure the protective earth/ground wire from the main input actually makes contact with the back panel of the chassis and also that the back panel makes contact both with the top and bottom halves of the oven!
 
