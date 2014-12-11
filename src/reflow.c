@@ -32,8 +32,8 @@
 #include "adc.h"
 #include "nvstorage.h"
 
-float adcgainadj[2] = { 1.0f, 1.0f }; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
-float adcoffsetadj[2] = { -6.0f, -5.0f }; // Offset adjust, this will definitely have to be calibrated per device
+float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
+float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
 
 extern uint8_t graphbmp[];
 #define YAXIS (57)
@@ -161,11 +161,11 @@ static int32_t Reflow_Work( void ) {
 	const char* modestr = "UNKNOWN";
 
 	// Depending on mode we should run this with different parameters
-	if(mymode == REFLOW_STANDBY) {
+	if(mymode == REFLOW_STANDBY || mymode == REFLOW_STANDBYFAN) {
 		intsetpoint = 30;
 		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Keep at 30C but don't heat to get there in standby
 		heat=0;
-		if( fan < 16 ) fan = 0; // Suppress slow-running fan in standby
+		if( mymode == REFLOW_STANDBY && fan < 16 ) fan = 0; // Suppress slow-running fan in standby
 		modestr = "STANDBY";
 	} else if(mymode == REFLOW_BAKE) {
 		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
@@ -187,6 +187,47 @@ static int32_t Reflow_Work( void ) {
 	return TICKS_MS( 250 );
 }
 
+void Reflow_ValidateNV(void) {
+	int temp;
+
+	if( NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255 ) {
+		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10); // Default 1 second beep length
+	}
+
+	if( NV_GetConfig(REFLOW_MIN_FAN_SPEED) == 255 ) {
+		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8); // Default fan speed is now 8
+	}
+
+	temp = NV_GetConfig(TC_LEFT_GAIN);
+	if( temp == 255 ) {
+		temp = 100;
+		NV_SetConfig(TC_LEFT_GAIN, temp); // Default unity gain
+	}
+	adcgainadj[0] = ((float)temp) * 0.01f;
+
+	temp = NV_GetConfig(TC_RIGHT_GAIN);
+	if( temp == 255 ) {
+		temp = 100;
+		NV_SetConfig(TC_RIGHT_GAIN, temp); // Default unity gain
+	}
+	adcgainadj[1] = ((float)temp) * 0.01f;
+
+	temp = NV_GetConfig(TC_LEFT_OFFSET);
+	if( temp == 255 ) {
+		temp = 100;
+		NV_SetConfig(TC_LEFT_OFFSET, temp); // Default +/-0 offset
+	}
+	adcoffsetadj[0] = ((float)(temp-100)) * 0.25f;
+
+	temp = NV_GetConfig(TC_RIGHT_OFFSET);
+	if( temp == 255 ) {
+		temp = 100;
+		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
+	}
+	adcoffsetadj[1] = ((float)(temp-100)) * 0.25f;
+	//printf("\nlo=%f lg=%f ro=%f, rg=%f ",adcoffsetadj[0], adcgainadj[0], adcoffsetadj[1], adcgainadj[1]);
+}
+
 void Reflow_Init(void) {
 	Sched_SetWorkfunc( REFLOW_WORK, Reflow_Work );
 //	PID_init(&PID,16,0.1,2,PID_Direction_Direct);
@@ -197,6 +238,7 @@ void Reflow_Init(void) {
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
 	ByteswapTempProfile(ee2.temperatures);
 	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
+	Reflow_ValidateNV();
 	intsetpoint = 30;
 	PID.mySetpoint = 30.0f; // Default setpoint
 	PID_SetOutputLimits(&PID, 0,255+248);
@@ -282,6 +324,13 @@ int Reflow_SelectEEProfileIdx(int idx) {
 	if(idx==1) profileidx = (NUMPROFILES - 2);
 	if(idx==2) profileidx = (NUMPROFILES - 1);
 	return profileidx;
+}
+
+int Reflow_GetEEProfileIdx(void) {
+	int retval = 0;
+	if( profileidx == (NUMPROFILES - 2) ) retval = 1;
+	if( profileidx == (NUMPROFILES - 1) ) retval = 2;
+	return retval;
 }
 
 int Reflow_SaveEEProfile(void) {
