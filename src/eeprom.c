@@ -32,9 +32,10 @@ void EEPROM_Init( void ) {
 #ifdef DUMP_EEPROM
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
-	printf("\nEEPROM contents:\n");
+	printf("\nEEPROM contents:");
 	for(int foo=0; foo < sizeof(dumpbuf); foo++) {
-		printf(" 0x%02x",dumpbuf[foo]);
+		if( (foo & 0x0f) == 0 ) printf("\n0x%04x:",foo);
+		printf(" %02x",dumpbuf[foo]);
 	}
 #endif
 	// No init needed at this point, maybe detect the actual presence some day
