@@ -39,6 +39,7 @@ extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
 extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
+extern uint8_t f3editbmp[];
 
 // No version.c file generated for LPCXpresso builds, fall back to this
 __attribute__((weak)) const char* Version_GetGitVersion(void) {
@@ -74,6 +75,25 @@ uint32_t partid,partrev;
 uint32_t command[1];
 uint32_t result[3];
 
+typedef struct {
+	const char* formatstr;
+	const NVItem_t nvval;
+	const uint8_t minval;
+	const uint8_t maxval;
+	const int8_t offset;
+	const float multiplier;
+} setupMenuStruct;
+
+setupMenuStruct setupmenu[] = {
+		{"Min fan speed     %3.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
+		{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
+		{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
+		{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
+		{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
+		{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+};
+#define NUM_SETUP_ITEMS (sizeof(setupmenu)/sizeof(setupmenu[0]))
+
 static int32_t Main_Work( void );
 
 int main(void) {
@@ -105,14 +125,6 @@ int main(void) {
 	I2C_Init();
 	EEPROM_Init();
 	NV_Init();
-
-	if( NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255 ) {
-		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10); // Default 1 second beep length
-	}
-
-	if( NV_GetConfig(REFLOW_MIN_FAN_SPEED) == 255 ) {
-		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8); // Default fan speed is now 8
-	}
 
 	LCD_Init();
 	LCD_BMPDisplay(logobmp,0,0);
@@ -185,7 +197,81 @@ static int32_t Main_Work( void ) {
 	uint32_t keyspressed=Keypad_Get();
 
 	// Sort out this "state machine"
-	if(mode==5) { // Run reflow
+	if(mode==7) { // Setup/calibrate
+		static uint8_t selected = 0;
+		int y = 0;
+
+		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
+		if( keyrepeataccel < 1) keyrepeataccel = 1;
+		if( keyrepeataccel > 30) keyrepeataccel = 30;
+
+		if(keyspressed & KEY_F1 && selected > 0) { // Prev row
+			selected--;
+		}
+		if(keyspressed & KEY_F2 && selected < (NUM_SETUP_ITEMS-1)) { // Next row
+			selected++;
+		}
+
+		int curval = NV_GetConfig(setupmenu[selected].nvval);
+		if(keyspressed & KEY_F3) { // Decrease value
+			int minval = setupmenu[selected].minval;
+			curval -= keyrepeataccel;
+			if( curval < minval ) curval = minval;
+		}
+		if(keyspressed & KEY_F4) { // Increase value
+			int maxval = setupmenu[selected].maxval;
+			curval += keyrepeataccel;
+			if( curval > maxval ) curval = maxval;
+		}
+		if(keyspressed & (KEY_F3 | KEY_F4)) {
+			NV_SetConfig(setupmenu[selected].nvval, curval);
+			Reflow_ValidateNV();
+		}
+
+		LCD_FB_Clear();
+		len = snprintf(buf,sizeof(buf),"Setup/calibration");
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), y, FONT6X6);
+		y+=7;
+
+		for( int i = 0; i < NUM_SETUP_ITEMS ; i++ ) {
+			int intval = NV_GetConfig(setupmenu[i].nvval);
+			intval += setupmenu[i].offset;
+			float value = ((float)intval) * setupmenu[i].multiplier;
+			len = snprintf(buf,sizeof(buf), setupmenu[i].formatstr, value);
+			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected==i)?INVERT:0);
+			y+=7;
+		}
+
+		LCD_disp_str((uint8_t*)" < ", 3, 0, 64-7, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)" > ", 3, 20, 64-7, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)" - ", 3, 45, 64-7, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)" + ", 3, 65, 64-7, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)" DONE ", 6, 91, 64-7, FONT6X6 | INVERT);
+
+		//LCD_BMPDisplay(stopbmp,127-17,0);
+
+		if(keyspressed & KEY_S) { // Leave setup
+			mode=0;
+			Reflow_SetMode(REFLOW_STANDBY);
+			retval = 0; // Force immediate refresh
+		}
+	} else if(mode==6) { // About
+		LCD_FB_Clear();
+		LCD_BMPDisplay(logobmp,0,0);
+
+		len = snprintf(buf,sizeof(buf),"T-962 controller");
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 0, FONT6X6);
+
+		len = snprintf(buf,sizeof(buf),"%s",Version_GetGitVersion());
+		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 64-6, FONT6X6);
+
+		LCD_BMPDisplay(stopbmp,127-17,0);
+
+		if(keyspressed & KEY_S) { // Leave about
+			mode=0;
+			retval = 0; // Force immediate refresh
+		}
+	} else if(mode==5) { // Run reflow
 		uint32_t ticks=RTC_Read();
 		//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
 		//LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
@@ -218,9 +304,17 @@ static int32_t Main_Work( void ) {
 		Reflow_SelectProfileIdx(curprofile);
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(selectbmp,127-17,0);
+		int eeidx = Reflow_GetEEProfileIdx();
+		if( eeidx ) { // Display edit button
+			LCD_BMPDisplay(f3editbmp,127-17,29);
+		}
 		len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 
+		if(eeidx && keyspressed & KEY_F3) { // Edit ee profile
+			mode = eeidx;
+			retval = 0; // Force immediate refresh
+		}
 		if(keyspressed & KEY_S) { // Select current profile
 			mode=0;
 			retval = 0; // Force immediate refresh
@@ -328,9 +422,9 @@ static int32_t Main_Work( void ) {
 		len = snprintf(buf,sizeof(buf),"MAIN MENU");
 		LCD_disp_str((uint8_t*)buf, len, 0, 6*0, FONT6X6);
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 8*1, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"EDIT CUSTOM 1", 13, 14, 8*1, FONT6X6);
+		LCD_disp_str((uint8_t*)"ABOUT", 5, 14, 8*1, FONT6X6);
 		LCD_disp_str((uint8_t*)"F2", 2, 0, 8*2, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"EDIT CUSTOM 2", 13, 14, 8*2, FONT6X6);
+		LCD_disp_str((uint8_t*)"SETUP", 5, 14, 8*2, FONT6X6);
 		LCD_disp_str((uint8_t*)"F3", 2, 0, 8*3, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 14, 8*3, FONT6X6);
 		LCD_disp_str((uint8_t*)"F4", 2, 0, 8*4, FONT6X6 | INVERT);
@@ -342,14 +436,13 @@ static int32_t Main_Work( void ) {
 		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %dC", Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 64-6, FONT6X6);
 
-		if(keyspressed & KEY_F1) { // Edit ee1
-			curidx=0;
-			mode=1;
+		if(keyspressed & KEY_F1) { // About
+			mode=6;
 			retval = 0; // Force immediate refresh
 		}
-		if(keyspressed & KEY_F2) { // Edit ee2
-			curidx=0;
-			mode=2;
+		if(keyspressed & KEY_F2) { // Setup/cal
+			mode=7;
+			Reflow_SetMode(REFLOW_STANDBYFAN);
 			retval = 0; // Force immediate refresh
 		}
 		if(keyspressed & KEY_F3) { // Bake mode

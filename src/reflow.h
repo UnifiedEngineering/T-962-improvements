@@ -4,7 +4,8 @@
 typedef enum eReflowMode {
 	REFLOW_STANDBY=0,
 	REFLOW_BAKE,
-	REFLOW_REFLOW
+	REFLOW_REFLOW,
+	REFLOW_STANDBYFAN
 } ReflowMode_t;
 
 typedef enum eTempSensor {
@@ -17,6 +18,7 @@ typedef enum eTempSensor {
 	TC_NUM_ITEMS
 } TempSensor_t;
 
+void Reflow_ValidateNV(void);
 void Reflow_Init(void);
 void Reflow_SetMode(ReflowMode_t themode);
 void Reflow_SetSetpoint(uint16_t thesetpoint);
@@ -28,6 +30,7 @@ void Reflow_PlotProfile(int highlight);
 int Reflow_GetProfileIdx(void);
 int Reflow_SelectProfileIdx(int idx);
 int Reflow_SelectEEProfileIdx(int idx);
+int Reflow_GetEEProfileIdx(void);
 int Reflow_SaveEEProfile(void);
 const char* Reflow_GetProfileName(void);
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx);
