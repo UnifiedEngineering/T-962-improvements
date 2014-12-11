@@ -6,7 +6,7 @@
 
 GROUP(
 	libgcc.a
-	libc.a
+	libc_s.a
 	libm.a
 	libnosys.a
 )

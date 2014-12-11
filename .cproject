@@ -29,7 +29,7 @@
 									<listOptionValue builtIn="false" value="__NEWLIB__"/>
 								</option>
 								<option id="gnu.c.compiler.option.misc.other.2042135891" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
-								<option id="com.crt.advproject.gcc.hdrlib.1665882326" name="Library headers" superClass="com.crt.advproject.gcc.hdrlib" value="com.crt.advproject.gcc.hdrlib.newlib" valueType="enumerated"/>
+								<option id="com.crt.advproject.gcc.hdrlib.1665882326" name="Library headers" superClass="com.crt.advproject.gcc.hdrlib" value="com.crt.advproject.gcc.hdrlib.newlibnano" valueType="enumerated"/>
 								<option id="com.crt.advproject.gcc.exe.debug.option.optimization.level.773464770" name="Optimization Level" superClass="com.crt.advproject.gcc.exe.debug.option.optimization.level"/>
 								<option id="com.crt.advproject.c.misc.dialect.45841452" name="Language standard" superClass="com.crt.advproject.c.misc.dialect" value="com.crt.advproject.misc.dialect.c99" valueType="enumerated"/>
 								<inputType id="com.crt.advproject.compiler.input.1437445545" superClass="com.crt.advproject.compiler.input"/>
@@ -37,7 +37,7 @@
 							<tool command="arm-none-eabi-gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GASErrorParser" id="com.crt.advproject.gas.exe.debug.968267033" name="MCU Assembler" superClass="com.crt.advproject.gas.exe.debug">
 								<option id="com.crt.advproject.gas.arch.1213451257" name="Architecture" superClass="com.crt.advproject.gas.arch"/>
 								<option id="gnu.both.asm.option.flags.crt.266888853" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -DDEBUG -D__CODE_RED -D__NEWLIB__" valueType="string"/>
-								<option id="com.crt.advproject.gas.hdrlib.52124834" name="Library headers" superClass="com.crt.advproject.gas.hdrlib" value="com.crt.advproject.gas.hdrlib.newlib" valueType="enumerated"/>
+								<option id="com.crt.advproject.gas.hdrlib.52124834" name="Library headers" superClass="com.crt.advproject.gas.hdrlib" value="com.crt.advproject.gas.hdrlib.newlibnano" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1656002926" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.2007670897" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 							</tool>
@@ -52,9 +52,10 @@
 									<listOptionValue builtIn="false" value="-Map=&quot;${BuildArtifactFileBaseName}.map&quot;"/>
 									<listOptionValue builtIn="false" value="--gc-sections"/>
 								</option>
-								<option id="com.crt.advproject.link.gcc.hdrlib.77228297" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.newlib.nohost" valueType="enumerated"/>
+								<option id="com.crt.advproject.link.gcc.hdrlib.77228297" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.newlibnano.nohost" valueType="enumerated"/>
 								<option id="com.crt.advproject.link.crpenable.576010806" name="Enable Code Read Protect" superClass="com.crt.advproject.link.crpenable" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.162344915" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
+								<option id="com.crt.advproject.link.gcc.nanofloat.1860744593" superClass="com.crt.advproject.link.gcc.nanofloat" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.167171977" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -97,7 +98,7 @@
 									<listOptionValue builtIn="false" value="__NEWLIB__"/>
 								</option>
 								<option id="gnu.c.compiler.option.misc.other.792442464" name="Other flags" superClass="gnu.c.compiler.option.misc.other" value="-c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections" valueType="string"/>
-								<option id="com.crt.advproject.gcc.hdrlib.1074516193" name="Library headers" superClass="com.crt.advproject.gcc.hdrlib" value="com.crt.advproject.gcc.hdrlib.newlib" valueType="enumerated"/>
+								<option id="com.crt.advproject.gcc.hdrlib.1074516193" name="Library headers" superClass="com.crt.advproject.gcc.hdrlib" value="com.crt.advproject.gcc.hdrlib.newlibnano" valueType="enumerated"/>
 								<option id="com.crt.advproject.gcc.exe.release.option.optimization.level.221822712" name="Optimization Level" superClass="com.crt.advproject.gcc.exe.release.option.optimization.level"/>
 								<option id="com.crt.advproject.gcc.lto.33358854" name="Enable Link-time optimization (-flto)" superClass="com.crt.advproject.gcc.lto" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.c.misc.dialect.1092971519" name="Language standard" superClass="com.crt.advproject.c.misc.dialect" value="com.crt.advproject.misc.dialect.gnu99" valueType="enumerated"/>
@@ -106,7 +107,7 @@
 							<tool id="com.crt.advproject.gas.exe.release.1073056273" name="MCU Assembler" superClass="com.crt.advproject.gas.exe.release">
 								<option id="com.crt.advproject.gas.arch.716090092" name="Architecture" superClass="com.crt.advproject.gas.arch"/>
 								<option id="gnu.both.asm.option.flags.crt.179986675" name="Assembler flags" superClass="gnu.both.asm.option.flags.crt" value="-c -x assembler-with-cpp -DNDEBUG -D__CODE_RED -D__NEWLIB__" valueType="string"/>
-								<option id="com.crt.advproject.gas.hdrlib.1397090636" name="Library headers" superClass="com.crt.advproject.gas.hdrlib" value="com.crt.advproject.gas.hdrlib.newlib" valueType="enumerated"/>
+								<option id="com.crt.advproject.gas.hdrlib.1397090636" name="Library headers" superClass="com.crt.advproject.gas.hdrlib" value="com.crt.advproject.gas.hdrlib.newlibnano" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1950792695" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 								<inputType id="com.crt.advproject.assembler.input.102175355" name="Additional Assembly Source Files" superClass="com.crt.advproject.assembler.input"/>
 							</tool>
@@ -121,11 +122,12 @@
 									<listOptionValue builtIn="false" value="-Map=&quot;${BuildArtifactFileBaseName}.map&quot;"/>
 									<listOptionValue builtIn="false" value="--gc-sections"/>
 								</option>
-								<option id="com.crt.advproject.link.gcc.hdrlib.1905412863" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.newlib.nohost" valueType="enumerated"/>
+								<option id="com.crt.advproject.link.gcc.hdrlib.1905412863" name="Library" superClass="com.crt.advproject.link.gcc.hdrlib" value="com.crt.advproject.gcc.link.hdrlib.newlibnano.nohost" valueType="enumerated"/>
 								<option id="com.crt.advproject.link.crpenable.935848467" name="Enable Code Read Protect" superClass="com.crt.advproject.link.crpenable" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.link.gcc.lto.2008497264" name="Enable Link-time optimization (-flto)" superClass="com.crt.advproject.link.gcc.lto" value="true" valueType="boolean"/>
 								<option id="com.crt.advproject.link.gcc.lto.optmization.level.993271499" name="Link-time optimization level" superClass="com.crt.advproject.link.gcc.lto.optmization.level" value="link.c.optimization.level.size" valueType="enumerated"/>
 								<option id="com.crt.advproject.link.gcc.multicore.slave.1318710357" name="Multicore configuration" superClass="com.crt.advproject.link.gcc.multicore.slave"/>
+								<option id="com.crt.advproject.link.gcc.nanofloat.997184283" name="Enable printf float " superClass="com.crt.advproject.link.gcc.nanofloat" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.1584437795" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -221,39 +223,39 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="com.crt.config">
-		<projectStorage>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&#13;
-&lt;TargetConfig&gt;&#13;
-&lt;Properties property_0="" property_3="NXP" property_4="LPC2134" property_count="5" version="70200"/&gt;&#13;
-&lt;infoList vendor="NXP"&gt;&lt;info chip="LPC2134" match_id="0x0002FF12" name="LPC2134"&gt;&lt;chip&gt;&lt;name&gt;LPC2134&lt;/name&gt;&#13;
-&lt;family&gt;LPC21xx&lt;/family&gt;&#13;
-&lt;vendor&gt;NXP (formerly Philips)&lt;/vendor&gt;&#13;
-&lt;reset board="None" core="Fake" sys="Fake"/&gt;&#13;
-&lt;clock changeable="TRUE"/&gt;&#13;
-&lt;memory can_program="true" id="Flash" is_ro="true" type="Flash"/&gt;&#13;
-&lt;memory id="RAM" type="RAM"/&gt;&#13;
-&lt;memory id="Periph" is_volatile="true" type="Peripheral"/&gt;&#13;
-&lt;memoryInstance derived_from="Flash" id="MFlash128" location="0x0" size="0x20000"/&gt;&#13;
-&lt;memoryInstance derived_from="RAM" id="Ram16" location="0x40000000" size="0x4000"/&gt;&#13;
-&lt;prog_flash blocksz="0x1000" location="0" maxprgbuff="0x1000" progwithcode="TRUE" size="0x8000"/&gt;&#13;
-&lt;prog_flash blocksz="0x8000" location="0x8000" size="0x18000"/&gt;&#13;
-&lt;peripheralInstance derived_from="SYSCTRL" id="SYSCTRL" location="0xE01FC040"/&gt;&#13;
-&lt;peripheralInstance derived_from="MAM" id="MAM" location="0xE01FC000"/&gt;&#13;
-&lt;peripheralInstance derived_from="VIC" id="VIC" location="0xFFFFF000"/&gt;&#13;
-&lt;peripheralInstance derived_from="GPIO" id="GPIO_0" location="0xE0028000"/&gt;&#13;
-&lt;peripheralInstance derived_from="GPIO" id="GPIO_1" location="0xE0028010"/&gt;&#13;
-&lt;peripheralInstance derived_from="UART" id="UART_0" location="0xE000C000"/&gt;&#13;
-&lt;peripheralInstance derived_from="I2C" id="I2C_0" location="0xE001C000"/&gt;&#13;
-&lt;peripheralInstance derived_from="TIMER" id="TIMER_0" location="0xE0004000"/&gt;&#13;
-&lt;peripheralInstance derived_from="TIMER" id="TIMER_1" location="0xE0008000"/&gt;&#13;
-&lt;peripheralInstance derived_from="RTC" id="RTC" location="0xE0024000"/&gt;&#13;
-&lt;peripheralInstance derived_from="WDT" id="WDT" location="0xE0000000"/&gt;&#13;
-&lt;/chip&gt;&#13;
-&lt;processor&gt;&lt;name gcc_name="arm7tdmi"&gt;ARM7TDMI&lt;/name&gt;&#13;
-&lt;family&gt;ARM7&lt;/family&gt;&#13;
-&lt;/processor&gt;&#13;
-&lt;link href="nxp_lpcxxxx_peripheral.xme" show="embed" type="simple"/&gt;&#13;
-&lt;/info&gt;&#13;
-&lt;/infoList&gt;&#13;
+		<projectStorage>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;TargetConfig&gt;
+&lt;Properties property_0="" property_3="NXP" property_4="LPC2134" property_count="5" version="70200"/&gt;
+&lt;infoList vendor="NXP"&gt;&lt;info chip="LPC2134" match_id="0x0002FF12" name="LPC2134"&gt;&lt;chip&gt;&lt;name&gt;LPC2134&lt;/name&gt;
+&lt;family&gt;LPC21xx&lt;/family&gt;
+&lt;vendor&gt;NXP (formerly Philips)&lt;/vendor&gt;
+&lt;reset board="None" core="Fake" sys="Fake"/&gt;
+&lt;clock changeable="TRUE"/&gt;
+&lt;memory can_program="true" id="Flash" is_ro="true" type="Flash"/&gt;
+&lt;memory id="RAM" type="RAM"/&gt;
+&lt;memory id="Periph" is_volatile="true" type="Peripheral"/&gt;
+&lt;memoryInstance derived_from="Flash" id="MFlash128" location="0x0" size="0x20000"/&gt;
+&lt;memoryInstance derived_from="RAM" id="Ram16" location="0x40000000" size="0x4000"/&gt;
+&lt;prog_flash blocksz="0x1000" location="0" maxprgbuff="0x1000" progwithcode="TRUE" size="0x8000"/&gt;
+&lt;prog_flash blocksz="0x8000" location="0x8000" size="0x18000"/&gt;
+&lt;peripheralInstance derived_from="SYSCTRL" id="SYSCTRL" location="0xE01FC040"/&gt;
+&lt;peripheralInstance derived_from="MAM" id="MAM" location="0xE01FC000"/&gt;
+&lt;peripheralInstance derived_from="VIC" id="VIC" location="0xFFFFF000"/&gt;
+&lt;peripheralInstance derived_from="GPIO" id="GPIO_0" location="0xE0028000"/&gt;
+&lt;peripheralInstance derived_from="GPIO" id="GPIO_1" location="0xE0028010"/&gt;
+&lt;peripheralInstance derived_from="UART" id="UART_0" location="0xE000C000"/&gt;
+&lt;peripheralInstance derived_from="I2C" id="I2C_0" location="0xE001C000"/&gt;
+&lt;peripheralInstance derived_from="TIMER" id="TIMER_0" location="0xE0004000"/&gt;
+&lt;peripheralInstance derived_from="TIMER" id="TIMER_1" location="0xE0008000"/&gt;
+&lt;peripheralInstance derived_from="RTC" id="RTC" location="0xE0024000"/&gt;
+&lt;peripheralInstance derived_from="WDT" id="WDT" location="0xE0000000"/&gt;
+&lt;/chip&gt;
+&lt;processor&gt;&lt;name gcc_name="arm7tdmi"&gt;ARM7TDMI&lt;/name&gt;
+&lt;family&gt;ARM7&lt;/family&gt;
+&lt;/processor&gt;
+&lt;link href="nxp_lpcxxxx_peripheral.xme" show="embed" type="simple"/&gt;
+&lt;/info&gt;
+&lt;/infoList&gt;
 &lt;/TargetConfig&gt;</projectStorage>
 	</storageModule>
 	<storageModule moduleId="refreshScope" versionNumber="2">
