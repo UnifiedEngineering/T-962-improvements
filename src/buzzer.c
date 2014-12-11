@@ -48,7 +48,7 @@ void Buzzer_Init(void) {
 
 void Buzzer_Beep(BuzzFreq_t freq,uint8_t volume,int32_t ticks) {
 	//wjprintf_P(PSTR("\nBuzzer beep "));
-	if( ticks > 0 ) {
+	if( ticks > 0 || freq == BUZZ_NONE ) {
 		requested_buzz_freq=freq;
 		requested_buzz_volume=volume;
 		requested_buzz_length=ticks;
