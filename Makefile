@@ -65,6 +65,7 @@ clean:
 
 post-build:
 	-@echo 'Performing post-build steps'
+	-arm-none-eabi-gcc --version
 	-arm-none-eabi-size "$(TARGET)";
 	-arm-none-eabi-objcopy -v -O ihex "$(TARGET)" "$(BUILD_DIR)$(BASE_NAME).hex"
 	-@echo ' '
