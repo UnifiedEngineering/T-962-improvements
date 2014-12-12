@@ -230,9 +230,10 @@ void Reflow_ValidateNV(void) {
 
 void Reflow_Init(void) {
 	Sched_SetWorkfunc( REFLOW_WORK, Reflow_Work );
-//	PID_init(&PID,16,0.1,2,PID_Direction_Direct);
-//	PID_init(&PID,17,0.11,2,PID_Direction_Direct);
-	PID_init(&PID,10,0.04,5,PID_Direction_Direct);
+	//PID_init(&PID,10,0.04,5,PID_Direction_Direct); // This does not reach the setpoint fast enough
+	//PID_init(&PID,30,0.2,5,PID_Direction_Direct); // This reaches the setpoint but oscillates a bit especially during cooling
+	//PID_init(&PID,30,0.2,15,PID_Direction_Direct); // This overshoots the setpoint
+	PID_init(&PID,25,0.15,15,PID_Direction_Direct); // This overshoots the setpoint slightly
 	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
@@ -387,8 +388,13 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
 				intsetpoint = avg; // Keep this for UI...
-				//PID.mySetpoint = (float)avg;
-				PID.mySetpoint = (float)value2; // ...but using the future value for PID regulation produces better result
+				if( value2 > avg ) { // Temperature is rising
+					// Using the future value for PID regulation produces better result when heating
+					PID.mySetpoint = (float)value2;
+				} else {
+					// Use the interpolated value when cooling
+					PID.mySetpoint = (float)avg;
+				}
 			} else {
 				retval = -1;
 			}
