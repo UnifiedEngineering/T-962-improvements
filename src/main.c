@@ -49,7 +49,8 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [],unsigned int[]);
 IAP iap_entry = (void*)0x7ffffff1;
-#define IAP_READ_PART (54)
+#define IAP_READ_PART     (54)
+#define IAP_REINVOKE_ISP  (57)
 #define PART_REV_ADDR (0x0007D070)
 typedef struct {
 	const char* name;
@@ -100,6 +101,34 @@ int main(void) {
 	char buf[22];
 	int len;
 
+	/* IO-Pins only */
+	SCS = 0b11;
+	PINSEL0 = 0;
+	PINSEL1 = 0;
+
+	/* Hold F1-Key at boot to force ISP mode */
+	if ((Keypad_GetRaw() & RAWONLY_F1KEY_PORTBIT)) {
+		//NB: If you want to call this later need to set a bunch of registers back
+		//    to reset state. Haven't fully figured this out yet, might want to
+		//    progmatically call bootloader, not sure. If calling later be sure
+		//    to crank up bootloader time-out, as it's impossible to disable
+
+
+		//Bootloader must use legacy mode IO!
+		SCS = 0;
+
+		//Turn off FAN & Heater using legacy registers so they stay off during bootloader
+		//Fan = PIN0.8
+		//Heater = PIN0.9
+		IODIR0 = (1<<8) | (1<<9);
+		IOSET0 = (1<<8) | (1<<9);
+
+		//Re-enter ISP Mode
+		command[0] = IAP_REINVOKE_ISP;
+		iap_entry((void *)command, (void *)result);
+	}
+
+
 	PLLCFG = (1<<5) | (4<<0); //PLL MSEL=0x4 (+1), PSEL=0x1 (/2) so 11.0592*5 = 55.296MHz, Fcco = (2x55.296)*2 = 221MHz which is within 156 to 320MHz
 	PLLCON = 0x01;
 	PLLFEED = 0xaa;
@@ -142,7 +171,7 @@ int main(void) {
 
 	// Request part number
 	command[0] = IAP_READ_PART;
-	iap_entry(command, result);
+	iap_entry((void*)command, (void*)result);
 	const char* partstrptr = NULL;
 	for(int i=0; i<NUM_PARTS; i++) {
 		if(result[1] == partmap[i].id) {
@@ -157,7 +186,7 @@ int main(void) {
 	} else {
 		partrev += 'A' - 1;
 	}
-	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,partrev);
+	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,(int)partrev);
 	LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
 	printf("\nRunning on an %s", buf);
 
@@ -181,6 +210,9 @@ int main(void) {
 		int32_t sleeptime;
 		sleeptime=Sched_Do( 0 ); // No fast-forward support
 		//printf("\n%d ticks 'til next activity"),sleeptime);
+
+		//This is a very fast task, so do here instead of adding to schedule
+		Uart_Work();
 	}
 	return 0;
 }
@@ -281,7 +313,7 @@ static int32_t Main_Work( void ) {
 		len = snprintf(buf,sizeof(buf),"%03u",Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)"ACT", 3, 110, 20, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 26, FONT6X6);
-		len = snprintf(buf,sizeof(buf),"%03u",ticks);
+		len = snprintf(buf,sizeof(buf),"%03u", (unsigned int)ticks);
 		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
 		if(Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
@@ -335,7 +367,7 @@ static int32_t Main_Work( void ) {
 			if(setpoint>300) setpoint = 300;
 		}
 
-		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",setpoint);
+		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",(unsigned int)setpoint);
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 10, FONT6X6);
 
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 10, FONT6X6 | INVERT);
