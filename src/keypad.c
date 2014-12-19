@@ -25,18 +25,12 @@
 #include "io.h"
 #include "sched.h"
 
-#define F1KEY_PORTBIT (1<<23)
-#define F2KEY_PORTBIT (1<<15)
-#define F3KEY_PORTBIT (1<<16)
-#define F4KEY_PORTBIT (1<<4)
-#define S_KEY_PORTBIT (1<<20)
-
 #define KEYREPEATDELAY (6)
 
 uint32_t latchedkeypadstate = 0;
 
-static uint32_t Keypad_GetRaw(void) {
-	return ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
+uint32_t Keypad_GetRaw(void) {
+	return ~FIO0PIN & (RAWONLY_F1KEY_PORTBIT | RAWONLY_F2KEY_PORTBIT | RAWONLY_F3KEY_PORTBIT | RAWONLY_F4KEY_PORTBIT | RAWONLY_S_KEY_PORTBIT);
 }
 
 static int32_t Keypad_Work(void) {
@@ -61,11 +55,11 @@ static int32_t Keypad_Work(void) {
 	}
 
 	if(changed) {
-		if(changed & F1KEY_PORTBIT) keypadstate |= KEY_F1;
-		if(changed & F2KEY_PORTBIT) keypadstate |= KEY_F2;
-		if(changed & F3KEY_PORTBIT) keypadstate |= KEY_F3;
-		if(changed & F4KEY_PORTBIT) keypadstate |= KEY_F4;
-		if(changed & S_KEY_PORTBIT) keypadstate |= KEY_S;
+		if(changed & RAWONLY_F1KEY_PORTBIT) keypadstate |= KEY_F1;
+		if(changed & RAWONLY_F2KEY_PORTBIT) keypadstate |= KEY_F2;
+		if(changed & RAWONLY_F3KEY_PORTBIT) keypadstate |= KEY_F3;
+		if(changed & RAWONLY_F4KEY_PORTBIT) keypadstate |= KEY_F4;
+		if(changed & RAWONLY_S_KEY_PORTBIT) keypadstate |= KEY_S;
 	}
 
 	latchedkeypadstate &= 0xffff;

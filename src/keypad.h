@@ -10,4 +10,13 @@
 uint32_t Keypad_Get(void);
 void Keypad_Init( void );
 
+/* The following polls the keypad WITHOUT debouncing, used only for startup checks.
+ * This function returns a type defined below under 'raw' */
+uint32_t Keypad_GetRaw(void);
+#define RAWONLY_F1KEY_PORTBIT (1<<23)
+#define RAWONLY_F2KEY_PORTBIT (1<<15)
+#define RAWONLY_F3KEY_PORTBIT (1<<16)
+#define RAWONLY_F4KEY_PORTBIT (1<<4)
+#define RAWONLY_S_KEY_PORTBIT (1<<20)
+
 #endif /* KEYPAD_H_ */
