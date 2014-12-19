@@ -208,6 +208,9 @@ int main(void) {
 		int32_t sleeptime;
 		sleeptime=Sched_Do( 0 ); // No fast-forward support
 		//printf("\n%d ticks 'til next activity"),sleeptime);
+
+		//This is a very fast task, so do here instead of adding to schedule
+		Uart_Work();
 	}
 	return 0;
 }
