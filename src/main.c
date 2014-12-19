@@ -143,6 +143,8 @@ int main(void) {
 	
 	Sched_Init();
 	IO_Init();
+	Set_Heater(0);
+	Set_Fan(0);
 	Serial_Init();
 	printf(	"\nT-962-controller open source firmware (%s)" \
 			"\n" \
