@@ -49,7 +49,8 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [],unsigned int[]);
 IAP iap_entry = (void*)0x7ffffff1;
-#define IAP_READ_PART (54)
+#define IAP_READ_PART     (54)
+#define IAP_REINVOKE_ISP  (57)
 #define PART_REV_ADDR (0x0007D070)
 typedef struct {
 	const char* name;
@@ -100,6 +101,26 @@ int main(void) {
 	char buf[22];
 	int len;
 
+	/* Hold F1-Key at boot to force ISP mode */
+	if ((IOPIN0 & (1<<23)) == 0) {
+		//NB: If you want to call this later need to set a bunch of registers back
+		//    to reset state. Haven't fully figured this out yet, might want to
+		//    progmatically call bootloader, not sure. If calling later be sure
+		//    to crank up watchdog time-out, as it's impossible to disable
+		//
+		//    Bootloader must use legacy mode IO if you call this later too, so do:
+		//    SCS = 0;
+
+		//Turn off FAN & Heater using legacy registers so they stay off during bootloader
+		//Fan = PIN0.8
+		//Heater = PIN0.9
+		IODIR0 = (1<<8) | (1<<9);
+		IOSET0 = (1<<8) | (1<<9);
+
+		//Re-enter ISP Mode, this function will never return
+		command[0] = IAP_REINVOKE_ISP;
+		iap_entry((void *)command, (void *)result);
+	}
 
 	PLLCFG = (1<<5) | (4<<0); //PLL MSEL=0x4 (+1), PSEL=0x1 (/2) so 11.0592*5 = 55.296MHz, Fcco = (2x55.296)*2 = 221MHz which is within 156 to 320MHz
 	PLLCON = 0x01;
