@@ -28,10 +28,10 @@
 #define VICVectAddrX(x) (*(volatile unsigned long *)(VIC_BASE_ADDR + 0x100 + (x << 2)))
 #define VICVectCntlX(x) (*(volatile unsigned long *)(VIC_BASE_ADDR + 0x200 + (x << 2)))
 
-//void VIC_Default_Handler( void ) __attribute__ ((interrupt ("IRQ")));
 static void __attribute__ ((interrupt ("IRQ"))) VIC_Default_Handler( void ) {
 	static uint32_t spuriousirq = 0;
 	spuriousirq++;
+	VICVectAddr = 0; // ACK irq
 }
 
 void VIC_Init( void ) {
