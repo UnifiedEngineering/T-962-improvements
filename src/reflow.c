@@ -31,6 +31,7 @@
 #include "onewire.h"
 #include "adc.h"
 #include "nvstorage.h"
+#include "max31855.h"
 
 float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
@@ -119,7 +120,16 @@ static int32_t Reflow_Work( void ) {
 				tempvalid |= (1<<i);
 			}
 		} else {
-			//printf("TC%x=---C ",i);
+			tcpresent[i] = SPI_IsTCPresent( i );
+			if( tcpresent[i] ) {
+				tctemp[i] = SPI_GetTCReading( i );
+				tccj[i] = SPI_GetTCColdReading( i );
+				printf("TC%x=%5.1fC ",i,tctemp[i]);
+				if(i>1) {
+					temperature[i] = tctemp[i];
+					tempvalid |= (1<<i);
+				}
+			}
 		}
 	}
 	cjsensorpresent = 0; // Assume no CJ sensor

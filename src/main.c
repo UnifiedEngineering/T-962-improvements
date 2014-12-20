@@ -34,6 +34,7 @@
 #include "buzzer.h"
 #include "nvstorage.h"
 #include "version.h"
+#include "max31855.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -170,6 +171,7 @@ int main(void) {
 	ADC_Init();
 	RTC_Init();
 	OneWire_Init();
+	SPI_TC_Init();
 	Reflow_Init();
 
 	Sched_SetWorkfunc( MAIN_WORK, Main_Work );

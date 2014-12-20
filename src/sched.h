@@ -23,6 +23,7 @@ typedef enum eTask {
 	MAIN_WORK,
 	ADC_WORK,
 	ONEWIRE_WORK,
+	SPI_TC_WORK,
 	UI_WORK,
 	REFLOW_WORK,
 	NV_WORK,
