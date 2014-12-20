@@ -100,6 +100,7 @@ int main(void) {
 	char buf[22];
 	int len;
 
+
 	PLLCFG = (1<<5) | (4<<0); //PLL MSEL=0x4 (+1), PSEL=0x1 (/2) so 11.0592*5 = 55.296MHz, Fcco = (2x55.296)*2 = 221MHz which is within 156 to 320MHz
 	PLLCON = 0x01;
 	PLLFEED = 0xaa;
@@ -142,7 +143,7 @@ int main(void) {
 
 	// Request part number
 	command[0] = IAP_READ_PART;
-	iap_entry(command, result);
+	iap_entry((void *)command, (void *)result);
 	const char* partstrptr = NULL;
 	for(int i=0; i<NUM_PARTS; i++) {
 		if(result[1] == partmap[i].id) {
@@ -157,7 +158,7 @@ int main(void) {
 	} else {
 		partrev += 'A' - 1;
 	}
-	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,partrev);
+	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,(int)partrev);
 	LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
 	printf("\nRunning on an %s", buf);
 
@@ -281,7 +282,7 @@ static int32_t Main_Work( void ) {
 		len = snprintf(buf,sizeof(buf),"%03u",Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)"ACT", 3, 110, 20, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 26, FONT6X6);
-		len = snprintf(buf,sizeof(buf),"%03u",ticks);
+		len = snprintf(buf,sizeof(buf),"%03u",(unsigned int)ticks);
 		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
 		if(Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
@@ -335,7 +336,7 @@ static int32_t Main_Work( void ) {
 			if(setpoint>300) setpoint = 300;
 		}
 
-		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",setpoint);
+		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",(unsigned int)setpoint);
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 10, FONT6X6);
 
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 10, FONT6X6 | INVERT);
