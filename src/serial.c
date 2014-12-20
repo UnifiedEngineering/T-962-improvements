@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "serial.h"
+#include "vic.h"
 
 #ifdef __NEWLIB__
 #define __sys_write _write
@@ -40,6 +41,15 @@ int __sys_write(int hnd, char *buf, int len) {
 	return (len);
 }
 
+static void __attribute__ ((interrupt ("IRQ"))) Serial_IRQHandler( void ) {
+	// Figure out which interrupt that fired within the peripheral, and ACK it
+
+	// Do stuff
+
+	// ACK IRQ with VIC as the last thing
+	VICVectAddr = 0;
+}
+
 void Serial_Init(void) {
 	// Pin select config already done in IO init
 
@@ -53,4 +63,8 @@ void Serial_Init(void) {
 #ifdef __NEWLIB__
 	setbuf(stdout, NULL); // Needed to get rid of default line-buffering in newlib not present in redlib
 #endif
+
+	VIC_RegisterHandler( VIC_UART0, Serial_IRQHandler );
+	VIC_EnableHandler( VIC_UART0 );
+	// Enable actual UART0 interrupt sources (TX holding empty and RX avail) here to have any use of the interrupt
 }
