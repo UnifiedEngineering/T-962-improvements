@@ -34,6 +34,7 @@
 #include "buzzer.h"
 #include "nvstorage.h"
 #include "version.h"
+#include "vic.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -134,6 +135,7 @@ int main(void) {
 	MAMTIM = 0x03; // 3 cycles flash access recommended >40MHz
 	MAMCR = 0x02; // Fully enable memory accelerator
 	
+	VIC_Init();
 	Sched_Init();
 	IO_Init();
 	Set_Heater(0);

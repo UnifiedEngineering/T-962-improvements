@@ -24,6 +24,7 @@
 #include <string.h>
 #include "onewire.h"
 #include "sched.h"
+#include "vic.h"
 
 static inline void setpin0() {
 	FIO0CLR = (1<<7);
@@ -279,6 +280,8 @@ static int32_t OneWire_Work( void ) {
 	uint8_t scratch[9];
 	int32_t retval = 0;
 
+	uint32_t save = VIC_DisableIRQ();
+
 	if( mystate == 0 ) {
 		if(resetbus()) {
 			xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
@@ -306,6 +309,8 @@ static int32_t OneWire_Work( void ) {
 		retval = -1;
 	}
 
+	VIC_RestoreIRQ( save );
+
 	return retval;
 }
 
@@ -318,6 +323,8 @@ uint32_t OneWire_Init( void ) {
 	for( int i = 0; i < sizeof(tcidmapping); i++ ) {
 		tcidmapping[i] = -1; // Assume we don't find any thermocouple interfaces
 	}
+
+	uint32_t save = VIC_DisableIRQ();
 
 	int rslt = OWFirst();
 	numowdevices = 0;
@@ -356,6 +363,9 @@ uint32_t OneWire_Init( void ) {
 	} else {
 		printf(" No devices found!");
 	}
+
+	VIC_RestoreIRQ( save );
+
 	if( numowdevices ) {
 		Sched_SetState( ONEWIRE_WORK, 2, 0 ); // Enable OneWire task if there's at least one device
 	}
