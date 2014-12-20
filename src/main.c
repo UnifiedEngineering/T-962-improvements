@@ -200,9 +200,13 @@ int main(void) {
 	Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_MS(100) );
 
 	while(1) {
+#ifdef ENABLE_SLEEP
 		int32_t sleeptime;
 		sleeptime=Sched_Do( 0 ); // No fast-forward support
 		//printf("\n%d ticks 'til next activity"),sleeptime);
+#else
+		Sched_Do( 0 ); // No fast-forward support
+#endif
 	}
 	return 0;
 }
