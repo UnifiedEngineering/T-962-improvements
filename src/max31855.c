@@ -30,7 +30,7 @@ int16_t spiextrareadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
 int numspidevices = 0;
 
 static int32_t SPI_TC_Work( void ) {
-	int32_t retval = TICKS_MS(100);
+	int32_t retval;
 
 	for( int i = 0; i < numspidevices; i++ ) {
 		SPIxfer_t xfer;
@@ -44,7 +44,7 @@ static int32_t SPI_TC_Work( void ) {
 			spiextrareadout[i] = tmp;
 		}
 	}
-	return retval;
+	return TICKS_MS(100);
 }
 
 uint32_t SPI_TC_Init( void ) {
