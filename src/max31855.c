@@ -48,7 +48,6 @@ static int32_t SPI_TC_Work( void ) {
 }
 
 uint32_t SPI_TC_Init( void ) {
-	uint32_t numspidevices = 0;
 	printf("\n%s called",__FUNCTION__);
 	Sched_SetWorkfunc( SPI_TC_WORK, SPI_TC_Work );
 
@@ -60,7 +59,9 @@ uint32_t SPI_TC_Init( void ) {
 	if( SC18IS602B_Init( SPICLK_1843KHZ, SPIMODE_0, SPIORDER_MSBFIRST ) >= 0 ) { // Only continue of we find the I2C to SPI bridge chip
 		printf("\nProbing for MAX31855 devices...");
 
+		numspidevices = MAX_SPI_DEVICES; // Assume all devices are present for SPI_TC_Work
 		SPI_TC_Work(); // Run one iteration to update all data
+		numspidevices = 0; // And reset it afterwards
 
 		for( int i = 0; i < MAX_SPI_DEVICES; i++ ) {
 			if( (spidevreadout[i] == -1 && spiextrareadout[i] == -1) ||
