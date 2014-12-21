@@ -43,9 +43,13 @@ int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 
 int32_t SC18IS602B_SPI_Xfer( SPIxfer_t* item ) {
 	int32_t retval;
-	if( item->len > (sizeof(SPIxfer_t) - 2) ) return -1; // Invalid length
+	if( item->len > (sizeof(SPIxfer_t) - 2) ) {
+		printf("\n%s: Invalid length!",__FUNCTION__);
+		return -1;
+	}
 	retval = I2C_Xfer(SCADDR, (uint8_t*)item, item->len + 1, 1); // Initialize transfer, ssmask + data
 	if( retval == 0 ) {
+		// TODO: There should be a timeout here
 		do {
 			retval = I2C_Xfer(SCADDR + 1, (uint8_t*)item->data, item->len, 1); // Initialize read transfer, data only
 		} while( retval != 0 ); // Wait for chip to be done with transaction
