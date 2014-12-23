@@ -33,7 +33,7 @@
  * 0.22 LCD RS output (0=cmd, 1=data)
  * 0.23 F1 button (active low, with pullup) VBUS input as alt function on LPC214x
  * 0.24 (No pin)
- * 0.25 AD0.4 accessible on test point marked ADO - DAC output as alt function
+ * 0.25 AD0.4 accessible on test point marked ADO - DAC output as alt function (now used for sysfan control)
  * 0.26 ? USB D+ on LPC214x-series of chips
  * 0.27 ? USB D- on LPC214x-series of chips
  * 0.28 Temperature sensor input 1 (AD0.1), this was the left-hand one in our oven

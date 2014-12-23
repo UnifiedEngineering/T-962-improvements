@@ -35,6 +35,7 @@
 #include "nvstorage.h"
 #include "version.h"
 #include "max31855.h"
+#include "systemfan.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -195,6 +196,7 @@ int main(void) {
 	OneWire_Init();
 	SPI_TC_Init();
 	Reflow_Init();
+	SystemFan_Init();
 
 	Sched_SetWorkfunc( MAIN_WORK, Main_Work );
 	Sched_SetState( MAIN_WORK, 1, TICKS_SECS( 2 ) ); // Enable in 2 seconds
