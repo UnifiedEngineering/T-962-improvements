@@ -51,14 +51,16 @@ int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
 
+#define NUMPROFILETEMPS (48)
+
 typedef struct {
 	const char* name;
-	const uint16_t temperatures[48];
+	const uint16_t temperatures[NUMPROFILETEMPS];
 } profile;
 
 typedef struct {
 	const char* name;
-	uint16_t temperatures[48];
+	uint16_t temperatures[NUMPROFILETEMPS];
 } ramprofile;
 
 // Amtech 4300 63Sn/37Pb leaded profile
@@ -90,7 +92,7 @@ const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile , 
 uint8_t profileidx=0;
 
 static void ByteswapTempProfile(uint16_t* buf) {
-	for(int i=0; i<48; i++) {
+	for(int i=0; i<NUMPROFILETEMPS; i++) {
 		uint16_t word=buf[i];
 		buf[i] = word>>8 | word << 8;
 	}
@@ -300,7 +302,7 @@ uint8_t Reflow_IsDone(void) {
 
 void Reflow_PlotProfile(int highlight) {
 	LCD_BMPDisplay(graphbmp,0,0);
-	for(int x=1; x<48; x++) { // No need to plot first value as it is obscured by Y-axis
+	for(int x=1; x<NUMPROFILETEMPS; x++) { // No need to plot first value as it is obscured by Y-axis
 		int realx = (x << 1) + XAXIS;
 		int y=profiles[profileidx]->temperatures[x] / 5;
 		y = YAXIS-y;
@@ -368,12 +370,12 @@ const char* Reflow_GetProfileName(void) {
 }
 
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
-	if(idx>47) return 0;
+	if(idx>(NUMPROFILETEMPS-1)) return 0;
 	return profiles[profileidx]->temperatures[idx];
 }
 
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
-	if(idx>47) return;
+	if(idx>(NUMPROFILETEMPS-1)) return;
 	if(value>300) return;
 	uint16_t* temp = (uint16_t*)&profiles[profileidx]->temperatures[idx];
 	if(temp>=(uint16_t*)0x40000000) *temp = value; // If RAM-based
@@ -391,7 +393,7 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		uint8_t idx = thetime / 10;
 		uint16_t start = idx * 10;
 		uint16_t offset = thetime-start;
-		if(idx<46) {
+		if(idx<(NUMPROFILETEMPS-2)) {
 			uint32_t value = profiles[profileidx]->temperatures[idx];
 			uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
 			if(value>0 && value2>0) {
