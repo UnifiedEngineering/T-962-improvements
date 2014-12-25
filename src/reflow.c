@@ -392,10 +392,10 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		uint8_t idx = thetime / 10;
 		uint16_t start = idx * 10;
 		uint16_t offset = thetime-start;
-		if(idx<47) {
+		if(idx<46) {
 			uint32_t value = profiles[profileidx]->temperatures[idx];
-			if(value>0) {
-				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
+			uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
+			if(value>0 && value2>0) {
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
 				intsetpoint = avg; // Keep this for UI...
 				if( value2 > avg ) { // Temperature is rising
