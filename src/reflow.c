@@ -40,7 +40,6 @@ extern uint8_t graphbmp[];
 #define YAXIS (57)
 #define XAXIS (12)
 
-uint16_t profilebuf[48];
 PidType PID;
 uint16_t intsetpoint;
 float avgtemp; // The feedback temperature
