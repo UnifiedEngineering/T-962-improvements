@@ -33,6 +33,17 @@
 #include "nvstorage.h"
 #include "max31855.h"
 
+// Normally the control input is the average of the first two TCs.
+// By defining this any TC that has a readout 5C (or more) higher
+// than the TC0 and TC1 average will be used as control input instead.
+// Use if you have very sensitive components. Note that this will also
+// kick in if the two sides of the oven has different readouts, as the
+// code treats all four TCs the same way.
+//#define MAXTEMPOVERRIDE
+
+//#define RAMPTEST
+#define STANDBYTEMP (50) // Standby temperature in degrees Celsius
+
 float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
 
@@ -40,7 +51,6 @@ extern uint8_t graphbmp[];
 #define YAXIS (57)
 #define XAXIS (12)
 
-uint16_t profilebuf[48];
 PidType PID;
 uint16_t intsetpoint;
 float avgtemp; // The feedback temperature
@@ -52,33 +62,43 @@ int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
 
+#define NUMPROFILETEMPS (48)
+
 typedef struct {
 	const char* name;
-	const uint16_t temperatures[48];
+	const uint16_t temperatures[NUMPROFILETEMPS];
 } profile;
 
 typedef struct {
 	const char* name;
-	uint16_t temperatures[48];
+	uint16_t temperatures[NUMPROFILETEMPS];
 } ramprofile;
 
 // Amtech 4300 63Sn/37Pb leaded profile
 const profile am4300profile = { "4300 63SN/37PB",
-	{40, 40, 47, 60, 73, 86,100,113,126,140,143,147,150,154,157,161,  // 0-150s
+	{50, 50, 50, 60, 73, 86,100,113,126,140,143,147,150,154,157,161,  // 0-150s
 	164,168,171,175,179,183,195,207,215,207,195,183,168,154,140,125,  // Adjust peak from 205 to 220C
-	111, 97, 82, 68, 54, 40, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+	111, 97, 82, 68, 54,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
 // NC-31 low-temp lead-free profile
 const profile nc31profile = { "NC-31 LOW-TEMP LF",
-	{40, 40, 40, 40, 55, 70, 85, 90, 95,100,102,105,107,110,112,115,  // 0-150s
+	{50, 50, 50, 50, 55, 70, 85, 90, 95,100,102,105,107,110,112,115,  // 0-150s
 	117,120,122,127,132,138,148,158,160,158,148,138,130,122,114,106,  // Adjust peak from 158 to 165C
-	 98, 90, 82, 74, 66, 58, 50, 42, 34,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+	 98, 90, 82, 74, 66, 58,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
 // SynTECH-LF normal temp lead-free profile
 const profile syntechlfprofile = { "AMTECH SYNTECH-LF",
-	{40, 40, 40, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166,  // 0-150s
+	{50, 50, 50, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166,  // 0-150s
 	175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191,  // Adjust peak from 230 to 249C
-	184,177,157,137,117, 97, 77, 57, 37,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+	184,177,157,137,117, 97, 77, 57,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+
+#ifdef RAMPTEST
+// Ramp speed test temp profile
+const profile rampspeedtestprofile = { "RAMP SPEED TEST",
+	{50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245,  // 0-150s
+	245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50,  // Adjust peak from 230 to 249C
+	 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+#endif
 
 // EEPROM profile 1
 ramprofile ee1 = { "CUSTOM #1" };
@@ -86,12 +106,18 @@ ramprofile ee1 = { "CUSTOM #1" };
 // EEPROM profile 2
 ramprofile ee2 = { "CUSTOM #2" };
 
-const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile , (profile*)&ee1, (profile*)&ee2 };
+const profile* profiles[] = { &syntechlfprofile,
+								&nc31profile,
+								&am4300profile,
+#ifdef RAMPTEST
+								&rampspeedtestprofile,
+#endif
+								(profile*)&ee1, (profile*)&ee2 };
 #define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
 uint8_t profileidx=0;
 
 static void ByteswapTempProfile(uint16_t* buf) {
-	for(int i=0; i<48; i++) {
+	for(int i=0; i<NUMPROFILETEMPS; i++) {
 		uint16_t word=buf[i];
 		buf[i] = word>>8 | word << 8;
 	}
@@ -168,14 +194,26 @@ static int32_t Reflow_Work( void ) {
 			temperature[0],temperature[1],coldjunction);
 	}
 
+#ifdef MAXTEMPOVERRIDE
+	// If one of the temperature sensors reports higher than 5C above the average, use that as control input
+	float newtemp = avgtemp;
+	for( int i=0; i<4; i++) {
+		if( tcpresent[i] && temperature[i] > (avgtemp+5.0f) && temperature[i] > newtemp ) {
+			newtemp = temperature[i];
+		}
+	}
+	if( avgtemp != newtemp ) {
+		avgtemp = newtemp;
+	}
+#endif
 	const char* modestr = "UNKNOWN";
 
 	// Depending on mode we should run this with different parameters
 	if(mymode == REFLOW_STANDBY || mymode == REFLOW_STANDBYFAN) {
-		intsetpoint = 30;
-		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Keep at 30C but don't heat to get there in standby
+		intsetpoint = STANDBYTEMP;
+		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Cool to standby temp but don't heat to get there
 		heat=0;
-		if( mymode == REFLOW_STANDBY && fan < 16 ) fan = 0; // Suppress slow-running fan in standby
+		if( mymode == REFLOW_STANDBY && avgtemp < (float)STANDBYTEMP ) fan = 0; // Suppress slow-running fan in standby
 		modestr = "STANDBY";
 	} else if(mymode == REFLOW_BAKE) {
 		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
@@ -243,7 +281,9 @@ void Reflow_Init(void) {
 	//PID_init(&PID,10,0.04,5,PID_Direction_Direct); // This does not reach the setpoint fast enough
 	//PID_init(&PID,30,0.2,5,PID_Direction_Direct); // This reaches the setpoint but oscillates a bit especially during cooling
 	//PID_init(&PID,30,0.2,15,PID_Direction_Direct); // This overshoots the setpoint
-	PID_init(&PID,25,0.15,15,PID_Direction_Direct); // This overshoots the setpoint slightly
+	//PID_init(&PID,25,0.15,15,PID_Direction_Direct); // This overshoots the setpoint slightly
+	//PID_init(&PID,20,0.07,25,PID_Direction_Direct);
+	PID_init(&PID,20,0.04,25,PID_Direction_Direct); // Improvement as far as I can tell, still work in progress
 	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
@@ -301,7 +341,7 @@ uint8_t Reflow_IsDone(void) {
 
 void Reflow_PlotProfile(int highlight) {
 	LCD_BMPDisplay(graphbmp,0,0);
-	for(int x=1; x<48; x++) { // No need to plot first value as it is obscured by Y-axis
+	for(int x=1; x<NUMPROFILETEMPS; x++) { // No need to plot first value as it is obscured by Y-axis
 		int realx = (x << 1) + XAXIS;
 		int y=profiles[profileidx]->temperatures[x] / 5;
 		y = YAXIS-y;
@@ -369,12 +409,12 @@ const char* Reflow_GetProfileName(void) {
 }
 
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
-	if(idx>47) return 0;
+	if(idx>(NUMPROFILETEMPS-1)) return 0;
 	return profiles[profileidx]->temperatures[idx];
 }
 
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
-	if(idx>47) return;
+	if(idx>(NUMPROFILETEMPS-1)) return;
 	if(value>300) return;
 	uint16_t* temp = (uint16_t*)&profiles[profileidx]->temperatures[idx];
 	if(temp>=(uint16_t*)0x40000000) *temp = value; // If RAM-based
@@ -392,10 +432,10 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		uint8_t idx = thetime / 10;
 		uint16_t start = idx * 10;
 		uint16_t offset = thetime-start;
-		if(idx<47) {
+		if(idx<(NUMPROFILETEMPS-2)) {
 			uint32_t value = profiles[profileidx]->temperatures[idx];
-			if(value>0) {
-				uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
+			uint32_t value2 = profiles[profileidx]->temperatures[idx+1];
+			if(value>0 && value2>0) {
 				uint32_t avg = (value*(10-offset) + value2*offset)/10;
 				intsetpoint = avg; // Keep this for UI...
 				if( value2 > avg ) { // Temperature is rising
