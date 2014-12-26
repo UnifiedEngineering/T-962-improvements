@@ -35,7 +35,7 @@
 
 // Normally the control input is the average of the first two TCs.
 // By defining this any TC that has a readout 5C (or more) higher
-// that the TC0 and TC1 average will be used as control input instead.
+// than the TC0 and TC1 average will be used as control input instead.
 // Use if you have very sensitive components. Note that this will also
 // kick in if the two sides of the oven has different readouts, as the
 // code treats all four TCs the same way.
