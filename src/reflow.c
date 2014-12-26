@@ -34,6 +34,7 @@
 #include "max31855.h"
 
 //#define RAMPTEST
+#define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
 float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
@@ -189,10 +190,10 @@ static int32_t Reflow_Work( void ) {
 
 	// Depending on mode we should run this with different parameters
 	if(mymode == REFLOW_STANDBY || mymode == REFLOW_STANDBYFAN) {
-		intsetpoint = 30;
-		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Keep at 30C but don't heat to get there in standby
+		intsetpoint = STANDBYTEMP;
+		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint); // Cool to standby temp but don't heat to get there
 		heat=0;
-		if( mymode == REFLOW_STANDBY && fan < 16 ) fan = 0; // Suppress slow-running fan in standby
+		if( mymode == REFLOW_STANDBY && avgtemp < (float)STANDBYTEMP ) fan = 0; // Suppress slow-running fan in standby
 		modestr = "STANDBY";
 	} else if(mymode == REFLOW_BAKE) {
 		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
