@@ -33,6 +33,14 @@
 #include "nvstorage.h"
 #include "max31855.h"
 
+// Normally the control input is the average of the first two TCs.
+// By defining this any TC that has a readout 5C (or more) higher
+// that the TC0 and TC1 average will be used as control input instead.
+// Use if you have very sensitive components. Note that this will also
+// kick in if the two sides of the oven has different readouts, as the
+// code treats all four TCs the same way.
+//#define MAXTEMPOVERRIDE
+
 //#define RAMPTEST
 #define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
@@ -186,6 +194,18 @@ static int32_t Reflow_Work( void ) {
 			temperature[0],temperature[1],coldjunction);
 	}
 
+#ifdef MAXTEMPOVERRIDE
+	// If one of the temperature sensors reports higher than 5C above the average, use that as control input
+	float newtemp = avgtemp;
+	for( int i=0; i<4; i++) {
+		if( tcpresent[i] && temperature[i] > (avgtemp+5.0f) && temperature[i] > newtemp ) {
+			newtemp = temperature[i];
+		}
+	}
+	if( avgtemp != newtemp ) {
+		avgtemp = newtemp;
+	}
+#endif
 	const char* modestr = "UNKNOWN";
 
 	// Depending on mode we should run this with different parameters
