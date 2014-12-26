@@ -33,6 +33,8 @@
 #include "nvstorage.h"
 #include "max31855.h"
 
+//#define RAMPTEST
+
 float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
 
@@ -81,13 +83,27 @@ const profile syntechlfprofile = { "AMTECH SYNTECH-LF",
 	175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191,  // Adjust peak from 230 to 249C
 	184,177,157,137,117, 97, 77, 57,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 
+#ifdef RAMPTEST
+// Ramp speed test temp profile
+const profile rampspeedtestprofile = { "RAMP SPEED TEST",
+	{50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245,  // 0-150s
+	245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50,  // Adjust peak from 230 to 249C
+	 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+#endif
+
 // EEPROM profile 1
 ramprofile ee1 = { "CUSTOM #1" };
 
 // EEPROM profile 2
 ramprofile ee2 = { "CUSTOM #2" };
 
-const profile* profiles[] = { &syntechlfprofile, &nc31profile, &am4300profile , (profile*)&ee1, (profile*)&ee2 };
+const profile* profiles[] = { &syntechlfprofile,
+								&nc31profile,
+								&am4300profile,
+#ifdef RAMPTEST
+								&rampspeedtestprofile,
+#endif
+								(profile*)&ee1, (profile*)&ee2 };
 #define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
 uint8_t profileidx=0;
 
