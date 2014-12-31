@@ -135,7 +135,7 @@ int main(void) {
 	VPBDIV = 0x01; // APB runs at the same frequency as the CPU (55.296MHz)
 	MAMTIM = 0x03; // 3 cycles flash access recommended >40MHz
 	MAMCR = 0x02; // Fully enable memory accelerator
-	
+
 	Sched_Init();
 	IO_Init();
 	Set_Heater(0);
@@ -235,11 +235,19 @@ static int32_t Main_Work( void ) {
 		if( keyrepeataccel < 1) keyrepeataccel = 1;
 		if( keyrepeataccel > 30) keyrepeataccel = 30;
 
-		if(keyspressed & KEY_F1 && selected > 0) { // Prev row
-			selected--;
+		if (keyspressed & KEY_F1) {
+			if (selected > 0) { // Prev row
+				selected--;
+			} else { // wrap
+				selected = NUM_SETUP_ITEMS - 1;
+			}
 		}
-		if(keyspressed & KEY_F2 && selected < (NUM_SETUP_ITEMS-1)) { // Next row
-			selected++;
+		if (keyspressed & KEY_F2) {
+			if (selected < (NUM_SETUP_ITEMS - 1)) { // Next row
+				selected++;
+			} else { // wrap
+				selected = 0;
+			}
 		}
 
 		int curval = NV_GetConfig(setupmenu[selected].nvval);
