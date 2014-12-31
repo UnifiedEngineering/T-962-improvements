@@ -42,6 +42,7 @@
 //#define MAXTEMPOVERRIDE
 
 //#define RAMPTEST
+//#define PIDTEST
 #define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
 #define PID_TIMEBASE (250) // 250ms between each run
@@ -102,6 +103,14 @@ const profile rampspeedtestprofile = { "RAMP SPEED TEST",
 	 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 #endif
 
+#ifdef PIDTEST
+// PID gain adjustment test profile (5% setpoint change)
+const profile pidcontroltestprofile = { "PID CONTROL TEST",
+	{171,171,171,171,171,171,171,171,171,171,171,171,171,171,171,171,  // 0-150s
+	 180,180,180,180,180,180,180,180,171,171,171,171,171,171,171,171,  // 160-310s
+	   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
+#endif
+
 // EEPROM profile 1
 ramprofile ee1 = { "CUSTOM #1" };
 
@@ -113,6 +122,9 @@ const profile* profiles[] = { &syntechlfprofile,
 								&am4300profile,
 #ifdef RAMPTEST
 								&rampspeedtestprofile,
+#endif
+#ifdef PIDTEST
+								&pidcontroltestprofile,
 #endif
 								(profile*)&ee1, (profile*)&ee2 };
 #define NUMPROFILES (sizeof(profiles)/sizeof(profiles[0]))
@@ -309,6 +321,16 @@ void Reflow_Init(void) {
 	PID_init(&PID,0,0,0,PID_Direction_Direct); // Can't supply tuning to PID_Init when not using the default timebase
 	PID_SetSampleTime(&PID, PID_TIMEBASE);
 	PID_SetTunings(&PID, 20, 0.016, 62.5); // Adjusted values to compensate for the incorrect timebase earlier
+	//PID_SetTunings(&PID, 80,0,0); // This results in oscillations with 14.5s cycle time
+	//PID_SetTunings(&PID, 30,0,0); // This results in oscillations with 14.5s cycle time
+	//PID_SetTunings(&PID, 15,0,0);
+	//PID_SetTunings(&PID, 10,0,0); // no oscillations, but offset
+	//PID_SetTunings(&PID, 10,0.020,0); // getting there
+	//PID_SetTunings(&PID, 10,0.013,0);
+	//PID_SetTunings(&PID, 10,0.0066,0);
+	//PID_SetTunings(&PID, 10,0.2,0);
+	//PID_SetTunings(&PID, 10,0.020,1.0); // Experimental
+
 	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
