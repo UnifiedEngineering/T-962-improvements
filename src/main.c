@@ -34,6 +34,8 @@
 #include "buzzer.h"
 #include "nvstorage.h"
 #include "version.h"
+#include "max31855.h"
+#include "systemfan.h"
 #include "vic.h"
 
 extern uint8_t logobmp[];
@@ -194,7 +196,9 @@ int main(void) {
 	ADC_Init();
 	RTC_Init();
 	OneWire_Init();
+	SPI_TC_Init();
 	Reflow_Init();
+	SystemFan_Init();
 
 	Sched_SetWorkfunc( MAIN_WORK, Main_Work );
 	Sched_SetState( MAIN_WORK, 1, TICKS_SECS( 2 ) ); // Enable in 2 seconds
@@ -363,33 +367,33 @@ static int32_t Main_Work( void ) {
 			if(setpoint>300) setpoint = 300;
 		}
 
-		len = snprintf(buf,sizeof(buf),"- SETPOINT %uC +",(unsigned int)setpoint);
+		len = snprintf(buf,sizeof(buf),"- SETPOINT %u` +",(unsigned int)setpoint);
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 10, FONT6X6);
 
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 10, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"F2", 2, 127-12, 10, FONT6X6 | INVERT);
 
-		len = snprintf(buf,sizeof(buf),"ACTUAL %.1fC",Reflow_GetTempSensor(TC_AVERAGE));
+		len = snprintf(buf,sizeof(buf),"ACTUAL %.1f`",Reflow_GetTempSensor(TC_AVERAGE));
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 18, FONT6X6);
 
-		len = snprintf(buf,sizeof(buf),"L %.1fC",Reflow_GetTempSensor(TC_LEFT));
+		len = snprintf(buf,sizeof(buf),"L %.1f`",Reflow_GetTempSensor(TC_LEFT));
 		LCD_disp_str((uint8_t*)buf, len, 32-(len*3), 26, FONT6X6);
 
-		len = snprintf(buf,sizeof(buf),"R %.1fC",Reflow_GetTempSensor(TC_RIGHT));
+		len = snprintf(buf,sizeof(buf),"R %.1f`",Reflow_GetTempSensor(TC_RIGHT));
 		LCD_disp_str((uint8_t*)buf, len, 96-(len*3), 26, FONT6X6);
 
 		if( Reflow_IsTempSensorValid(TC_EXTRA1) ) {
-			len = snprintf(buf,sizeof(buf),"X1 %.1fC",Reflow_GetTempSensor(TC_EXTRA1));
+			len = snprintf(buf,sizeof(buf),"X1 %.1f`",Reflow_GetTempSensor(TC_EXTRA1));
 			LCD_disp_str((uint8_t*)buf, len, 32-(len*3), 34, FONT6X6);
 		}
 
 		if( Reflow_IsTempSensorValid(TC_EXTRA2) ) {
-			len = snprintf(buf,sizeof(buf),"X2 %.1fC",Reflow_GetTempSensor(TC_EXTRA2));
+			len = snprintf(buf,sizeof(buf),"X2 %.1f`",Reflow_GetTempSensor(TC_EXTRA2));
 			LCD_disp_str((uint8_t*)buf, len, 96-(len*3), 34, FONT6X6);
 		}
 
 		if( Reflow_IsTempSensorValid(TC_COLD_JUNCTION) ) {
-			len = snprintf(buf,sizeof(buf),"COLD-JUNCTION %.1fC",Reflow_GetTempSensor(TC_COLD_JUNCTION));
+			len = snprintf(buf,sizeof(buf),"COLD-JUNCTION %.1f`",Reflow_GetTempSensor(TC_COLD_JUNCTION));
 		} else {
 			len = snprintf(buf,sizeof(buf),"NO COLD-JUNCTION TS!");
 		}
@@ -437,7 +441,7 @@ static int32_t Main_Work( void ) {
 
 		Reflow_PlotProfile(curidx);
 		LCD_BMPDisplay(editbmp,127-17,0);
-		len = snprintf(buf,sizeof(buf),"%02u0s %03uC",curidx, cursetpoint);
+		len = snprintf(buf,sizeof(buf),"%02u0s %03u`",curidx, cursetpoint);
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 		if(keyspressed & KEY_S) { // Done editing
 			Reflow_SaveEEProfile();
@@ -461,7 +465,7 @@ static int32_t Main_Work( void ) {
 		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, 8*5, FONT6X6);
 		len = snprintf(buf,sizeof(buf),"%s",Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 8*6, FONT6X6 | INVERT);
-		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %dC", Reflow_GetActualTemp());
+		len = snprintf(buf,sizeof(buf),"OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 64-6, FONT6X6);
 
 		if( keyspressed ) { // Make sure reflow complete beep is silenced when pressing any key
