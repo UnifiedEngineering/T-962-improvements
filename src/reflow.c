@@ -44,6 +44,8 @@
 //#define RAMPTEST
 #define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
+#define PID_TIMEBASE (250) // 250ms between each run
+
 float adcgainadj[2]; // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcoffsetadj[2]; // Offset adjust, this will definitely have to be calibrated per device
 
@@ -124,11 +126,12 @@ static void ByteswapTempProfile(uint16_t* buf) {
 }
 
 static int32_t Reflow_Work( void ) {
+	static ReflowMode_t oldmode = REFLOW_INITIAL;
+	static uint16_t numticks = 0;
+	static uint32_t lasttick = 0;
 	uint16_t temp[2];
 	uint8_t fan, heat;
 	uint32_t ticks=RTC_Read();
-
-	printf("\n");
 
 	// These are the temperature readings we get from the thermocouple interfaces
 	// Right now it is assumed that if they are indeed present the first two channels will be used as feedback
@@ -140,7 +143,6 @@ static int32_t Reflow_Work( void ) {
 		if( tcpresent[i] ) {
 			tctemp[i] = OneWire_GetTCReading( i );
 			tccj[i] = OneWire_GetTCColdReading( i );
-			printf("TC%x=%5.1fC ",i,tctemp[i]);
 			if(i>1) {
 				temperature[i] = tctemp[i];
 				tempvalid |= (1<<i);
@@ -150,7 +152,6 @@ static int32_t Reflow_Work( void ) {
 			if( tcpresent[i] ) {
 				tctemp[i] = SPI_GetTCReading( i );
 				tccj[i] = SPI_GetTCColdReading( i );
-				printf("TC%x=%5.1fC ",i,tctemp[i]);
 				if(i>1) {
 					temperature[i] = tctemp[i];
 					tempvalid |= (1<<i);
@@ -166,7 +167,6 @@ static int32_t Reflow_Work( void ) {
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
 		cjsensorpresent = 1;
-		printf("CJ=%5.1fC ",coldjunction);
 	} else {
 		// If the external TC interface is not present we fall back to the built-in ADC, with or without compensation
 		coldjunction=OneWire_GetTempSensorReading();
@@ -190,8 +190,6 @@ static int32_t Reflow_Work( void ) {
 		tempvalid |= 0x03;
 
 		avgtemp=(temperature[0]+temperature[1]) / 2.0f;
-		printf("L=%5.1fC R=%5.1fC CJ=%5.1fC ",
-			temperature[0],temperature[1],coldjunction);
 	}
 
 #ifdef MAXTEMPOVERRIDE
@@ -227,12 +225,36 @@ static int32_t Reflow_Work( void ) {
 	Set_Heater(heat);
 	Set_Fan(fan);
 
-	printf("Setpoint=%3uC Actual=%5.1fC Heat=0x%02x Fan=0x%02x Mode=%s",
-		intsetpoint,avgtemp,heat,fan,modestr);
+	if(mymode != oldmode) {
+		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
+		oldmode = mymode;
+		numticks = 0;
+	} else {
+		if(mymode == REFLOW_BAKE || mymode == REFLOW_REFLOW) numticks++;
+	}
+
+	printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
+			((float)numticks / (1000.0f/PID_TIMEBASE)),
+			temperature[0], temperature[1],
+			(tempvalid&(1<<2))?temperature[2]:0.0f, (tempvalid&(1<<3))?temperature[3]:0.0f,
+			intsetpoint, avgtemp, heat, fan,
+			cjsensorpresent?coldjunction:0.0f,
+			modestr);
 
 	intavgtemp = (int16_t)avgtemp; // Keep for UI
 
-	return TICKS_MS( 250 );
+	if(numticks & 1) Sched_SetState( MAIN_WORK, 2, 0 ); // Force UI refresh every other cycle
+
+	uint32_t thistick = Sched_GetTick();
+	if (lasttick == 0) lasttick = thistick - TICKS_MS( PID_TIMEBASE );
+	int32_t nexttick = (2 * TICKS_MS( PID_TIMEBASE )) - (thistick - lasttick);
+
+	if ((thistick - lasttick) > (2 * TICKS_MS( PID_TIMEBASE ))) {
+		printf("\nReflow can't keep up with desired PID_TIMEBASE!");
+		nexttick = 0;
+	}
+	lasttick += TICKS_MS( PID_TIMEBASE );
+	return nexttick;
 }
 
 void Reflow_ValidateNV(void) {
