@@ -98,7 +98,7 @@ const profile syntechlfprofile = { "AMTECH SYNTECH-LF",
 // Ramp speed test temp profile
 const profile rampspeedtestprofile = { "RAMP SPEED TEST",
 	{50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245,  // 0-150s
-	245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50,  // Adjust peak from 230 to 249C
+	245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50,  // 160-310s
 	 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0}};// 320-470s
 #endif
 
