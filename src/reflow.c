@@ -305,7 +305,10 @@ void Reflow_Init(void) {
 	//PID_init(&PID,30,0.2,15,PID_Direction_Direct); // This overshoots the setpoint
 	//PID_init(&PID,25,0.15,15,PID_Direction_Direct); // This overshoots the setpoint slightly
 	//PID_init(&PID,20,0.07,25,PID_Direction_Direct);
-	PID_init(&PID,20,0.04,25,PID_Direction_Direct); // Improvement as far as I can tell, still work in progress
+	//PID_init(&PID,20,0.04,25,PID_Direction_Direct); // Improvement as far as I can tell, still work in progress
+	PID_init(&PID,0,0,0,PID_Direction_Direct); // Can't supply tuning to PID_Init when not using the default timebase
+	PID_SetSampleTime(&PID, PID_TIMEBASE);
+	PID_SetTunings(&PID, 20, 0.016, 62.5); // Adjusted values to compensate for the incorrect timebase earlier
 	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
 	ByteswapTempProfile(ee1.temperatures);
 	EEPROM_Read((uint8_t*)ee2.temperatures, 128+2, 96);
