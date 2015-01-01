@@ -30,7 +30,7 @@
 /* Size of buffer. The putchar function used here will block when the buffer is full (buffer is drained in interrupt),
  * so if you want to continously write lots of data increase the buffer size. Change putchar() to non-blocking and read
  * the 'dropped' parameter in the buffer structure to determine how your buffer size is doing. */
-#define CIRCBUFSIZE 128
+#define CIRCBUFSIZE 256
 
 /* The following baud rates assume a 55.296MHz system clock */
 #ifdef SERIAL_2MBs
