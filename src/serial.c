@@ -71,7 +71,11 @@ static void uart_putc(char thebyte) {
 	//The following is done blocking. This means when you call printf() with lots of data,
 	//it relies on the ability of the interrupt to drain the txbuf, otherwise the system
 	//will lock up.
-	add_to_circ_buf(&txbuf, thebyte, 1);
+	if (VICIntEnable){
+		add_to_circ_buf(&txbuf, thebyte, 1);
+	} else {
+		add_to_circ_buf(&txbuf, thebyte, 0);
+	}
 
 	//If interrupt is disabled, we need to start the process and enable the interrupt
 	if((U0IER & (1<<1)) == 0){
