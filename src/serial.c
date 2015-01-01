@@ -38,11 +38,16 @@
 #define BAUD_M  11
 #define BAUD_D  8
 #define BAUD_DL 1 /* Minimum allowed when running fractional brg is 3 according to UM10120 but this works just fine! */
-#else
-/* Settings for 115kbps */
+#elif defined(SERIAL_115KBs)
+/* Settings for 115.2kbps */
 #define BAUD_M  1
 #define BAUD_D  0
 #define BAUD_DL 30
+#else
+/* Settings for 230kbps */
+#define BAUD_M  1
+#define BAUD_D  0
+#define BAUD_DL 15
 #endif
 
 typedef struct {
