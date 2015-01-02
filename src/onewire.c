@@ -280,9 +280,8 @@ static int32_t OneWire_Work( void ) {
 	uint8_t scratch[9];
 	int32_t retval = 0;
 
-	uint32_t save = VIC_DisableIRQ();
-
 	if( mystate == 0 ) {
+		uint32_t save = VIC_DisableIRQ();
 		if(resetbus()) {
 			xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
 			xferbyte(OW_CONVERT_T);
@@ -291,14 +290,17 @@ static int32_t OneWire_Work( void ) {
 			retval = TICKS_MS(100); // TC interface needs max 100ms to be ready
 			mystate++;
 		}
+		VIC_RestoreIRQ( save );
 	} else if( mystate == 1 ) {
 		for( int i = 0; i < numowdevices; i++ ) {
+			uint32_t save = VIC_DisableIRQ();
 			selectdevbyidx(i);
 			xferbyte(OW_READ_SCRATCHPAD);
 			for(uint32_t iter=0; iter<4; iter++) { // Read four bytes
 				scratch[iter] = xferbyte(0xff);
 				//printf("%02x ",scratch[iter]);
 			}
+			VIC_RestoreIRQ( save );
 			int16_t tmp = scratch[1]<<8 | scratch[0];
 			devreadout[i] = tmp;
 			tmp = scratch[3]<<8 | scratch[2];
@@ -308,8 +310,6 @@ static int32_t OneWire_Work( void ) {
 	} else {
 		retval = -1;
 	}
-
-	VIC_RestoreIRQ( save );
 
 	return retval;
 }
@@ -325,13 +325,16 @@ uint32_t OneWire_Init( void ) {
 	}
 
 	uint32_t save = VIC_DisableIRQ();
-
 	int rslt = OWFirst();
+	VIC_RestoreIRQ( save );
+
 	numowdevices = 0;
 	while (rslt && numowdevices < MAX_OW_DEVICES) {
 		memcpy(owdeviceids[numowdevices], ROM_NO, sizeof(ROM_NO));
 		numowdevices++;
+		save = VIC_DisableIRQ();
 		rslt = OWNext();
+		VIC_RestoreIRQ( save );
 	}
 	if(numowdevices) {
 		for( int iter = 0; iter < numowdevices; iter++ ) {
@@ -341,14 +344,17 @@ uint32_t OneWire_Init( void ) {
 			}
 			uint8_t family = owdeviceids[iter][0];
 			if(family == OW_FAMILY_TEMP) {
+				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_WRITE_SCRATCHPAD);
 				xferbyte(0x00);
 				xferbyte(0x00);
 				xferbyte(0x1f); // Reduce resolution to 0.5C to keep conversion time reasonable
+				VIC_RestoreIRQ( save );
 				tempidx = iter; // Keep track of where we saw the last/only temperature sensor
 				printf(" [Temperature sensor]");
 			} else if(family == OW_FAMILY_TC) {
+				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_READ_SCRATCHPAD);
 				xferbyte(0xff);
@@ -356,6 +362,7 @@ uint32_t OneWire_Init( void ) {
 				xferbyte(0xff);
 				xferbyte(0xff);
 				uint8_t tcid = xferbyte(0xff) & 0x0f;
+				VIC_RestoreIRQ( save );
 				tcidmapping[tcid] = iter; // Keep track of the ID mapping
 				printf(" [Thermocouple interface, ID %x]",tcid);
 			}
@@ -363,8 +370,6 @@ uint32_t OneWire_Init( void ) {
 	} else {
 		printf(" No devices found!");
 	}
-
-	VIC_RestoreIRQ( save );
 
 	if( numowdevices ) {
 		Sched_SetState( ONEWIRE_WORK, 2, 0 ); // Enable OneWire task if there's at least one device
