@@ -3,4 +3,10 @@
 
 void Serial_Init(void);
 
+//non-blocking read
+char uart_readc(void);
+
+//non-blocking check
+int uart_isrxready(void);
+
 #endif /* SERIAL_H_ */
