@@ -9,12 +9,19 @@ SRC_DIR := ./src/
 BUILD_DIR := ./build/
 TARGET := $(BUILD_DIR)$(BASE_NAME).axf
 
+
 vpath %.c $(SRC_DIR)
 vpath %.o $(BUILD_DIR)
 vpath %.d $(BUILD_DIR)
 
 CC := arm-none-eabi-gcc
 RM := rm -rf
+
+# Flash tool settings
+FLASH_TOOL := ./lpc21isp
+FLASH_TTY := /dev/ttyUSB0
+FLASH_BAUD := 57600
+MCU_CLOCK := 11059
 
 # Source files
 C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
@@ -58,7 +65,6 @@ axf: $(OBJS) $(USER_OBJS)
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
-
 clean:
 	-$(RM) $(BUILD_DIR)
 	-@echo ' '
@@ -69,6 +75,11 @@ post-build:
 	-arm-none-eabi-size "$(TARGET)";
 	-arm-none-eabi-objcopy -v -O ihex "$(TARGET)" "$(BUILD_DIR)$(BASE_NAME).hex"
 	-@echo ' '
+
+flash: axf
+	@echo ''
+	@echo 'Flashing $(BASE_NAME).hex to $(FLASH_TTY)'
+	$(FLASH_TOOL) "$(BUILD_DIR)$(BASE_NAME).hex" $(FLASH_TTY) $(FLASH_BAUD) $(MCU_CLOCK)
 
 .PHONY: clean dependents
 .SECONDARY: post-build
