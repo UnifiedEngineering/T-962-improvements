@@ -158,10 +158,8 @@ int main(void) {
 	// Setup watchdog
 	WDTC = PCLKFREQ / 3; // Some margin (PCLKFREQ/4 would be exactly the period the WD is fed by sleep_work)
 	WDMOD = 0x03; // Enable
-	uint32_t save = VIC_DisableIRQ();
 	WDFEED = 0xaa;
 	WDFEED = 0x55;
-	VIC_RestoreIRQ( save );
 
 	uint8_t resetreason = RSIR;
 	RSIR = 0x0f; // Clear it out
