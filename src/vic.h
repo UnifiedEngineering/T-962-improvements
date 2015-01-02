@@ -28,6 +28,7 @@ typedef enum eVICInt {
 } VICInt_t;
 
 void VIC_Init( void );
+uint32_t VIC_IsIRQDisabled( void );
 uint32_t VIC_DisableIRQ( void );
 void VIC_RestoreIRQ( uint32_t mask );
 int32_t VIC_RegisterHandler( VICInt_t num, void* ptr );
