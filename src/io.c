@@ -22,6 +22,7 @@
 #include "t962.h"
 #include "io.h"
 #include "sched.h"
+#include "vic.h"
 
 void Set_Heater(uint8_t enable) {
 	if( enable < 0xff ) {
@@ -53,8 +54,10 @@ static int32_t Sleep_Work(void) {
 	flip ^= 1;
 
 	// If interrupts are used they must be disabled around the following two instructions!
+	uint32_t save = VIC_DisableIRQ();
 	WDFEED = 0xaa; // Feed watchdog
 	WDFEED = 0x55;
+	VIC_RestoreIRQ( save );
 	return TICKS_SECS(1);
 }
 

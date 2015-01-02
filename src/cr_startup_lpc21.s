@@ -129,34 +129,80 @@ _boot:
  */
 Vectors:
         B     _start                    // reset
-        LDR   pc,_undf                  // undefined
-        LDR   pc,_swi                   // SWI/SVC
-        LDR   pc,_pabt                  // program abort
-        LDR   pc,_dabt                  // data abort
+        MOV   pc,#__undf                  // undefined
+        MOV   pc,#__swi                   // SWI/SVC
+        MOV   pc,#__pabt                  // program abort
+        MOV   pc,#__dabt                  // data abort
         NOP                             // Reserved for the flash checksum
         LDR   pc,[pc,#-0xFF0]           // IRQ - read the VIC register
 //		LDR	  pc,_irq					// or go to default handler
-        LDR   pc,_fiq                   // FIQ
+//        MOV   pc,#__fiq // Do __fiq in-place instead
+__fiq:  MOV r0,#_fiqstr                  // FIQ
+		B _printexc
+__undf: MOV r0,#_undfstr                 // undefined
+		B _printexc
+__pabt: MOV r0,#_pabtstr                 // program abort
+		B _printexc
+__dabt: MOV r0,#_dabtstr                 // data abort
+		// lr contains instruction that failed to access data +8 so adjust an additional 4 bytes
+		sub lr,lr,#4
+		B _printexc
+__swi:
+		MOV r0,#_swistr
+//		B _printexc // Fall-thru
+_printexc:
+		.set	UART0,	0xe000c000
+		.set	U0LSR_OFFS, 0x14
+		.set	U0IER_OFFS, 0x04
+		.set	U0THR_OFFS, 0x00
+		.set	FIO0CLR, 0x3fffc01c
+		// lr contains address of failed instruction +4
+		SUB lr,lr,#4
+		LDR r1,=UART0
+//		MOV r2,#0
+//		STR r2,[r1,#U0IER_OFFS]
 
+		// Output exception text
+_ploop:
+		LDRB r2,[r0],#1
+_pwait:
+		LDR r3,[r1,#U0LSR_OFFS]
+		TST r3,#0x20
+		BEQ _pwait
+		CMP r2,#0
+		STRNE r2,[r1,#U0THR_OFFS]
+		BNE _ploop
+_done:
 
-_undf:  .word __undf                    // undefined
-_swi:   .word _swi_handler				// SWI
-_pabt:  .word __pabt					// program abort
-_dabt:  .word __dabt					// data abort
-_irq:   .word __irq			
-_fiq:   .word __fiq						// FIQ
+		// Output lr register in hex
+		MOV r5,#8
+		MOV r4,#_hexstr
+_hloop:
+		LSR r0,lr,#0x1c
+		LDR r2,[r4,r0]
+_pwait2:
+		LDR r3,[r1,#U0LSR_OFFS]
+		TST r3,#0x20
+		BEQ _pwait2
+		STR r2,[r1,#U0THR_OFFS]
+		LSL lr,lr,#4
+		SUBS r5,r5,#1
+		BNE _hloop
 
-/*
- * Some simple default handlers
- */
-__undf: B     .                         // undefined
-__pabt: B     .                         // program abort
-__dabt: B     .                         // data abort
-__irq:  B     .                         // IRQ
-__fiq:  B     .                         // FIQ
+		// Turn off backlight to indicate fault
+//		LDR r1,=FIO0CLR
+//		MOV r2,#(1<<11)
+//		STR r2,[r1]
+_realdone:
+		B _realdone
 
-_swi_handler:
-		B	.
+_hexstr: .ASCII "0123456789abcdef"
+_undfstr: .ASCIZ "UNDF@"
+_pabtstr: .ASCIZ "PABT@"
+_dabtstr: .ASCIZ "DABT@"
+_fiqstr: .ASCIZ "FIQ?"
+_swistr: .ASCIZ "SWI?"
+
 		.endfunc
 /*
  * Setup the operating mode & stack.
@@ -440,10 +486,10 @@ post_data_bss_init:
  * Call main program: main(0)
  */
         MOV   r0,#0                     // no arguments (argc = 0)
-        MOV   r1,r0
-        MOV   r2,r0
+//       MOV   r1,r0
+//       MOV   r2,r0
         MOV   fp,r0                     // null frame pointer
-        MOV   r7,r0                     // null frame pointer for thumb
+//        MOV   r7,r0                     // null frame pointer for thumb
 
 		// Change to system mode (IRQs enabled) before calling main application
 

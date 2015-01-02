@@ -34,6 +34,7 @@
 #include "buzzer.h"
 #include "nvstorage.h"
 #include "version.h"
+#include "vic.h"
 #include "max31855.h"
 #include "systemfan.h"
 
@@ -135,7 +136,8 @@ int main(void) {
 	VPBDIV = 0x01; // APB runs at the same frequency as the CPU (55.296MHz)
 	MAMTIM = 0x03; // 3 cycles flash access recommended >40MHz
 	MAMCR = 0x02; // Fully enable memory accelerator
-
+	
+	VIC_Init();
 	Sched_Init();
 	IO_Init();
 	Set_Heater(0);
