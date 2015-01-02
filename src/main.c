@@ -228,7 +228,7 @@ typedef enum eMainMode {
 } MainMode_t;
 
 static int32_t Main_Work(void) {
-	MainMode_t mode = MAIN_HOME;
+	static MainMode_t mode = MAIN_HOME;
 	static uint32_t setpoint = 30;
 
 	// profile editing
