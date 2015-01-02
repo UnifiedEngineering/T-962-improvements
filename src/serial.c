@@ -137,8 +137,8 @@ void Serial_Init(void) {
 	U0FCR = 7; // Enable and reset FIFOs
 	U0FDR = ((BAUD_M)<<4) | ((BAUD_D)<<0);
 	U0LCR = 0x83; // 8N1 + enable divisor loading
-	U0DLL = BAUD_DL;
-	U0DLM = 0;
+	U0DLL = BAUD_DL & 0xff;
+	U0DLM = BAUD_DL >> 8;
 	U0LCR &= ~0x80; // Divisor load done
 #ifdef __NEWLIB__
 	setbuf(stdout, NULL); // Needed to get rid of default line-buffering in newlib not present in redlib
