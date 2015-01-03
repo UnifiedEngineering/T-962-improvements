@@ -136,7 +136,7 @@ int main(void) {
 	VPBDIV = 0x01; // APB runs at the same frequency as the CPU (55.296MHz)
 	MAMTIM = 0x03; // 3 cycles flash access recommended >40MHz
 	MAMCR = 0x02; // Fully enable memory accelerator
-	
+
 	VIC_Init();
 	Sched_Init();
 	IO_Init();
@@ -217,10 +217,24 @@ int main(void) {
 	return 0;
 }
 
+typedef enum eMainMode {
+	MAIN_HOME = 0,
+	MAIN_ABOUT,
+	MAIN_SETUP,
+	MAIN_BAKE,
+	MAIN_SELECT_PROFILE,
+	MAIN_EDIT_PROFILE,
+	MAIN_REFLOW
+} MainMode_t;
+
 static int32_t Main_Work(void) {
-	static uint32_t mode = 0;
+	static MainMode_t mode = MAIN_HOME;
 	static uint32_t setpoint = 30;
-	static uint8_t curidx = 0;
+
+	// profile editing
+	static uint8_t profile_time_idx = 0;
+	static uint8_t current_edit_profile;
+
 	int32_t retval = TICKS_MS(500);
 
 	char buf[22];
@@ -228,8 +242,8 @@ static int32_t Main_Work(void) {
 
 	uint32_t keyspressed = Keypad_Get();
 
-	// Sort out this "state machine"
-	if (mode == 7) { // Setup/calibrate
+	// main menu state machine
+	if (mode == MAIN_SETUP) {
 		static uint8_t selected = 0;
 		int y = 0;
 
@@ -293,11 +307,11 @@ static int32_t Main_Work(void) {
 		//LCD_BMPDisplay(stopbmp,127-17,0);
 
 		if (keyspressed & KEY_S) { // Leave setup
-			mode = 0;
+			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
-	} else if (mode == 6) { // About
+	} else if (mode == MAIN_ABOUT) {
 		LCD_FB_Clear();
 		LCD_BMPDisplay(logobmp, 0, 0);
 
@@ -310,10 +324,10 @@ static int32_t Main_Work(void) {
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 
 		if (keyspressed & KEY_S) { // Leave about
-			mode = 0;
+			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
-	} else if (mode == 5) { // Run reflow
+	} else if (mode == MAIN_REFLOW) {
 		uint32_t ticks = RTC_Read();
 		//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
 		//LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
@@ -332,11 +346,12 @@ static int32_t Main_Work(void) {
 			if (Reflow_IsDone()) {
 				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			}
-			mode = 0;
+			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
-	} else if (mode == 4) { // Select profile
+
+	} else if (mode == MAIN_SELECT_PROFILE) {
 		int curprofile = Reflow_GetProfileIdx();
 
 		LCD_FB_Clear();
@@ -358,14 +373,16 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 
 		if (eeidx && keyspressed & KEY_F3) { // Edit ee profile
-			mode = eeidx;
+			mode = MAIN_EDIT_PROFILE;
+			current_edit_profile = eeidx;
 			retval = 0; // Force immediate refresh
 		}
 		if (keyspressed & KEY_S) { // Select current profile
-			mode = 0;
+			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
-	} else if (mode == 3) { // Bake
+
+	} else if (mode == MAIN_BAKE) {
 		LCD_FB_Clear();
 		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
@@ -423,25 +440,26 @@ static int32_t Main_Work(void) {
 		Reflow_SetSetpoint(setpoint);
 
 		if (keyspressed & KEY_S) { // Abort bake
-			mode = 0;
+			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
-	} else if (mode == 2 || mode == 1) { // Edit ee1 or 2
+
+	} else if (mode == MAIN_EDIT_PROFILE) { // Edit ee1 or 2
 		LCD_FB_Clear();
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
 		if (keyrepeataccel > 30) keyrepeataccel = 30;
 
 		int16_t cursetpoint;
-		Reflow_SelectEEProfileIdx(mode);
-		if (keyspressed & KEY_F1 && curidx > 0) { // Prev time
-			curidx--;
+		Reflow_SelectEEProfileIdx(current_edit_profile);
+		if (keyspressed & KEY_F1 && profile_time_idx > 0) { // Prev time
+			profile_time_idx--;
 		}
-		if (keyspressed & KEY_F2 && curidx < 47) { // Next time
-			curidx++;
+		if (keyspressed & KEY_F2 && profile_time_idx < 47) { // Next time
+			profile_time_idx++;
 		}
-		cursetpoint = Reflow_GetSetpointAtIdx(curidx);
+		cursetpoint = Reflow_GetSetpointAtIdx(profile_time_idx);
 
 		if (keyspressed & KEY_F3) { // Decrease setpoint
 			cursetpoint -= keyrepeataccel;
@@ -449,20 +467,21 @@ static int32_t Main_Work(void) {
 		if (keyspressed & KEY_F4) { // Increase setpoint
 			cursetpoint += keyrepeataccel;
 		}
-		if (cursetpoint<0) cursetpoint = 0;
-		if (cursetpoint>300) cursetpoint = 300;
-		Reflow_SetSetpointAtIdx(curidx, cursetpoint);
+		if (cursetpoint < 0) cursetpoint = 0;
+		if (cursetpoint > 300) cursetpoint = 300;
+		Reflow_SetSetpointAtIdx(profile_time_idx, cursetpoint);
 
-		Reflow_PlotProfile(curidx);
+		Reflow_PlotProfile(profile_time_idx);
 		LCD_BMPDisplay(editbmp, 127 - 17, 0);
 
-		len = snprintf(buf, sizeof(buf), "%02u0s %03u`", curidx, cursetpoint);
+		len = snprintf(buf, sizeof(buf), "%02u0s %03u`", profile_time_idx, cursetpoint);
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 		if (keyspressed & KEY_S) { // Done editing
 			Reflow_SaveEEProfile();
-			mode = 0;
+			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
+
 	} else { // Main menu
 		LCD_FB_Clear();
 
@@ -491,26 +510,26 @@ static int32_t Main_Work(void) {
 		}
 
 		if (keyspressed & KEY_F1) { // About
-			mode = 6;
+			mode = MAIN_ABOUT;
 			retval = 0; // Force immediate refresh
 		}
 		if (keyspressed & KEY_F2) { // Setup/cal
-			mode = 7;
+			mode = MAIN_SETUP;
 			Reflow_SetMode(REFLOW_STANDBYFAN);
 			retval = 0; // Force immediate refresh
 		}
 		if (keyspressed & KEY_F3) { // Bake mode
-			mode = 3;
+			mode = MAIN_BAKE;
 			Reflow_Init();
 			Reflow_SetMode(REFLOW_BAKE);
 			retval = 0; // Force immediate refresh
 		}
 		if (keyspressed & KEY_F4) { // Select profile
-			mode = 4;
+			mode = MAIN_SELECT_PROFILE;
 			retval = 0; // Force immediate refresh
 		}
 		if (keyspressed & KEY_S) { // Start reflow
-			mode = 5;
+			mode = MAIN_REFLOW;
 			LCD_FB_Clear();
 			Reflow_Init();
 			Reflow_PlotProfile(-1);
