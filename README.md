@@ -25,13 +25,18 @@ The existing controller makes the assumption that the cold-junction is at 20 deg
 We can fix this by adding a temperature sensor to the connector block where the thermocouples are connected to the controller board.
 It turns out that both an analog input and at least one generic GPIO pin is available on unpopulated pads on the board. GPIO0.7 in particular was very convenient for 1-wire operation as there was an adjacent pad with 3.3V so a 4k7 pull-up resistor could be placed there, then a jumper wire is run from GPIO0.7 pad to the `Dq` pin of a cheap [DS18B20] 1-wire temperature sensor that gets epoxied to the terminal block, soldering both `Vcc` and ground pins to the ground plane conveniently located right next to it. Some hot-glue may have to be removed to actually get to the side of the connector and the ground plane, someone seems to have been really trigger-happy with the glue gun!
 
-[Pictures on the wiki](https://github.com/UnifiedEngineering/T-962-improvements/wiki)
+[Wiki: cold junction compensation mod](https://github.com/UnifiedEngineering/T-962-improvements/wiki)
 
 
 #### Check mains earth connection
 
 As mentioned elsewhere, make sure the protective earth/ground wire from the main input actually makes contact with the back panel of the chassis and also that the back panel makes contact both with the top and bottom halves of the oven!
 
+#### System fan PWM control
+
+The system fan is very noisy an can be turned of most of the time. The custom firmware uses spare `ADO` test point to control it.
+
+[Wiki: system fan PWM mod](https://github.com/UnifiedEngineering/T-962-improvements/wiki/System-fan-control)
 
 ### New firmware
 
