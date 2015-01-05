@@ -27,9 +27,13 @@
 #define __sys_write _write
 #endif
 
-/* Size of buffer. The putchar function used here will block when the buffer is full (buffer is drained in interrupt),
- * so if you want to continously write lots of data increase the buffer size. Change putchar() to non-blocking and read
- * the 'dropped' parameter in the buffer structure to determine how your buffer size is doing. */
+/* Size of buffer.
+ * The putchar() function used here will block when the buffer is full (buffer
+ * is drained in interrupt), so if you want to continously write lots of data
+ * increase the buffer size. Change putchar() to non-blocking and read the
+ * 'dropped' parameter in the buffer structure to determine how your buffer
+ * size is doing.
+ */
 #define CIRCBUFSIZE 256
 
 /* The following baud rates assume a 55.296MHz system clock */
@@ -37,7 +41,9 @@
 /* Settings for 2Mb/s */
 #define BAUD_M  11
 #define BAUD_D  8
-#define BAUD_DL 1 /* Minimum allowed when running fractional brg is 3 according to UM10120 but this works just fine! */
+/* Minimum allowed when running fractional brg is 3 according to UM10120 but
+ * this works just fine! */
+#define BAUD_DL 1
 #else
 /* Settings for 115kbps */
 #define BAUD_M  1
@@ -63,14 +69,14 @@ static unsigned int circ_buf_count(tcirc_buf *cbuf);
 tcirc_buf txbuf;
 tcirc_buf rxbuf;
 
-
 static void uart_putc(char thebyte) {
 	if (thebyte == '\n')
 		uart_putc('\r');
 
-	//The following is done blocking. This means when you call printf() with lots of data,
-	//it relies on the ability of the interrupt to drain the txbuf, otherwise the system
-	//will lock up.
+	/* The following is done blocking. This means when you call printf() with lots of data,
+	 * it relies on the ability of the interrupt to drain the txbuf, otherwise the system
+	 * will lock up.
+	 */
 	if (!VIC_IsIRQDisabled()){
 		add_to_circ_buf(&txbuf, thebyte, 1);
 	} else {
@@ -154,23 +160,20 @@ void Serial_Init(void) {
 
 /**** Circular Buffer used by UART ****/
 
-static void init_circ_buf(tcirc_buf *cbuf)
-{
+static void init_circ_buf(tcirc_buf *cbuf) {
     cbuf->head = cbuf->tail = 0;
     cbuf->dropped = 0;
 }
 
-static void add_to_circ_buf(tcirc_buf *cbuf, char ch, int block)
-{
+static void add_to_circ_buf(tcirc_buf *cbuf, char ch, int block) {
     // Add char to buffer
     unsigned int newhead = cbuf->head;
     newhead++;
-    if (newhead >= CIRCBUFSIZE)
+    if (newhead >= CIRCBUFSIZE) {
         newhead = 0;
-    while (newhead == cbuf->tail)
-    {
-        if (!block)
-        {
+    }
+    while (newhead == cbuf->tail) {
+        if (!block) {
             cbuf->dropped++;
             return;
         }
@@ -186,41 +189,41 @@ static void add_to_circ_buf(tcirc_buf *cbuf, char ch, int block)
 }
 
 
-static char get_from_circ_buf(tcirc_buf *cbuf)
-{
+static char get_from_circ_buf(tcirc_buf *cbuf) {
     // Get char from buffer
     // Be sure to check first that there is a char in buffer
     unsigned int newtail = cbuf->tail;
     uint8_t retval = cbuf->buf[newtail];
 
-    if (newtail == cbuf->head)
+    if (newtail == cbuf->head) {
         return 0xFF;
+    }
 
     newtail++;
-    if (newtail >= CIRCBUFSIZE)
+    if (newtail >= CIRCBUFSIZE) {
         // Rollover
         newtail = 0;
+    }
     cbuf->tail = newtail;
 
     return retval;
 }
 
 
-static int circ_buf_has_char(tcirc_buf *cbuf)
-{
+static int circ_buf_has_char(tcirc_buf *cbuf) {
     // Return true if buffer empty
     unsigned int head = cbuf->head;
     return (head != cbuf->tail);
 }
 
-static unsigned int circ_buf_count(tcirc_buf *cbuf)
-{
+static unsigned int circ_buf_count(tcirc_buf *cbuf) {
     int count;
 
     count = cbuf->head;
     count -= cbuf->tail;
-    if (count < 0)
+    if (count < 0) {
         count += CIRCBUFSIZE;
+    }
     return (unsigned int)count;
 }
 
