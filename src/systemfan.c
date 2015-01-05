@@ -42,11 +42,11 @@
 
 uint32_t syspwmval = 0;
 
-static int32_t SystemFanPWM_Work( void ) {
+static int32_t SystemFanPWM_Work(void) {
 	static uint8_t state = 0;
 	int32_t retval;
 
-	if( state ) {
+	if (state) {
 		FIO0CLR = (syspwmval != SYSFAN_PWM_PERIOD) ? (1<<25) : 0; // SysFan off
 		retval = syspwmval ? (SYSFAN_PWM_PERIOD - syspwmval) : -1;
 	} else {
@@ -57,43 +57,47 @@ static int32_t SystemFanPWM_Work( void ) {
 	return retval;
 }
 
-static int32_t SystemFanSense_Work( void ) {
-	//static uint8_t lastsysfanspeed = 0;
+static int32_t SystemFanSense_Work(void) {
 	uint8_t sysfanspeed = 0;
 
-	if( Reflow_IsTempSensorValid( TC_COLD_JUNCTION ) ) {
-		float systemp = Reflow_GetTempSensor( TC_COLD_JUNCTION );
+	if (Reflow_IsTempSensorValid(TC_COLD_JUNCTION)) {
+		float systemp = Reflow_GetTempSensor(TC_COLD_JUNCTION);
 
 		// Sort this out with something better at some point
-		if( systemp > 50.0f ) {
+		if (systemp > 50.0f) {
 			sysfanspeed = 0xff;
-		} else if( systemp > 45.0f ) {
+		} else if (systemp > 45.0f) {
 			sysfanspeed = 0xc0;
-		} else if( systemp > 42.0f ) {
+		} else if (systemp > 42.0f) {
 			sysfanspeed = 0x80;
-		} else if( systemp > 40.0f ) {
+		} else if (systemp > 40.0f) {
 			sysfanspeed = 0x50;
 		}
 	} else {
-		sysfanspeed = 0xff; // No sensor, run at full speed as a precaution
+		// No sensor, run at full speed as a precaution
+		sysfanspeed = 0xff;
 	}
 
 	uint32_t temp = SYSFAN_PWM_PERIOD >> 8;
 	temp *= sysfanspeed;
-	if( sysfanspeed == 0xff ) temp = SYSFAN_PWM_PERIOD; // Make sure we reach 100% duty cycle
+	if (sysfanspeed == 0xff) {
+		// Make sure we reach 100% duty cycle
+		temp = SYSFAN_PWM_PERIOD;
+	}
 	syspwmval = temp;
 
-	Sched_SetState( SYSFANPWM_WORK, 2, 0 );
-	//lastsysfanspeed = sysfanspeed;
+	Sched_SetState(SYSFANPWM_WORK, 2, 0);
+
 	return TICKS_SECS( 5 );
 }
 
-void SystemFan_Init( void ) {
-	printf("\n%s",__FUNCTION__);
-	Sched_SetWorkfunc( SYSFANPWM_WORK, SystemFanPWM_Work );
-	Sched_SetWorkfunc( SYSFANSENSE_WORK, SystemFanSense_Work );
+void SystemFan_Init(void) {
+	printf("\n%s", __FUNCTION__);
+	Sched_SetWorkfunc(SYSFANPWM_WORK, SystemFanPWM_Work);
+	Sched_SetWorkfunc(SYSFANSENSE_WORK, SystemFanSense_Work);
 
-	syspwmval = SYSFAN_PWM_PERIOD; // Turn on fan briefly at boot to indicate that it actually works
-	Sched_SetState( SYSFANPWM_WORK, 2, 0 ); // Enable PWM task
-	Sched_SetState( SYSFANSENSE_WORK, 1, TICKS_SECS( 2 ) ); // Enable Sense task
+	// Turn on fan briefly at boot to indicate that it actually works
+	syspwmval = SYSFAN_PWM_PERIOD;
+	Sched_SetState(SYSFANPWM_WORK, 2, 0); // Enable PWM task
+	Sched_SetState(SYSFANSENSE_WORK, 1, TICKS_SECS( 2 ) ); // Enable Sense task
 }
