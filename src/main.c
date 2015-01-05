@@ -50,7 +50,7 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 }
 
 // Support for boot ROM functions (get part number etc)
-typedef void (*IAP)(unsigned int [],unsigned int[]);
+typedef void (*IAP)(unsigned int [], unsigned int[]);
 IAP iap_entry = (void*)0x7ffffff1;
 #define IAP_READ_PART     (54)
 #define IAP_REINVOKE_ISP  (57)
@@ -73,7 +73,7 @@ partmapStruct partmap[] = {
 		{"LPC2146", 0x0402ff23},
 		{"LPC2148", 0x0402ff25},
 };
-#define NUM_PARTS (sizeof(partmap)/sizeof(partmap[0]))
+#define NUM_PARTS (sizeof(partmap) / sizeof(partmap[0]))
 
 uint32_t partid,partrev;
 uint32_t command[1];
@@ -96,9 +96,9 @@ setupMenuStruct setupmenu[] = {
 		{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
 		{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
 };
-#define NUM_SETUP_ITEMS (sizeof(setupmenu)/sizeof(setupmenu[0]))
+#define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
-static int32_t Main_Work( void );
+static int32_t Main_Work(void);
 
 int main(void) {
 	char buf[22];
@@ -129,7 +129,7 @@ int main(void) {
 	PLLCON = 0x01;
 	PLLFEED = 0xaa;
 	PLLFEED = 0x55; // Feed complete
-	while(!(PLLSTAT & (1<<10))); // Wait for PLL to lock
+	while (!(PLLSTAT & (1<<10))); // Wait for PLL to lock
 	PLLCON = 0x03;
 	PLLFEED = 0xaa;
 	PLLFEED = 0x55; // Feed complete
@@ -153,7 +153,7 @@ int main(void) {
 	NV_Init();
 
 	LCD_Init();
-	LCD_BMPDisplay(logobmp,0,0);
+	LCD_BMPDisplay(logobmp, 0, 0);
 
 	// Setup watchdog
 	WDTC = PCLKFREQ / 3; // Some margin (PCLKFREQ/4 would be exactly the period the WD is fed by sleep_work)
@@ -163,32 +163,36 @@ int main(void) {
 
 	uint8_t resetreason = RSIR;
 	RSIR = 0x0f; // Clear it out
-	printf("\nReset reason(s): %s%s%s%s", (resetreason&(1<<0))?"[POR]":"", (resetreason&(1<<1))?"[EXTR]":"",
-			(resetreason&(1<<2))?"[WDTR]":"", (resetreason&(1<<3))?"[BODR]":"");
+	printf(
+		"\nReset reason(s): %s%s%s%s",
+		(resetreason & (1<<0)) ? "[POR]" : "",
+		(resetreason & (1<<1)) ? "[EXTR]" : "",
+		(resetreason & (1<<2)) ? "[WDTR]" : "",
+		(resetreason & (1<<3)) ? "[BODR]" : "");
 
 	// Request part number
 	command[0] = IAP_READ_PART;
 	iap_entry((void *)command, (void *)result);
 	const char* partstrptr = NULL;
-	for(int i=0; i<NUM_PARTS; i++) {
-		if(result[1] == partmap[i].id) {
+	for (int i = 0; i < NUM_PARTS; i++) {
+		if (result[1] == partmap[i].id) {
 			partstrptr = partmap[i].name;
 			break;
 		}
 	}
 	// Read part revision
-	partrev=*(uint8_t*)PART_REV_ADDR;
-	if(partrev==0 || partrev > 0x1a) {
+	partrev = *(uint8_t*)PART_REV_ADDR;
+	if (partrev==0 || partrev > 0x1a) {
 		partrev = '-';
 	} else {
 		partrev += 'A' - 1;
 	}
-	len = snprintf(buf,sizeof(buf),"%s rev %c",partstrptr,(int)partrev);
-	LCD_disp_str((uint8_t*)buf, len, 0, 64-6, FONT6X6);
+	len = snprintf(buf, sizeof(buf), "%s rev %c", partstrptr, (int)partrev);
+	LCD_disp_str((uint8_t*)buf, len, 0, 64 - 6, FONT6X6);
 	printf("\nRunning on an %s", buf);
 
-	len = snprintf(buf,sizeof(buf),"%s",Version_GetGitVersion());
-	LCD_disp_str((uint8_t*)buf, len, 128-(len*6), 0, FONT6X6);
+	len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
+	LCD_disp_str((uint8_t*)buf, len, 128 - (len * 6), 0, FONT6X6);
 
 	LCD_FB_Update();
 	Keypad_Init();
@@ -200,18 +204,18 @@ int main(void) {
 	Reflow_Init();
 	SystemFan_Init();
 
-	Sched_SetWorkfunc( MAIN_WORK, Main_Work );
-	Sched_SetState( MAIN_WORK, 1, TICKS_SECS( 2 ) ); // Enable in 2 seconds
+	Sched_SetWorkfunc(MAIN_WORK, Main_Work);
+	Sched_SetState(MAIN_WORK, 1, TICKS_SECS(2)); // Enable in 2 seconds
 
-	Buzzer_Beep( BUZZ_1KHZ, 255, TICKS_MS(100) );
+	Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100));
 
-	while(1) {
+	while (1) {
 #ifdef ENABLE_SLEEP
 		int32_t sleeptime;
-		sleeptime=Sched_Do( 0 ); // No fast-forward support
+		sleeptime = Sched_Do(0); // No fast-forward support
 		//printf("\n%d ticks 'til next activity"),sleeptime);
 #else
-		Sched_Do( 0 ); // No fast-forward support
+		Sched_Do(0); // No fast-forward support
 #endif
 	}
 	return 0;
