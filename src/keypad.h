@@ -8,6 +8,6 @@
 #define KEY_S (1<<4)
 
 uint32_t Keypad_Get(void);
-void Keypad_Init( void );
+void Keypad_Init(void);
 
 #endif /* KEYPAD_H_ */
