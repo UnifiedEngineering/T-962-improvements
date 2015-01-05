@@ -45,13 +45,13 @@ static inline uint32_t getpin() {
 }
 
 static inline uint32_t xferbyte(uint32_t thebyte) {
-	for(uint32_t bits=0; bits<8; bits++) {
+	for (uint32_t bits = 0; bits < 8; bits++) {
 		setpin0();
 		BusyWait(TICKS_US(1.5)); // 1.5us
-		if(thebyte&0x01) setpinhiz();
+		if (thebyte&0x01) setpinhiz();
 		thebyte >>= 1;
 		BusyWait(TICKS_US(13));
-		if(getpin()) thebyte |= 0x80;
+		if (getpin()) thebyte |= 0x80;
 		BusyWait(TICKS_US(45));
 		setpinhiz();
 		BusyWait(TICKS_US(10));
@@ -62,10 +62,10 @@ static inline uint32_t xferbyte(uint32_t thebyte) {
 static inline uint32_t xferbit(uint32_t thebit) {
 	setpin0();
 	BusyWait(TICKS_US(1.5));
-	if(thebit) setpinhiz();
+	if (thebit) setpinhiz();
 	thebit = 0;
 	BusyWait(TICKS_US(13));
-	if(getpin()) thebit = 0x01;
+	if (getpin()) thebit = 0x01;
 	BusyWait(TICKS_US(45));
 	setpinhiz();
 	BusyWait(TICKS_US(10));
@@ -73,13 +73,13 @@ static inline uint32_t xferbit(uint32_t thebit) {
 }
 
 static inline uint32_t resetbus(void) {
-	uint32_t devicepresent=0;
+	uint32_t devicepresent = 0;
 
 	setpin0();
 	BusyWait(TICKS_US(480));
 	setpinhiz();
 	BusyWait(TICKS_US(70));
-	if(getpin() == 0) devicepresent=1;
+	if (getpin() == 0) devicepresent = 1;
 	BusyWait(TICKS_US(410));
 
 	return devicepresent;
@@ -112,29 +112,29 @@ int LastDeviceFlag;
 uint8_t crc8;
 
 static const unsigned char dscrc_table[] = {
-	0, 94,188,226, 97, 63,221,131,194,156,126, 32,163,253, 31, 65,
-	157,195, 33,127,252,162, 64, 30, 95, 1,227,189, 62, 96,130,220,
-	35,125,159,193, 66, 28,254,160,225,191, 93, 3,128,222, 60, 98,
-	190,224, 2, 92,223,129, 99, 61,124, 34,192,158, 29, 67,161,255,
-	70, 24,250,164, 39,121,155,197,132,218, 56,102,229,187, 89, 7,
-	219,133,103, 57,186,228, 6, 88, 25, 71,165,251,120, 38,196,154,
-	101, 59,217,135, 4, 90,184,230,167,249, 27, 69,198,152,122, 36,
-	248,166, 68, 26,153,199, 37,123, 58,100,134,216, 91, 5,231,185,
-	140,210, 48,110,237,179, 81, 15, 78, 16,242,172, 47,113,147,205,
-	17, 79,173,243,112, 46,204,146,211,141,111, 49,178,236, 14, 80,
-	175,241, 19, 77,206,144,114, 44,109, 51,209,143, 12, 82,176,238,
-	50,108,142,208, 83, 13,239,177,240,174, 76, 18,145,207, 45,115,
-	202,148,118, 40,171,245, 23, 73, 8, 86,180,234,105, 55,213,139,
-	87, 9,235,181, 54,104,138,212,149,203, 41,119,244,170, 72, 22,
-	233,183, 85, 11,136,214, 52,106, 43,117,151,201, 74, 20,246,168,
-	116, 42,200,150, 21, 75,169,247,182,232, 10, 84,215,137,107, 53
+	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
+	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
+	35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
+	190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
+	70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
+	219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
+	101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
+	248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
+	140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
+	17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
+	175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
+	50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
+	202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
+	87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
+	233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
+	116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
 };
 
-//--------------------------------------------------------------------------
-// Calculate the CRC8 of the byte value provided with the current
-// global 'crc8' value.
-// Returns current global crc8 value
-//
+/*
+ * Calculate the CRC8 of the byte value provided with the current
+ * global 'crc8' value.
+ * Returns current global crc8 value
+ */
 static uint8_t docrc8(uint8_t value) {
 	// See Application Note 27
 
@@ -143,18 +143,17 @@ static uint8_t docrc8(uint8_t value) {
 	return crc8;
 }
 
-//--------------------------------------------------------------------------
-// Perform the 1-Wire Search Algorithm on the 1-Wire bus using the existing
-// search state.
-// Return TRUE : device found, ROM number in ROM_NO buffer
-// FALSE : device not found, end of search
-//
-static int OWSearch()
-{
+/* Perform the 1-Wire Search Algorithm on the 1-Wire bus using the existing
+ * search state.
+ * Return TRUE : device found, ROM number in ROM_NO buffer
+ * FALSE : device not found, end of search
+ */
+static int OWSearch() {
 	int id_bit_number;
 	int last_zero, rom_byte_number, search_result;
 	int id_bit, cmp_id_bit;
 	uint8_t rom_byte_mask, search_direction;
+
 	// initialize for search
 	id_bit_number = 1;
 	last_zero = 0;
@@ -173,41 +172,44 @@ static int OWSearch()
 			return false;
 		}
 		// issue the search command
-		xferbyte( OW_SEARCH_ROM );
+		xferbyte(OW_SEARCH_ROM);
 		// loop to do the search
 		do {
 			// read a bit and its complement
 			id_bit = xferbit( true );
 			cmp_id_bit = xferbit( true );
 			// check for no devices on 1-wire
-			if ((id_bit == 1) && (cmp_id_bit == 1))
+			if ((id_bit == 1) && (cmp_id_bit == 1)) {
 				break;
-			else {
+			} else {
 				// all devices coupled have 0 or 1
-				if (id_bit != cmp_id_bit)
+				if (id_bit != cmp_id_bit) {
 					search_direction = id_bit; // bit write value for search
-				else {
+				} else {
 					// if this discrepancy if before the Last Discrepancy
 					// on a previous next then pick the same as last time
-					if (id_bit_number < LastDiscrepancy)
+					if (id_bit_number < LastDiscrepancy) {
 						search_direction = ((ROM_NO[rom_byte_number] & rom_byte_mask) > 0);
-					else
+					} else {
 						// if equal to last pick 1, if not then pick 0
 						search_direction = (id_bit_number == LastDiscrepancy);
+					}
 					// if 0 was picked then record its position in LastZero
 					if (search_direction == 0) {
 						last_zero = id_bit_number;
 						// check for Last discrepancy in family
-						if (last_zero < 9)
+						if (last_zero < 9) {
 							LastFamilyDiscrepancy = last_zero;
+						}
 					}
 				}
 				// set or clear the bit in the ROM byte rom_byte_number
 				// with mask rom_byte_mask
-				if (search_direction == 1)
+				if (search_direction == 1) {
 					ROM_NO[rom_byte_number] |= rom_byte_mask;
-				else
+				} else {
 					ROM_NO[rom_byte_number] &= ~rom_byte_mask;
+				}
 				// serial number search direction write bit
 				xferbit(search_direction);
 				// increment the byte counter id_bit_number
@@ -222,13 +224,15 @@ static int OWSearch()
 				}
 			}
 		} while(rom_byte_number < 8); // loop until through all ROM bytes 0-7
+
 		// if the search was successful then
 		if (!((id_bit_number < 65) || (crc8 != 0))) {
 			// search successful so set LastDiscrepancy,LastDeviceFlag,search_result
 			LastDiscrepancy = last_zero;
 			// check for last device
-			if (LastDiscrepancy == 0)
+			if (LastDiscrepancy == 0) {
 				LastDeviceFlag = true;
+			}
 			search_result = true;
 		}
 	}
@@ -242,11 +246,11 @@ static int OWSearch()
 	return search_result;
 }
 
-//--------------------------------------------------------------------------
-// Find the 'first' devices on the 1-Wire bus
-// Return TRUE : device found, ROM number in ROM_NO buffer
-// FALSE : no device present
-//
+/*
+ * Find the 'first' devices on the 1-Wire bus
+ * Return TRUE : device found, ROM number in ROM_NO buffer
+ * FALSE : no device present
+ */
 static int OWFirst() {
 	// reset the search state
 	LastDiscrepancy = 0;
@@ -254,35 +258,35 @@ static int OWFirst() {
 	LastFamilyDiscrepancy = 0;
 	return OWSearch();
 }
-//--------------------------------------------------------------------------
-// Find the 'next' devices on the 1-Wire bus
-// Return TRUE : device found, ROM number in ROM_NO buffer
-// FALSE : device not found, end of search
-//
-static int OWNext()
-{
+
+/*
+ * Find the 'next' devices on the 1-Wire bus
+ * Return TRUE : device found, ROM number in ROM_NO buffer
+ * FALSE : device not found, end of search
+ */
+static int OWNext() {
 	// leave the search state alone
 	return OWSearch();
 }
 
 static void selectdevbyidx(int idx) {
-	if(idx < numowdevices) {
+	if (idx < numowdevices) {
 		resetbus();
 		xferbyte(OW_MATCH_ROM);
-		for( int idloop = 0; idloop < 8; idloop++ ) { // Send ROM device ID
+		for (int idloop = 0; idloop < 8; idloop++) { // Send ROM device ID
 			xferbyte(owdeviceids[idx][idloop]);
 		}
 	}
 }
 
-static int32_t OneWire_Work( void ) {
+static int32_t OneWire_Work(void) {
 	static uint8_t mystate = 0;
 	uint8_t scratch[9];
 	int32_t retval = 0;
 
-	if( mystate == 0 ) {
+	if (mystate == 0) {
 		uint32_t save = VIC_DisableIRQ();
-		if(resetbus()) {
+		if (resetbus()) {
 			xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
 			xferbyte(OW_CONVERT_T);
 			setpin1();
@@ -291,16 +295,15 @@ static int32_t OneWire_Work( void ) {
 			mystate++;
 		}
 		VIC_RestoreIRQ( save );
-	} else if( mystate == 1 ) {
-		for( int i = 0; i < numowdevices; i++ ) {
+	} else if (mystate == 1) {
+		for (int i = 0; i < numowdevices; i++) {
 			uint32_t save = VIC_DisableIRQ();
 			selectdevbyidx(i);
 			xferbyte(OW_READ_SCRATCHPAD);
-			for(uint32_t iter=0; iter<4; iter++) { // Read four bytes
+			for (uint32_t iter = 0; iter < 4; iter++) { // Read four bytes
 				scratch[iter] = xferbyte(0xff);
-				//printf("%02x ",scratch[iter]);
 			}
-			VIC_RestoreIRQ( save );
+			VIC_RestoreIRQ(save);
 			int16_t tmp = scratch[1]<<8 | scratch[0];
 			devreadout[i] = tmp;
 			tmp = scratch[3]<<8 | scratch[2];
@@ -314,13 +317,13 @@ static int32_t OneWire_Work( void ) {
 	return retval;
 }
 
-uint32_t OneWire_Init( void ) {
-	printf("\n%s called",__FUNCTION__);
-	Sched_SetWorkfunc( ONEWIRE_WORK, OneWire_Work );
+uint32_t OneWire_Init(void) {
+	printf("\n%s called", __FUNCTION__);
+	Sched_SetWorkfunc(ONEWIRE_WORK, OneWire_Work);
 	printf("\nScanning 1-wire bus...");
 
 	tempidx = -1; // Assume we don't find a temperature sensor
-	for( int i = 0; i < sizeof(tcidmapping); i++ ) {
+	for (int i = 0; i < sizeof(tcidmapping); i++) {
 		tcidmapping[i] = -1; // Assume we don't find any thermocouple interfaces
 	}
 
@@ -336,24 +339,25 @@ uint32_t OneWire_Init( void ) {
 		rslt = OWNext();
 		VIC_RestoreIRQ( save );
 	}
-	if(numowdevices) {
-		for( int iter = 0; iter < numowdevices; iter++ ) {
+
+	if (numowdevices) {
+		for (int iter = 0; iter < numowdevices; iter++) {
 			printf("\n Found ");
-			for( int idloop = 7; idloop >= 0; idloop-- ) {
+			for (int idloop = 7; idloop >= 0; idloop--) {
 				printf("%02x", owdeviceids[iter][idloop]);
 			}
 			uint8_t family = owdeviceids[iter][0];
-			if(family == OW_FAMILY_TEMP) {
+			if (family == OW_FAMILY_TEMP) {
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_WRITE_SCRATCHPAD);
 				xferbyte(0x00);
 				xferbyte(0x00);
 				xferbyte(0x1f); // Reduce resolution to 0.5C to keep conversion time reasonable
-				VIC_RestoreIRQ( save );
+				VIC_RestoreIRQ(save);
 				tempidx = iter; // Keep track of where we saw the last/only temperature sensor
 				printf(" [Temperature sensor]");
-			} else if(family == OW_FAMILY_TC) {
+			} else if (family == OW_FAMILY_TC) {
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_READ_SCRATCHPAD);
@@ -371,8 +375,8 @@ uint32_t OneWire_Init( void ) {
 		printf(" No devices found!");
 	}
 
-	if( numowdevices ) {
-		Sched_SetState( ONEWIRE_WORK, 2, 0 ); // Enable OneWire task if there's at least one device
+	if (numowdevices) {
+		Sched_SetState(ONEWIRE_WORK, 2, 0); // Enable OneWire task if there's at least one device
 	}
 	return numowdevices;
 }
@@ -380,8 +384,8 @@ uint32_t OneWire_Init( void ) {
 float OneWire_GetTempSensorReading(void) {
 	float retval = 999.0f; // Report invalid temp if not found
 	if(tempidx >= 0) {
-		retval=(float)devreadout[tempidx];
-		retval/=16;
+		retval = (float)devreadout[tempidx];
+		retval /= 16;
 		//printf(" (%.1f C)",retval);
 	} else {
 		//printf(" (%.1f C assumed)",retval);
@@ -390,22 +394,25 @@ float OneWire_GetTempSensorReading(void) {
 }
 
 int OneWire_IsTCPresent(uint8_t tcid) {
-	if(tcid < sizeof(tcidmapping) && tcidmapping[tcid] >= 0) {
-		if( !(devreadout[tcidmapping[tcid]] & 0x01) ) return 1; // A faulty/not connected TC will not be flagged as present
+	if (tcid < sizeof(tcidmapping) && tcidmapping[tcid] >= 0) {
+		if (!(devreadout[tcidmapping[tcid]] & 0x01)) {
+			// A faulty/not connected TC will not be flagged as present
+			return 1;
+		}
 	}
 	return 0;
 }
 
 float OneWire_GetTCReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
-	if(tcid < sizeof(tcidmapping)) {
+	if (tcid < sizeof(tcidmapping)) {
 		uint8_t idx = tcidmapping[tcid];
-		if( idx >=0 ) { // Is this ID present?
-			if(devreadout[idx] & 0x01) { // Fault detected
+		if (idx >=0) { // Is this ID present?
+			if (devreadout[idx] & 0x01) { // Fault detected
 				retval = 999.0f; // Invalid
 			} else {
-				retval=(float)(devreadout[idx] & 0xfffc); // Mask reserved bit
-				retval/=16;
+				retval = (float)(devreadout[idx] & 0xfffc); // Mask reserved bit
+				retval /= 16;
 				//printf(" (%x=%.1f C)",tcid,retval);
 			}
 		}
@@ -415,14 +422,14 @@ float OneWire_GetTCReading(uint8_t tcid) {
 
 float OneWire_GetTCColdReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
-	if(tcid < sizeof(tcidmapping)) {
+	if (tcid < sizeof(tcidmapping)) {
 		uint8_t idx = tcidmapping[tcid];
-		if( idx >=0 ) { // Is this ID present?
-			if(extrareadout[idx] & 0x07) { // Any fault detected
+		if (idx >=0) { // Is this ID present?
+			if (extrareadout[idx] & 0x07) { // Any fault detected
 				retval = 999.0f; // Invalid
 			} else {
-				retval=(float)(extrareadout[idx] & 0xfff0); // Mask reserved/fault bits
-				retval/=256;
+				retval = (float)(extrareadout[idx] & 0xfff0); // Mask reserved/fault bits
+				retval /= 256;
 				//printf(" (%x=%.1f C)",tcid,retval);
 			}
 		}
