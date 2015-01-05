@@ -43,8 +43,8 @@
  */
 //#define MAXTEMPOVERRIDE
 
-//#define RAMPTEST
-//#define PIDTEST
+#define RAMPTEST
+#define PIDTEST
 #define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
 #define PID_TIMEBASE (250) // 250ms between each run
@@ -68,6 +68,8 @@ uint8_t tempvalid = 0;
 int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
+
+int standby_logging = 1;
 
 // Number of temperature settings in a reflow profile
 #define NUMPROFILETEMPS (48)
@@ -288,14 +290,16 @@ static int32_t Reflow_Work(void) {
 		}
 	}
 
-	printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
-			((float)numticks / (1000.0f / PID_TIMEBASE)),
-			temperature[0], temperature[1],
-			(tempvalid & (1 << 2)) ? temperature[2] : 0.0f,
-			(tempvalid & (1 << 3)) ? temperature[3] : 0.0f,
-			intsetpoint, avgtemp, heat, fan,
-			cjsensorpresent ? coldjunction : 0.0f,
-			modestr);
+	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
+		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
+		       ((float)numticks / (1000.0f / PID_TIMEBASE)),
+		       temperature[0], temperature[1],
+		       (tempvalid & (1 << 2)) ? temperature[2] : 0.0f,
+		       (tempvalid & (1 << 3)) ? temperature[3] : 0.0f,
+		       intsetpoint, avgtemp, heat, fan,
+		       cjsensorpresent ? coldjunction : 0.0f,
+		       modestr);
+	}
 
 	// Average temperature for UI
 	intavgtemp = (int16_t)avgtemp;
@@ -602,4 +606,8 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		*pfan = NV_GetConfig(REFLOW_MIN_FAN_SPEED);
 	}
 	return retval;
+}
+
+void Reflow_ToggleStandbyLogging(void) {
+	standby_logging = !standby_logging;
 }
