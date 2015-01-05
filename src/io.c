@@ -25,7 +25,7 @@
 #include "vic.h"
 
 void Set_Heater(uint8_t enable) {
-	if( enable < 0xff ) {
+	if (enable < 0xff) {
 		PINSEL0 |= (2<<18); // Make sure PWM6 function is enabled
 	} else { // Fully on is dealt with separately to avoid output glitch
 		PINSEL0 &= ~(2<<18); // Disable PWM6 function on pin
@@ -36,7 +36,7 @@ void Set_Heater(uint8_t enable) {
 }
 
 void Set_Fan(uint8_t enable) {
-	if( enable < 0xff ) {
+	if (enable < 0xff) {
 		PINSEL0 |= (2<<16); // Make sure PWM4 function is enabled
 	} else { // Fully on is dealt with separately to avoid output glitch
 		PINSEL0 &= ~(2<<16); // Disable PWM4 function on pin
@@ -50,14 +50,18 @@ static int32_t Sleep_Work(void) {
 	//FIO0PIN ^= (1<<31); // Toggle debug LED
 	// For some reason P0.31 status cannot be read out, so the following is used instead:
 	static uint8_t flip = 0;
-	if( flip ) FIO0SET = (1<<31); else FIO0CLR = (1<<31);
+	if (flip) {
+		FIO0SET = (1<<31);
+	} else {
+		 FIO0CLR = (1<<31);
+	}
 	flip ^= 1;
 
 	// If interrupts are used they must be disabled around the following two instructions!
 	uint32_t save = VIC_DisableIRQ();
 	WDFEED = 0xaa; // Feed watchdog
 	WDFEED = 0x55;
-	VIC_RestoreIRQ( save );
+	VIC_RestoreIRQ(save);
 	return TICKS_SECS(1);
 }
 
@@ -75,7 +79,7 @@ void IO_Init(void) {
 
 	FIO0PIN = 0x00; // Turn LED on and make PWM outputs active when in GPIO mode (to help 100% duty cycle issue)
 
-	PWMPR = PCLKFREQ/(256*5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
+	PWMPR = PCLKFREQ / (256 * 5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
 	PWMMCR = (1<<1); // Reset TC on mr0 overflow (period time)
 	PWMMR0 = 0xff; // Period time
 	PWMLER = (1<<0); // Enable latch on mr0 (Do I really need to do this?)
