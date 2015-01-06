@@ -26,10 +26,16 @@
 #include "i2c.h"
 
 #define EEADDR (0x50<<1)
+//#define DUMP_EEPROM
 
 void EEPROM_Init(void) {
-#define DUMP_EEPROM
-#ifdef DUMP_EEPROM
+	#ifdef DUMP_EEPROM
+		EEPROM_Dump();
+	#endif
+	// No init needed at this point, maybe detect the actual presence some day
+}
+
+void EEPROM_Dump(void) {
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
 	printf("\nEEPROM contents:");
@@ -39,8 +45,6 @@ void EEPROM_Init(void) {
 		}
 		printf(" %02x", dumpbuf[i]);
 	}
-#endif
-	// No init needed at this point, maybe detect the actual presence some day
 }
 
 int32_t EEPROM_Read(uint8_t* dest, uint32_t startpos, uint32_t len) {
