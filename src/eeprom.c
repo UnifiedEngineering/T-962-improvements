@@ -27,26 +27,30 @@
 
 #define EEADDR (0x50<<1)
 
-void EEPROM_Init( void ) {
+void EEPROM_Init(void) {
 #define DUMP_EEPROM
 #ifdef DUMP_EEPROM
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
 	printf("\nEEPROM contents:");
-	for(int foo=0; foo < sizeof(dumpbuf); foo++) {
-		if( (foo & 0x0f) == 0 ) printf("\n0x%04x:",foo);
-		printf(" %02x",dumpbuf[foo]);
+	for (int i = 0; i < sizeof(dumpbuf); i++) {
+		if ((i & 0x0f) == 0){
+			printf("\n0x%04x:", i);
+		}
+		printf(" %02x", dumpbuf[i]);
 	}
 #endif
 	// No init needed at this point, maybe detect the actual presence some day
 }
 
 int32_t EEPROM_Read(uint8_t* dest, uint32_t startpos, uint32_t len) {
-	int32_t retval=0;
-	if(startpos<256 && dest && len && len<=256) {
-		uint8_t offset=(uint8_t)startpos;
+	int32_t retval = 0;
+	if (startpos<256 && dest && len && len<=256) {
+		uint8_t offset = (uint8_t)startpos;
 		retval = I2C_Xfer(EEADDR, &offset, 1, 0); // Set address pointer to startpos
-		if(!retval) retval = I2C_Xfer(EEADDR | 1, dest, len, 1); // Read requested data
+		if (!retval) {
+			retval = I2C_Xfer(EEADDR | 1, dest, len, 1); // Read requested data
+		}
 	}
 	return retval;
 }
