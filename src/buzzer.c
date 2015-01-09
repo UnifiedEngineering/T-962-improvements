@@ -33,12 +33,12 @@ int32_t requested_buzz_length;
 
 static int32_t Buzzer_Work(void) {
 	if (requested_buzz_freq != BUZZ_NONE) {
-		FIO0SET = (1<<21);
+		FIO0SET = (1 << 21);
 		requested_buzz_freq = BUZZ_NONE;
 	} else {
 		// Don't schedule until next beep is requested
 		requested_buzz_length = -1;
-		FIO0CLR = (1<<21);
+		FIO0CLR = (1 << 21);
 	}
 	return requested_buzz_length;
 }
