@@ -323,7 +323,8 @@ static int32_t Main_Work(void) {
 
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 
-		if (keyspressed & KEY_S) { // Leave about
+		// Leave about with any key.
+		if (keyspressed & KEY_ANY) {
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
