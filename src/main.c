@@ -105,7 +105,7 @@ int main(void) {
 	int len;
 
 	/* Hold F1-Key at boot to force ISP mode */
-	if ((IOPIN0 & (1<<23)) == 0) {
+	if ((IOPIN0 & (1 << 23)) == 0) {
 		//NB: If you want to call this later need to set a bunch of registers back
 		//    to reset state. Haven't fully figured this out yet, might want to
 		//    progmatically call bootloader, not sure. If calling later be sure
@@ -117,19 +117,19 @@ int main(void) {
 		//Turn off FAN & Heater using legacy registers so they stay off during bootloader
 		//Fan = PIN0.8
 		//Heater = PIN0.9
-		IODIR0 = (1<<8) | (1<<9);
-		IOSET0 = (1<<8) | (1<<9);
+		IODIR0 = (1 << 8) | (1 << 9);
+		IOSET0 = (1 << 8) | (1 << 9);
 
 		//Re-enter ISP Mode, this function will never return
 		command[0] = IAP_REINVOKE_ISP;
 		iap_entry((void *)command, (void *)result);
 	}
 
-	PLLCFG = (1<<5) | (4<<0); //PLL MSEL=0x4 (+1), PSEL=0x1 (/2) so 11.0592*5 = 55.296MHz, Fcco = (2x55.296)*2 = 221MHz which is within 156 to 320MHz
+	PLLCFG = (1 << 5) | (4 << 0); //PLL MSEL=0x4 (+1), PSEL=0x1 (/2) so 11.0592*5 = 55.296MHz, Fcco = (2x55.296)*2 = 221MHz which is within 156 to 320MHz
 	PLLCON = 0x01;
 	PLLFEED = 0xaa;
 	PLLFEED = 0x55; // Feed complete
-	while (!(PLLSTAT & (1<<10))); // Wait for PLL to lock
+	while (!(PLLSTAT & (1 << 10))); // Wait for PLL to lock
 	PLLCON = 0x03;
 	PLLFEED = 0xaa;
 	PLLFEED = 0x55; // Feed complete
@@ -165,10 +165,10 @@ int main(void) {
 	RSIR = 0x0f; // Clear it out
 	printf(
 		"\nReset reason(s): %s%s%s%s",
-		(resetreason & (1<<0)) ? "[POR]" : "",
-		(resetreason & (1<<1)) ? "[EXTR]" : "",
-		(resetreason & (1<<2)) ? "[WDTR]" : "",
-		(resetreason & (1<<3)) ? "[BODR]" : "");
+		(resetreason & (1 << 0)) ? "[POR]" : "",
+		(resetreason & (1 << 1)) ? "[EXTR]" : "",
+		(resetreason & (1 << 2)) ? "[WDTR]" : "",
+		(resetreason & (1 << 3)) ? "[BODR]" : "");
 
 	// Request part number
 	command[0] = IAP_READ_PART;
@@ -403,7 +403,7 @@ static int32_t Main_Work(void) {
 		}
 
 		len = snprintf(buf, sizeof(buf),"- SETPOINT %u` +", (unsigned int)setpoint);
-		LCD_disp_str((uint8_t*)buf, len, 64-(len*3), 10, FONT6X6);
+		LCD_disp_str((uint8_t*)buf, len, 64 - (len * 3), 10, FONT6X6);
 
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 10, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"F2", 2, 127-12, 10, FONT6X6 | INVERT);

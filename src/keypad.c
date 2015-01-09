@@ -25,11 +25,11 @@
 #include "io.h"
 #include "sched.h"
 
-#define F1KEY_PORTBIT (1<<23)
-#define F2KEY_PORTBIT (1<<15)
-#define F3KEY_PORTBIT (1<<16)
-#define F4KEY_PORTBIT (1<<4)
-#define S_KEY_PORTBIT (1<<20)
+#define F1KEY_PORTBIT (1 << 23)
+#define F2KEY_PORTBIT (1 << 15)
+#define F3KEY_PORTBIT (1 << 16)
+#define F4KEY_PORTBIT (1 << 4)
+#define S_KEY_PORTBIT (1 << 20)
 
 #define KEYREPEATDELAY (6)
 

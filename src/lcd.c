@@ -51,11 +51,11 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	// First of all, make lowercase into uppercase
 	// (as there are no lowercase letters in the font)
 	if ((theChar & 0x7f) >= 0x61 && (theChar & 0x7f) <= 0x7a) {
-		theChar-=0x20;
+		theChar -= 0x20;
 	}
 	uint16_t fontoffset = ((theChar & 0x7f) - 0x20) * 6;
 	uint8_t yoffset = Y & 0x7;
-	Y>>=3;
+	Y >>= 3;
 
 #ifndef MINIMALISTIC
 	uint8_t width = (theChar & 0x80) ? 7 : 6;
@@ -94,7 +94,7 @@ void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, ui
 	uint8_t invmask = theFormat & 0x80;
 	for(uint8_t q = 0; q < theLen; q++) {
 		charoutsmall(theStr[q] | invmask, startx, y);
-		startx+=6;
+		startx += 6;
 	}
 #endif
 }
@@ -190,9 +190,9 @@ void LCD_SetPixel(uint8_t x, uint8_t y) {
 
 void LCD_SetBacklight(uint8_t backlight) {
 	if (backlight) {
-		FIO0SET = (1<<11);
+		FIO0SET = (1 << 11);
 	} else {
-		FIO0CLR = (1<<11);
+		FIO0CLR = (1 << 11);
 	}
 }
 
@@ -202,10 +202,10 @@ void LCD_SetBacklight(uint8_t backlight) {
 static void LCD_WriteCmd(uint32_t cmdbyte) {
 	// Start by making sure none of the display controllers are busy
 	FIO1DIR = 0x000000; // Data pins are now inputs
-	FIO0CLR = (1<<22) | (1<<13); // RS low, also make sure other CS is low
-	FIO0SET = (1<<12); // One CS at a time
-	FIO0SET = (1<<19); // RW must go high before E does
-	FIO0SET = (1<<18); // E high for read
+	FIO0CLR = (1 << 22) | (1 << 13); // RS low, also make sure other CS is low
+	FIO0SET = (1 << 12); // One CS at a time
+	FIO0SET = (1 << 19); // RW must go high before E does
+	FIO0SET = (1 << 18); // E high for read
 	FIO1PIN; // Need 320ns of timing margin here
 	FIO1PIN;
 	FIO1PIN;
@@ -213,8 +213,8 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN;
 	FIO1PIN;
 	UNTIL_BUSY_IS_CLEAR;
-	FIO0CLR = (1<<12); // Swap CS
-	FIO0CLR = (1<<18); // E low again
+	FIO0CLR = (1 << 12); // Swap CS
+	FIO0CLR = (1 << 18); // E low again
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
@@ -223,8 +223,8 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0SET = (1<<13); // One CS at a time
-	FIO0SET = (1<<18); // E high for read
+	FIO0SET = (1 << 13); // One CS at a time
+	FIO0SET = (1 << 18); // E high for read
 	FIO1PIN; // Need 320ns of timing margin here
 	FIO1PIN;
 	FIO1PIN;
@@ -232,10 +232,10 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN;
 	FIO1PIN;
 	UNTIL_BUSY_IS_CLEAR;
-	FIO0CLR = (1<<19) | (1<<18); // RW + E low again
+	FIO0CLR = (1 << 19) | (1 << 18); // RW + E low again
 	FIO1DIR = 0xff0000; // Data pins output again
 
-	FIO0SET = (1<<12) | (1<<13); // Both CS active (one already activated above, doesn't matter)
+	FIO0SET = (1 << 12) | (1 << 13); // Both CS active (one already activated above, doesn't matter)
 	FIO1PIN = cmdbyte << 16; // Cmd on pins
 	FIO1PIN; // Need ~200ns of timing margin here
 	FIO1PIN;
@@ -243,7 +243,7 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0SET = (1<<18); // E high
+	FIO0SET = (1 << 18); // E high
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
@@ -253,28 +253,28 @@ static void LCD_WriteCmd(uint32_t cmdbyte) {
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0CLR = (1<<18); // E low
+	FIO0CLR = (1 << 18); // E low
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0SET = (1<<22); // RS high
+	FIO0SET = (1 << 22); // RS high
 }
 
 // Because of the cycle time requirements for E inlining actually does not boost performance
 //static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) __attribute__((always_inline));
 static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
 	// Start by making sure that the correct controller is selected, then make sure it's not busy
-	uint32_t csmask = chipnum ? (1<<12) : (1<<13);
-	uint32_t csmask2 = chipnum ? (1<<13) : (1<<12);
+	uint32_t csmask = chipnum ? (1 << 12) : (1 << 13);
+	uint32_t csmask2 = chipnum ? (1 << 13) : (1 << 12);
 	FIO0SET = csmask; // CS active
 	FIO0CLR = csmask2; // CS inactive
 	FIO1DIR = 0x000000; // Data pins are now inputs
-	FIO0CLR = (1<<22); // RS low
-	FIO0SET = (1<<19); // RW must go high before E does
-	FIO0SET = (1<<18); // E high for read
+	FIO0CLR = (1 << 22); // RS low
+	FIO0SET = (1 << 19); // RW must go high before E does
+	FIO0SET = (1 << 18); // E high for read
 	FIO1PIN; // Need 320ns of timing margin here
 	FIO1PIN;
 	FIO1PIN;
@@ -282,8 +282,8 @@ static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
 	FIO1PIN;
 	FIO1PIN;
 	UNTIL_BUSY_IS_CLEAR;
-	FIO0CLR = (1<<18) | (1<<19); // E and RW low
-	FIO0SET = (1<<22); // RS high
+	FIO0CLR = (1 << 18) | (1 << 19); // E and RW low
+	FIO0SET = (1 << 22); // RS high
 	FIO1DIR = 0xff0000; // Data pins output again
 	FIO1PIN = databyte << 16; // Data on pins
 	FIO1PIN; // Need ~200ns of timing margin here
@@ -292,7 +292,7 @@ static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0SET = (1<<18); // E high
+	FIO0SET = (1 << 18); // E high
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
@@ -302,7 +302,7 @@ static inline void LCD_WriteData(uint32_t databyte, uint8_t chipnum) {
 	FIO1PIN;
 	FIO1PIN;
 	FIO1PIN;
-	FIO0CLR = (1<<18); // E low
+	FIO0CLR = (1 << 18); // E low
 /*	When inlining additional padding needs to be done
 	FIO1PIN;
 	FIO1PIN;
