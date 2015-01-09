@@ -24,6 +24,8 @@
 #include "sc18is602b.h"
 #include "sched.h"
 
+#define INVALID_VALUE (999.0f)
+
 #define MAX_SPI_DEVICES (4)
 int16_t spidevreadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
 int16_t spiextrareadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
@@ -32,7 +34,7 @@ int numspidevices = 0;
 static int32_t SPI_TC_Work( void ) {
 	for (int i = 0; i < numspidevices; i++) {
 		SPIxfer_t xfer;
-		xfer.ssmask = 1<<i;
+		xfer.ssmask = 1 << i;
 		xfer.len = 4; // 32 bits from TC interface
 
 		// Doesn't matter what data contains when sending, MOSI not connected
@@ -105,7 +107,7 @@ float SPI_GetTCReading(uint8_t tcid) {
 	float retval = 0.0f;
 	if (tcid < numspidevices) {
 		if (spidevreadout[tcid] & 0x01) { // Fault detected
-			retval = 999.0f; // Invalid
+			retval = INVALID_VALUE;
 		} else {
 			retval = (float)(spidevreadout[tcid] & 0xfffc); // Mask reserved bit
 			retval /= 16;
@@ -119,7 +121,7 @@ float SPI_GetTCColdReading(uint8_t tcid) {
 	float retval = 0.0f;
 	if (tcid < numspidevices) {
 		if (spiextrareadout[tcid] & 0x07) { // Any fault detected
-			retval = 999.0f; // Invalid
+			retval = INVALID_VALUE;
 		} else {
 			retval = (float)(spiextrareadout[tcid] & 0xfff0); // Mask reserved/fault bits
 			retval /= 256;
