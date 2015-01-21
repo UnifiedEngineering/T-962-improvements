@@ -92,7 +92,8 @@ static inline uint32_t resetbus(void) {
 #define OW_CONVERT_T (0x44)
 #define OW_WRITE_SCRATCHPAD (0x4e)
 #define OW_READ_SCRATCHPAD (0xbe)
-#define OW_FAMILY_TEMP (0x28)
+#define OW_FAMILY_TEMP1 (0x22) // DS1822
+#define OW_FAMILY_TEMP2 (0x28) // DS18B20
 #define OW_FAMILY_TC (0x3b)
 
 #define MAX_OW_DEVICES (5)
@@ -347,7 +348,13 @@ uint32_t OneWire_Init(void) {
 				printf("%02x", owdeviceids[iter][idloop]);
 			}
 			uint8_t family = owdeviceids[iter][0];
-			if (family == OW_FAMILY_TEMP) {
+			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2) {
+				const char* sensorname = "UNKNOWN";
+				if (family == OW_FAMILY_TEMP1) {
+					sensorname = "DS1822";
+				} else if (family == OW_FAMILY_TEMP2) {
+					sensorname = "DS18B20";
+				}
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_WRITE_SCRATCHPAD);
@@ -356,7 +363,7 @@ uint32_t OneWire_Init(void) {
 				xferbyte(0x1f); // Reduce resolution to 0.5C to keep conversion time reasonable
 				VIC_RestoreIRQ(save);
 				tempidx = iter; // Keep track of where we saw the last/only temperature sensor
-				printf(" [Temperature sensor]");
+				printf(" [%s Temperature sensor]", sensorname);
 			} else if (family == OW_FAMILY_TC) {
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
