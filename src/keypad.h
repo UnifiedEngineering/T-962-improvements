@@ -9,6 +9,6 @@
 #define KEY_ANY (KEY_F1 | KEY_F2 | KEY_F3 | KEY_F4 | KEY_S)
 
 uint32_t Keypad_Get(void);
-void Keypad_Init( void );
+void Keypad_Init(void);
 
 #endif /* KEYPAD_H_ */

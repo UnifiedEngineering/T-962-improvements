@@ -25,11 +25,11 @@
 #include "io.h"
 #include "sched.h"
 
-#define F1KEY_PORTBIT (1<<23)
-#define F2KEY_PORTBIT (1<<15)
-#define F3KEY_PORTBIT (1<<16)
-#define F4KEY_PORTBIT (1<<4)
-#define S_KEY_PORTBIT (1<<20)
+#define F1KEY_PORTBIT (1 << 23)
+#define F2KEY_PORTBIT (1 << 15)
+#define F3KEY_PORTBIT (1 << 16)
+#define F4KEY_PORTBIT (1 << 4)
+#define S_KEY_PORTBIT (1 << 20)
 
 #define KEYREPEATDELAY (6)
 
@@ -49,29 +49,30 @@ static int32_t Keypad_Work(void) {
 	// At this point we only care about when button is pressed, not released
 	changed &= inverted;
 
-	if( laststate != inverted ) {
+	if (laststate != inverted) {
 		laststate = inverted;
 		laststateunchangedctr = 0;
 	} else {
 		laststateunchangedctr++;
-		if(laststateunchangedctr > KEYREPEATDELAY) {
+		if (laststateunchangedctr > KEYREPEATDELAY) {
 			changed = laststate; // Feed key repeat
-			keypadstate |= ((laststateunchangedctr-KEYREPEATDELAY)<<16); // For accelerating key repeats
+			// For accelerating key repeats
+			keypadstate |= ((laststateunchangedctr - KEYREPEATDELAY) << 16);
 		}
 	}
 
-	if(changed) {
-		if(changed & F1KEY_PORTBIT) keypadstate |= KEY_F1;
-		if(changed & F2KEY_PORTBIT) keypadstate |= KEY_F2;
-		if(changed & F3KEY_PORTBIT) keypadstate |= KEY_F3;
-		if(changed & F4KEY_PORTBIT) keypadstate |= KEY_F4;
-		if(changed & S_KEY_PORTBIT) keypadstate |= KEY_S;
+	if (changed) {
+		if (changed & F1KEY_PORTBIT) keypadstate |= KEY_F1;
+		if (changed & F2KEY_PORTBIT) keypadstate |= KEY_F2;
+		if (changed & F3KEY_PORTBIT) keypadstate |= KEY_F3;
+		if (changed & F4KEY_PORTBIT) keypadstate |= KEY_F4;
+		if (changed & S_KEY_PORTBIT) keypadstate |= KEY_S;
 	}
 
 	latchedkeypadstate &= 0xffff;
 	latchedkeypadstate |= keypadstate; // Make sure software actually sees the transitions
 
-	if(keypadstate & 0xff) {
+	if (keypadstate & 0xff) {
 		//printf("[KEYPAD %02x]",keypadstate & 0xff);
 		Sched_SetState(MAIN_WORK, 2, 0); // Wake up main task to update UI
 	}
@@ -85,13 +86,14 @@ uint32_t Keypad_Get(void) {
 	return retval;
 }
 
-void Keypad_Init( void ) {
-	Sched_SetWorkfunc( KEYPAD_WORK, Keypad_Work );
+void Keypad_Init(void) {
+	Sched_SetWorkfunc(KEYPAD_WORK, Keypad_Work);
 	printf("\nWaiting for keys to be released... ");
 	// Note that if this takes longer than ~1 second the watchdog will bite
-	while( Keypad_GetRaw() );
+	while (Keypad_GetRaw());
 	printf("Done!");
+
 	// Potential noise gets suppressed as well
-	Sched_SetState( KEYPAD_WORK, 1, TICKS_MS( 250 ) ); // Wait 250ms before starting to scan the keypad
+	Sched_SetState(KEYPAD_WORK, 1, TICKS_MS(250)); // Wait 250ms before starting to scan the keypad
 }
 

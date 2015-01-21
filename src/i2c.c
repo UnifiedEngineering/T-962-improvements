@@ -23,14 +23,15 @@
 #include "t962.h"
 #include "i2c.h"
 
-#define I2CSPEED (200000) // Limit to 200kHz because of the relatively weak 4k7 pullups
+// Limit to i2c speed 200kHz because of the relatively weak 4k7 pullups
+#define I2CSPEED (200000)
 
-void I2C_Init( void ) {
+void I2C_Init(void) {
 	uint8_t dummybyte;
 	I20SCLL = I20SCLH = PCLKFREQ / I2CSPEED / 2;
 	I20CONCLR = 0xff;
-	I20CONSET = (1<<6); // I2EN
-	I2C_Xfer(0xff,&dummybyte,0,1); // Dummy initial xfer
+	I20CONSET = (1 << 6); // I2EN
+	I2C_Xfer(0xff, &dummybyte, 0, 1); // Dummy initial xfer
 }
 
 #define I2CSTART (0x08)
@@ -45,23 +46,23 @@ void I2C_Init( void ) {
 #define I2CRDACK (0x50)
 #define I2CRDNOACK (0x58)
 
-int32_t I2C_Xfer( uint8_t slaveaddr, uint8_t* theBuffer, uint32_t theLength, uint8_t trailingStop) {
+int32_t I2C_Xfer(uint8_t slaveaddr, uint8_t* theBuffer, uint32_t theLength, uint8_t trailingStop) {
 	int32_t retval = 0;
 	int done = 0;
 	uint8_t stat;
 
-	I20CONSET = (1<<5); // STA
+	I20CONSET = (1 << 5); // STA
 	//printf("\n[STA]");
 
-	while(!done) {
-		while(!(I20CONSET&(1<<3))); // SI
+	while (!done) {
+		while (!(I20CONSET & (1 << 3))); // SI
 		stat = I20STAT;
 		//printf("[0x%02x]", stat);
 		switch(stat) {
 			case I2CSTART:
 			case I2CRSTART:
 				I20DAT = slaveaddr;
-				I20CONCLR = (1<<5); // Clear STA
+				I20CONCLR = (1 << 5); // Clear STA
 				//printf("[WADDR]");
 				break;
 			case I2CWANOACK:
@@ -76,7 +77,7 @@ int32_t I2C_Xfer( uint8_t slaveaddr, uint8_t* theBuffer, uint32_t theLength, uin
 
 			case I2CWAACK:
 			case I2CWDACK:
-				if(theLength) {
+				if (theLength) {
 					I20DAT = *theBuffer++;
 					theLength--;
 					//printf("[WDATA]");
@@ -87,28 +88,28 @@ int32_t I2C_Xfer( uint8_t slaveaddr, uint8_t* theBuffer, uint32_t theLength, uin
 
 			case I2CRAACK:
 				//printf("[RADDR]");
-				I20CONSET = (1<<2); // Set AA
+				I20CONSET = (1 << 2); // Set AA
 				break;
 
 			case I2CRDACK:
 			case I2CRDNOACK:
 				*theBuffer++ = I20DAT;
 				theLength--;
-				if(theLength==1) {
-					I20CONCLR = (1<<2); // Clear AA for last byte
-				} else if(theLength==0) {
-					done=1;
+				if (theLength == 1) {
+					I20CONCLR = (1 << 2); // Clear AA for last byte
+				} else if (theLength == 0) {
+					done = 1;
 				}
 				//if(!done) printf("[RDATA]");
 				break;
 		}
-		I20CONCLR = (1<<3); // Clear SI
+		I20CONCLR = (1 << 3); // Clear SI
 	}
 
-	if(trailingStop) {
-		I20CONSET = (1<<4); // STO
+	if (trailingStop) {
+		I20CONSET = (1 << 4); // STO
 		//printf("[STO]");
-		while(I20CONSET & (1<<4)); // Wait for STO to clear
+		while (I20CONSET & (1 << 4)); // Wait for STO to clear
 	}
 	return retval;
 }

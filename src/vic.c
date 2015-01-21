@@ -19,8 +19,6 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 #include "t962.h"
 #include "vic.h"
 

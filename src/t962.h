@@ -84,6 +84,6 @@ Wave8
 
  */
 
-#define PCLKFREQ (5*11059200)
+#define PCLKFREQ (5 * 11059200)
 
 #endif /* T962_H_ */
