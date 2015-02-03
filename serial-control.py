@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+#
+# Log the
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 import serial
+
+FIELD_NAMES = 'Time,Temp0,Temp1,Temp2,Temp3,Set,Actual,Heat,Fan,ColdJ,Mode'
 
 def get_tty():
 	for devname in ('/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2'):
@@ -19,61 +22,69 @@ def get_tty():
 
 	return None
 
-fields = 'Time,Temp0,Temp1,Temp2,Temp3,Set,Actual,Heat,Fan,ColdJ,Mode'.split(',')
-def parse(line):
 
+def parse(line):
 	values = map(str.strip, line.split(','))
+	# Convert all values to float, except the mode
 	values = map(float, values[0:-1]) + [values[-1], ]
 
-	return dict(
-		zip(fields, values)
-	)
+	if len(values) != len(FIELD_NAMES):
+		raise ValueError
 
+	return dict(zip(FIELD_NAMES.split(','), values))
 
-MAX_X = 680   # width of graph
-MAX_Y = 300   # Max value for Y axis (degrees celcius)
+MAX_X = 680
+MAX_Y_temperature = 300
+MAX_Y_pwm = 260
 
 plt.ion()
 
 gs = gridspec.GridSpec(2, 1, height_ratios=(3, 1))
 fig = plt.figure(figsize=(12, 8))
 
-ax1 = fig.add_subplot(gs[0])
-ax2 = fig.add_subplot(gs[1])
+axis_upper = fig.add_subplot(gs[0])
+axis_lower = fig.add_subplot(gs[1])
 plt.subplots_adjust(hspace = 0.1)
 
-# ax = plt.axes()
-ax1.set_ylabel(u'Temperature [°C]')
-ax1.set_xlim(0, MAX_X)
-ax1.set_ylim(0, MAX_Y)
+# setup axis for upper graph (temperature values)
+axis_upper.set_ylabel(u'Temperature [°C]')
+axis_upper.set_xlim(0, MAX_X)
+axis_upper.set_ylim(0, MAX_Y_temperature)
 
-ax2.set_xlim(0, MAX_X)
-ax2.set_ylim(0, 256)
-ax2.set_ylabel('PWM value')
-ax2.set_xlabel('Time [s]')
+# setup axis for lower graph (PWM values)
+axis_lower.set_xlim(0, MAX_X)
+axis_lower.set_ylim(0, MAX_Y_pwm)
+axis_lower.set_ylabel('PWM value')
+axis_lower.set_xlabel('Time [s]')
 
-line_actual, = ax1.plot([], [], label=u'Actual temp')
-line_setpoint, = ax1.plot([], [], label=u'Setpoint')
-line_coldjunction, = ax1.plot([], [], label=u'Coldjunction temp')
+line_actual, = axis_upper.plot([], [], label=u'Actual')
+line_setpoint, = axis_upper.plot([], [], label=u'Setpoint')
+line_coldjunction, = axis_upper.plot([], [], label=u'Coldjunction')
 
-line_fan, = ax2.plot([], [], label='Fan')
-line_heater, = ax2.plot([], [], label='Heater')
+line_fan, = axis_lower.plot([], [], label='Fan')
+line_heater, = axis_lower.plot([], [], label='Heater')
 
-ax1.legend()
-ax2.legend()
+axis_upper.legend()
+axis_lower.legend()
 plt.draw()
 
+# x values
 times = []
+
+# y values
 actual = []
 setpoint = []
 coldjunction = []
-
 fan = []
 heater = []
 
 with get_tty() as port:
 	while True:
 		logline = port.readline()
+		# ignore 'comments'
+		if logline[0] == '#':
+			print logline
+			continue
 		try:
 			log = parse(logline)
 		except ValueError:
@@ -81,7 +92,7 @@ with get_tty() as port:
 			continue
 
 		if 'Mode' in log:
-			ax1.set_title('Mode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' % log)
+			axis_upper.set_title('Mode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' % log)
 
 		if 'Time' in log and log['Time'] != 0.0:
 			if 'Actual' not in log:
@@ -104,4 +115,5 @@ with get_tty() as port:
 				coldjunction.append(log['ColdJ'])
 				line_coldjunction.set_data(times, coldjunction)
 
+		# update view
 		plt.draw()
