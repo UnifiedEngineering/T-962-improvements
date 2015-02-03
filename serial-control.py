@@ -28,10 +28,11 @@ def parse(line):
 	# Convert all values to float, except the mode
 	values = map(float, values[0:-1]) + [values[-1], ]
 
-	if len(values) != len(FIELD_NAMES):
-		raise ValueError
+	fields = FIELD_NAMES.split(',')
+	if len(values) != len(fields):
+		raise ValueError('Found expected %d fields, found %d' % (len(fields), len(values)))
 
-	return dict(zip(FIELD_NAMES.split(','), values))
+	return dict(zip(fields, values))
 
 MAX_X = 680
 MAX_Y_temperature = 300
@@ -78,6 +79,8 @@ coldjunction = []
 fan = []
 heater = []
 
+profile = ''
+
 with get_tty() as port:
 	while True:
 		logline = port.readline()
@@ -85,14 +88,21 @@ with get_tty() as port:
 		if logline[0] == '#':
 			print logline
 			continue
+		if logline.startswith('Starting reflow with profile: '):
+			profile = logline[30:].strip()
+			continue
+			
 		try:
 			log = parse(logline)
-		except ValueError:
-			print 'error parsing:', logline
+		except ValueError, e:
+			print 'error parsing:', str(e)
+			print logline
+
 			continue
 
 		if 'Mode' in log:
-			axis_upper.set_title('Mode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' % log)
+			log.update(dict(profile=profile))
+			axis_upper.set_title('Profile: %(profile)s \nMode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' % log)
 
 		if 'Time' in log and log['Time'] != 0.0:
 			if 'Actual' not in log:

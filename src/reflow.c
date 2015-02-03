@@ -147,7 +147,7 @@ const profile* profiles[] = {
 	&rampspeed_testprofile,
 #endif
 #ifdef PIDTEST
-	&pidcontroltestprofile,
+	&pidcontrol_testprofile,
 #endif
 	(profile*) &ee1,
 	(profile*) &ee2
