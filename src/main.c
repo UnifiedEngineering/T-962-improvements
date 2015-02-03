@@ -275,7 +275,7 @@ static int32_t Main_Work(void) {
 	if (mode == MAIN_SETUP) {
 		if (display_serial_menu) {
 			printf("Setup\n" \
-				   "s:   exit to main menu\n\n");
+			       "s:   exit to main menu\n\n");
 			display_serial_menu = 0;
 		}
 		static uint8_t selected = 0;
@@ -423,10 +423,10 @@ static int32_t Main_Work(void) {
 
 		if (display_serial_menu) {
 			printf("Select reflow profile.\n current: %d, %s\n\n" \
-				   "1:  previous profile\n" \
-				   "2:  next profile\n" \
-				   "s:  return to main menu\n\n",
-				   curprofile, Reflow_GetProfileName());
+			       "1:  previous profile\n" \
+			       "2:  next profile\n" \
+			       "s:  return to main menu\n\n",
+			       curprofile, Reflow_GetProfileName());
 			display_serial_menu = 0;
 		}
 
@@ -573,13 +573,13 @@ static int32_t Main_Work(void) {
 
 		if (display_serial_menu) {
 			printf("\nMain menu commands: \n" \
-				   "1: about\n" \
-				   "2: setup\n" \
-				   "3: bake\n" \
-				   "4: select profile\n" \
-				   "s: run reflow\n" \
-				   "q: no logging in standby mode\n" \
-				   "?: display menu options\n\n");
+			       "1: about\n" \
+			       "2: setup\n" \
+			       "3: bake\n" \
+			       "4: select profile\n" \
+			       "s: run reflow\n" \
+			       "q: no logging in standby mode\n" \
+			       "?: display menu options\n\n");
 			display_serial_menu = 0;
 		}
 
