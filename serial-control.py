@@ -5,14 +5,42 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
+
+import csv
+import datetime
 import serial
 
+# settings
+#
 FIELD_NAMES = 'Time,Temp0,Temp1,Temp2,Temp3,Set,Actual,Heat,Fan,ColdJ,Mode'
+TTYs = ('/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2')
+BAUD_RATE = 115200
+
+logdir = 'logs/'
+
+def timestamp(dt = None):
+	'''
+	Return a 'yyyy-mm-dd-hhmmss'-formatted
+	timestamp
+	'''
+	if dt is None:
+		dt = datetime.datetime.now()
+
+	return dt.strftime('%Y-%m-%d-%H%M%S')
+
+def logname(filetype, profile):
+	return '%s%s-%s.%s' % (
+		logdir,
+		timestamp(),
+		profile.replace(' ', '_'),
+		filetype
+	)
+
 
 def get_tty():
-	for devname in ('/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2'):
+	for devname in TTYs:
 		try:
-			port = serial.Serial(devname, baudrate=115200)
+			port = serial.Serial(devname, baudrate=BAUD_RATE)
 			print 'Using serial port %s' % port.name
 			return port
 
@@ -79,30 +107,62 @@ coldjunction = []
 fan = []
 heater = []
 
+mode = ''
 profile = ''
+raw_log = []
 
 with get_tty() as port:
 	while True:
-		logline = port.readline()
+		logline = port.readline().strip()
+
 		# ignore 'comments'
-		if logline[0] == '#':
+		if logline.startswith('#'):
 			print logline
 			continue
 		if logline.startswith('Starting reflow with profile: '):
 			profile = logline[30:].strip()
 			continue
-			
+
 		try:
 			log = parse(logline)
 		except ValueError, e:
-			print 'error parsing:', str(e)
-			print logline
-
+			if len(logline) > 0:
+				print '!!', logline
 			continue
 
+		raw_log.append(log)
+
 		if 'Mode' in log:
-			log.update(dict(profile=profile))
-			axis_upper.set_title('Profile: %(profile)s \nMode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' % log)
+
+			if mode == 'STANDBY' and log['Mode'] in ('BAKE', 'REFLOW'):
+				# clean up log before starting reflow
+				raw_log = []
+				times = []
+				actual = []
+				coldjunction = []
+				fan = []
+				heater = []
+
+			# save figure when bake or reflow ends.
+			if mode in ('BAKE', 'REFLOW') and log['Mode'] == 'STANDBY':
+				plt.savefig(logname('png', profile))
+				import csv
+				with open(logname('csv', profile), 'w+') as out:
+					writer = csv.DictWriter(out, FIELD_NAMES.split(','))
+					writer.writeheader()
+
+					for l in raw_log:
+						writer.writerow(l)
+
+			mode = log['Mode']
+			if log['Mode'] == 'BAKE':
+				profile = 'bake'
+
+			vals = dict(log)
+			vals.update(dict(profile=profile))
+			axis_upper.set_title('Profile: %(profile)s \nMode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' %
+				vals
+			)
 
 		if 'Time' in log and log['Time'] != 0.0:
 			if 'Actual' not in log:
