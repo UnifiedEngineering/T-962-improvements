@@ -20,21 +20,13 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
-#include "serial.h"
 #include "vic.h"
+#include "circbuffer.h"
+#include "serial.h"
 
 #ifdef __NEWLIB__
 #define __sys_write _write
 #endif
-
-/* Size of buffer.
- * The putchar() function used here will block when the buffer is full (buffer
- * is drained in interrupt), so if you want to continously write lots of data
- * increase the buffer size. Change putchar() to non-blocking and read the
- * 'dropped' parameter in the buffer structure to determine how your buffer
- * size is doing.
- */
-#define CIRCBUFSIZE 256
 
 /* The following baud rates assume a 55.296MHz system clock */
 #ifdef SERIAL_2MBs
@@ -50,20 +42,6 @@
 #define BAUD_D  0
 #define BAUD_DL 30
 #endif
-
-typedef struct {
-    volatile unsigned int head;
-    volatile unsigned int tail;
-    volatile unsigned int dropped;
-    char buf[CIRCBUFSIZE];
-} tcirc_buf;
-
-/* Buffer functions used internally */
-static void init_circ_buf(tcirc_buf * cbuf);
-static void add_to_circ_buf(tcirc_buf *cbuf, char ch, int block);
-static int circ_buf_has_char(tcirc_buf *cbuf);
-static char get_from_circ_buf(tcirc_buf *cbuf);
-static unsigned int circ_buf_count(tcirc_buf *cbuf);
 
 /* UART Buffers */
 tcirc_buf txbuf;
@@ -83,20 +61,34 @@ static void uart_putc(char thebyte) {
 		add_to_circ_buf(&txbuf, thebyte, 0);
 	}
 
-	//If interrupt is disabled, we need to start the process and enable the interrupt
-	if((U0IER & (1<<1)) == 0){
+	// If interrupt is disabled, we need to start the process and enable the interrupt
+	if ((U0IER & (1<<1)) == 0) {
 		U0THR = get_from_circ_buf(&txbuf);
 		U0IER |= 1<<1;
 	}
 }
 
-//Blindly read character, assuming we knew one was available
+// Blindly read character, assuming we knew one was available
 char uart_readc(void) {
 	return get_from_circ_buf(&rxbuf);
 }
 
 int uart_isrxready(void){
 	return circ_buf_has_char(&rxbuf);
+}
+
+int uart_readline(char* buffer, int max_len) {
+	int i = 0;
+	while (uart_isrxready()) {
+		buffer[i] = uart_readc();
+		if (buffer[i] == '\n' || i >= max_len) {
+			break;
+		}
+		i++;
+	}
+
+	buffer[i] = '\0';
+	return i;
 }
 
 // Override __sys_write so we actually can do printf
@@ -156,74 +148,3 @@ void Serial_Init(void) {
 	// Enable RX interrupt
 	U0IER |= 1<<0;
 }
-
-
-/**** Circular Buffer used by UART ****/
-
-static void init_circ_buf(tcirc_buf *cbuf) {
-    cbuf->head = cbuf->tail = 0;
-    cbuf->dropped = 0;
-}
-
-static void add_to_circ_buf(tcirc_buf *cbuf, char ch, int block) {
-    // Add char to buffer
-    unsigned int newhead = cbuf->head;
-    newhead++;
-    if (newhead >= CIRCBUFSIZE) {
-        newhead = 0;
-    }
-    while (newhead == cbuf->tail) {
-        if (!block) {
-            cbuf->dropped++;
-            return;
-        }
-
-        //If blocking, this just keeps looping. Due to interrupt-driven
-        //system the buffer might eventually have space in it, however
-        //if this is called when interrupts are disabled it will stall
-        //the system, so the caller is cautioned not to fsck it up.
-    }
-
-    cbuf->buf[cbuf->head] = ch;
-    cbuf->head = newhead;
-}
-
-
-static char get_from_circ_buf(tcirc_buf *cbuf) {
-    // Get char from buffer
-    // Be sure to check first that there is a char in buffer
-    unsigned int newtail = cbuf->tail;
-    uint8_t retval = cbuf->buf[newtail];
-
-    if (newtail == cbuf->head) {
-        return 0xFF;
-    }
-
-    newtail++;
-    if (newtail >= CIRCBUFSIZE) {
-        // Rollover
-        newtail = 0;
-    }
-    cbuf->tail = newtail;
-
-    return retval;
-}
-
-
-static int circ_buf_has_char(tcirc_buf *cbuf) {
-    // Return true if buffer empty
-    unsigned int head = cbuf->head;
-    return (head != cbuf->tail);
-}
-
-static unsigned int circ_buf_count(tcirc_buf *cbuf) {
-    int count;
-
-    count = cbuf->head;
-    count -= cbuf->tail;
-    if (count < 0) {
-        count += CIRCBUFSIZE;
-    }
-    return (unsigned int)count;
-}
-
