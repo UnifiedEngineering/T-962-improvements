@@ -19,6 +19,19 @@ typedef enum eTempSensor {
 	TC_NUM_ITEMS
 } TempSensor_t;
 
+// Number of temperature settings in a reflow profile
+#define NUMPROFILETEMPS (48)
+
+typedef struct {
+	const char* name;
+	const uint16_t temperatures[NUMPROFILETEMPS];
+} profile;
+
+typedef struct {
+	const char* name;
+	uint16_t temperatures[NUMPROFILETEMPS];
+} ramprofile;
+
 void Reflow_ValidateNV(void);
 void Reflow_Init(void);
 void Reflow_SetMode(ReflowMode_t themode);
@@ -33,6 +46,7 @@ int Reflow_SelectProfileIdx(int idx);
 int Reflow_SelectEEProfileIdx(int idx);
 int Reflow_GetEEProfileIdx(void);
 int Reflow_SaveEEProfile(void);
+void Reflow_ListProfiles(void);
 const char* Reflow_GetProfileName(void);
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx);
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value);

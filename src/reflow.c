@@ -71,19 +71,6 @@ ReflowMode_t mymode = REFLOW_STANDBY;
 
 int standby_logging = 1;
 
-// Number of temperature settings in a reflow profile
-#define NUMPROFILETEMPS (48)
-
-typedef struct {
-	const char* name;
-	const uint16_t temperatures[NUMPROFILETEMPS];
-} profile;
-
-typedef struct {
-	const char* name;
-	uint16_t temperatures[NUMPROFILETEMPS];
-} ramprofile;
-
 // Amtech 4300 63Sn/37Pb leaded profile
 const profile am4300profile = {
 	"4300 63SN/37PB", {
@@ -520,6 +507,12 @@ int Reflow_SaveEEProfile(void) {
 	retval = EEPROM_Write(offset, (uint8_t*)tempptr, 96);
 	ByteswapTempProfile(tempptr);
 	return retval;
+}
+
+void Reflow_ListProfiles(void) {
+	for (int i = 0; i < NUMPROFILES; i++) {
+		printf("%d: %s\n", i, profiles[i]->name);
+	}
 }
 
 const char* Reflow_GetProfileName(void) {

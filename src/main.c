@@ -91,6 +91,7 @@ char* help_text = \
 "\nT-962-controller serial interface.\n\n" \
 " bake <setpoint>       Enter Bake mode with setpoint\n" \
 " help                  Display help text\n" \
+" list profiles         List available reflow profiles\n" \
 " quiet                 No logging in standby mode\n" \
 " reflow                Start reflow with selected profile\n" \
 " settings              List current settings\n" \
@@ -281,12 +282,16 @@ static int32_t Main_Work(void) {
 				printf(help_text);
 
 			} else if (strcmp(serial_cmd, "list profiles") == 0) {
-				// TODO: implement
+				printf("Reflow profiles available:\n");
+
+				Reflow_ListProfiles();
+				printf("\n");
 
 			} else if (strcmp(serial_cmd, "reflow") == 0) {
 				printf("Starting reflow with profile: %s\n", Reflow_GetProfileName());
-				mode = MAIN_REFLOW;
-				Reflow_SetMode(REFLOW_REFLOW);
+				mode = MAIN_HOME;
+				// this is a bit dirty, but with the least code duplication.
+				keyspressed = KEY_S;
 
 			} else if (strcmp(serial_cmd, "settings") == 0) {
 				printf("Current settings:\n\n");
@@ -303,6 +308,7 @@ static int32_t Main_Work(void) {
 				printf("Stopping bake/reflow");
 				mode = MAIN_HOME;
 				Reflow_SetMode(REFLOW_STANDBY);
+				retval = 0;
 
 			} else if (strcmp(serial_cmd, "quiet") == 0) {
 				Reflow_ToggleStandbyLogging();
@@ -433,7 +439,8 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
 
 		// Abort reflow
-		if (Reflow_IsDone() || keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) {
+		if (Reflow_IsDone() || keyspressed & KEY_S) {
+			printf("Reflow done\n");
 			if (Reflow_IsDone()) {
 				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			}
