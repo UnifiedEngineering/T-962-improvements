@@ -18,15 +18,19 @@ BAUD_RATE = 115200
 
 logdir = 'logs/'
 
-def timestamp(dt = None):
-	'''
-	Return a 'yyyy-mm-dd-hhmmss'-formatted
-	timestamp
-	'''
+MAX_X = 500
+MAX_Y_temperature = 300
+MAX_Y_pwm = 260
+
+# end of settings
+
+
+def timestamp(dt=None):
 	if dt is None:
 		dt = datetime.datetime.now()
 
 	return dt.strftime('%Y-%m-%d-%H%M%S')
+
 
 def logname(filetype, profile):
 	return '%s%s-%s.%s' % (
@@ -62,9 +66,39 @@ def parse(line):
 
 	return dict(zip(fields, values))
 
-MAX_X = 680
-MAX_Y_temperature = 300
-MAX_Y_pwm = 260
+def save_logfiles(profile, raw_log):
+	plt.savefig(logname('png', profile))
+	import csv
+	with open(logname('csv', profile), 'w+') as csvout:
+		writer = csv.DictWriter(csvout, FIELD_NAMES.split(','))
+		writer.writeheader()
+
+		for l in raw_log:
+			writer.writerow(l)
+
+class Line(object):
+	def __init__(self, axis, key, label=None):
+		self.xvalues = []
+		self.yvalues = []
+
+		self._key = key
+		self._line, = axis.plot(self.xvalues, self.yvalues, label=label or key)
+
+	def add(self, log):
+		self.xvalues.append(log['Time'])
+		self.yvalues.append(log[self._key])
+
+		self.update()
+
+	def update(self):
+		self._line.set_data(self.xvalues, self.yvalues)
+
+	def clear(self):
+		self.xvalues = []
+		self.yvalues = []
+
+		self.update()
+
 
 plt.ion()
 
@@ -86,26 +120,18 @@ axis_lower.set_ylim(0, MAX_Y_pwm)
 axis_lower.set_ylabel('PWM value')
 axis_lower.set_xlabel('Time [s]')
 
-line_actual, = axis_upper.plot([], [], label=u'Actual')
-line_setpoint, = axis_upper.plot([], [], label=u'Setpoint')
-line_coldjunction, = axis_upper.plot([], [], label=u'Coldjunction')
+lines = [
+	Line(axis_upper, 'Actual'),
+	Line(axis_upper, 'Set', u'Setpoint'),
+	Line(axis_upper, 'ColdJ', u'Coldjunction'),
 
-line_fan, = axis_lower.plot([], [], label='Fan')
-line_heater, = axis_lower.plot([], [], label='Heater')
+	Line(axis_lower, 'Fan'),
+	Line(axis_lower, 'Heat', 'Heater')
+]
 
 axis_upper.legend()
 axis_lower.legend()
 plt.draw()
-
-# x values
-times = []
-
-# y values
-actual = []
-setpoint = []
-coldjunction = []
-fan = []
-heater = []
 
 mode = ''
 profile = ''
@@ -119,6 +145,8 @@ with get_tty() as port:
 		if logline.startswith('#'):
 			print logline
 			continue
+
+		# parse Profile name
 		if logline.startswith('Starting reflow with profile: '):
 			profile = logline[30:].strip()
 			continue
@@ -130,60 +158,29 @@ with get_tty() as port:
 				print '!!', logline
 			continue
 
-		raw_log.append(log)
-
 		if 'Mode' in log:
-
+			# clean up log before starting reflow
 			if mode == 'STANDBY' and log['Mode'] in ('BAKE', 'REFLOW'):
-				# clean up log before starting reflow
 				raw_log = []
-				times = []
-				actual = []
-				coldjunction = []
-				fan = []
-				heater = []
+				map(Line.clear, lines)
 
-			# save figure when bake or reflow ends.
+			# save png graph an csv file when bake or reflow ends.
 			if mode in ('BAKE', 'REFLOW') and log['Mode'] == 'STANDBY':
-				plt.savefig(logname('png', profile))
-				import csv
-				with open(logname('csv', profile), 'w+') as out:
-					writer = csv.DictWriter(out, FIELD_NAMES.split(','))
-					writer.writeheader()
-
-					for l in raw_log:
-						writer.writerow(l)
+				save_logfiles(profile, raw_log)
 
 			mode = log['Mode']
 			if log['Mode'] == 'BAKE':
 				profile = 'bake'
 
-			vals = dict(log)
-			vals.update(dict(profile=profile))
-			axis_upper.set_title('Profile: %(profile)s \nMode: %(Mode)s; Heat: %(Heat)3d; Fan: %(Fan)3d' %
-				vals
-			)
+			axis_upper.set_title('Profile: %s Mode: %s ' % (profile, mode))
 
 		if 'Time' in log and log['Time'] != 0.0:
 			if 'Actual' not in log:
 				continue
 
-			times.append(log['Time'])
-			actual.append(log['Actual'])
-			line_actual.set_data(times, actual)
-
-			setpoint.append(log['Set'])
-			line_setpoint.set_data(times, setpoint)
-
-			fan.append(log['Fan'])
-			line_fan.set_data(times, fan)
-
-			heater.append(log['Heat'])
-			line_heater.set_data(times, heater)
-
-			if 'ColdJ' in log and 'ColdJ' != 0.0:
-				coldjunction.append(log['ColdJ'])
-				line_coldjunction.set_data(times, coldjunction)
+			# update all lines
+			map(lambda x: x.add(log), lines)
+			raw_log.append(log)
 
 		# update view
 		plt.draw()
