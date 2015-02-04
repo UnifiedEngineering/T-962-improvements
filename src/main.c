@@ -47,13 +47,13 @@ extern uint8_t f3editbmp[];
 
 // No version.c file generated for LPCXpresso builds, fall back to this
 __attribute__((weak)) const char* Version_GetGitVersion(void) {
-    return "no version info";
+	return "no version info";
 }
 
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [], unsigned int[]);
 IAP iap_entry = (void*)0x7ffffff1;
-#define IAP_READ_PART     (54)
+#define IAP_READ_PART	 (54)
 #define IAP_REINVOKE_ISP  (57)
 #define PART_REV_ADDR (0x0007D070)
 typedef struct {
@@ -62,17 +62,17 @@ typedef struct {
 } partmapStruct;
 
 partmapStruct partmap[] = {
-		{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
-		{"LPC2132(/01)", 0x0002ff11},
-		{"LPC2134(/01)", 0x0002ff12},
-		{"LPC2136(/01)", 0x0002ff23},
-		{"LPC2138(/01)", 0x0002ff25},
+	{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2132(/01)", 0x0002ff11},
+	{"LPC2134(/01)", 0x0002ff12},
+	{"LPC2136(/01)", 0x0002ff23},
+	{"LPC2138(/01)", 0x0002ff25},
 
-		{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
-		{"LPC2142", 0x0402ff11},
-		{"LPC2144", 0x0402ff12},
-		{"LPC2146", 0x0402ff23},
-		{"LPC2148", 0x0402ff25},
+	{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2142", 0x0402ff11},
+	{"LPC2144", 0x0402ff12},
+	{"LPC2146", 0x0402ff23},
+	{"LPC2148", 0x0402ff25},
 };
 #define NUM_PARTS (sizeof(partmap) / sizeof(partmap[0]))
 
@@ -87,6 +87,18 @@ char* format_about = \
 "\n" \
 "\nInitializing improved reflow oven...";
 
+char* help_text = \
+"\nT-962-controller serial interface.\n\n" \
+" bake <setpoint>       Enter Bake mode with setpoint\n" \
+" help                  Display help text\n" \
+" quiet                 No logging in standby mode\n" \
+" reflow                Start reflow with selected profile\n" \
+" settings              List current settings\n" \
+" setting <id> <value>  Set setting id to value\n" \
+" select profile <id>   Select reflow profile by id\n" \
+" stop                  Exit reflow or bake mode\n" \
+"\n";
+
 typedef struct {
 	const char* formatstr;
 	const NVItem_t nvval;
@@ -97,12 +109,12 @@ typedef struct {
 } setupMenuStruct;
 
 setupMenuStruct setupmenu[] = {
-		{"Min fan speed     %3.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
-		{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
-		{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
-		{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
-		{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
-		{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+	{"Min fan speed   %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
+	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
+	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
+	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
+	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
+	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
 };
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
@@ -115,12 +127,12 @@ int main(void) {
 	/* Hold F1-Key at boot to force ISP mode */
 	if ((IOPIN0 & (1 << 23)) == 0) {
 		//NB: If you want to call this later need to set a bunch of registers back
-		//    to reset state. Haven't fully figured this out yet, might want to
-		//    progmatically call bootloader, not sure. If calling later be sure
-		//    to crank up watchdog time-out, as it's impossible to disable
+		//	to reset state. Haven't fully figured this out yet, might want to
+		//	progmatically call bootloader, not sure. If calling later be sure
+		//	to crank up watchdog time-out, as it's impossible to disable
 		//
-		//    Bootloader must use legacy mode IO if you call this later too, so do:
-		//    SCS = 0;
+		//	Bootloader must use legacy mode IO if you call this later too, so do:
+		//	SCS = 0;
 
 		//Turn off FAN & Heater using legacy registers so they stay off during bootloader
 		//Fan = PIN0.8
@@ -250,34 +262,75 @@ static int32_t Main_Work(void) {
 
 	uint32_t keyspressed = Keypad_Get();
 
-	char serial_cmd[80] = "";
-	static int display_serial_menu = 1;
+	char serial_cmd[255] = "";
+	char* cmd_select_profile = "select profile %d";
+	char* cmd_bake = "bake %d";
+	char* cmd_setting = "setting %d %d";
 
-	// read rx buffer until empty or newline.
 	if (uart_isrxready()) {
-		int i = 0;
-		while (uart_isrxready()) {
-			serial_cmd[i] = uart_readc();
-			if (serial_cmd[i] == '\n' || i >= 80) {
-				serial_cmd[i] = '\0';
-				break;
-			}
-			i++;
-		}
+		int len = uart_readline(serial_cmd, 255);
 
-		if (strlen(serial_cmd) > 0) {
-			display_serial_menu = 1;
+		if (len > 0) {
 			printf("\n!! Received serial command: %s\n", serial_cmd);
+
+			int param, param1;
+			if (strcmp(serial_cmd, "about") == 0) {
+				printf(format_about, Version_GetGitVersion());
+
+			} else if (strcmp(serial_cmd, "help") == 0 || strcmp(serial_cmd, "?") == 0) {
+				printf(help_text);
+
+			} else if (strcmp(serial_cmd, "list profiles") == 0) {
+				// TODO: implement
+
+			} else if (strcmp(serial_cmd, "reflow") == 0) {
+				printf("Starting reflow with profile: %s\n", Reflow_GetProfileName());
+				mode = MAIN_REFLOW;
+				Reflow_SetMode(REFLOW_REFLOW);
+
+			} else if (strcmp(serial_cmd, "settings") == 0) {
+				printf("Current settings:\n\n");
+				for (int i = 0; i < NUM_SETUP_ITEMS ; i++) {
+					int intval = NV_GetConfig(setupmenu[i].nvval);
+					intval += setupmenu[i].offset;
+					float value = ((float)intval) * setupmenu[i].multiplier;
+					printf("%d: ", i);
+					printf(setupmenu[i].formatstr, value);
+					printf("\n");
+				}
+
+			} else if (strcmp(serial_cmd, "stop") == 0) {
+				printf("Stopping bake/reflow");
+				mode = MAIN_HOME;
+				Reflow_SetMode(REFLOW_STANDBY);
+
+			} else if (strcmp(serial_cmd, "quiet") == 0) {
+				Reflow_ToggleStandbyLogging();
+				printf("Toggled standby logging\n");
+
+			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
+				// select profile
+				Reflow_SelectProfileIdx(param);
+				printf("Selected profile %d: %s\n", param, Reflow_GetProfileName());
+
+			} else if (sscanf(serial_cmd, cmd_bake, &param) > 0) {
+				printf("Starting bake with setpoint %d\n", param);
+				setpoint = param;
+				mode = MAIN_BAKE;
+				Reflow_SetMode(REFLOW_BAKE);
+
+			} else if (sscanf(serial_cmd, cmd_setting, &param, &param1) > 0) {
+				printf("About to set setting %d to value %d\n", param, param1);
+				printf("Not implemented\n");
+
+			} else {
+				printf("Cannot understand command, ? for help\n");
+			}
 		}
 	}
 
 	// main menu state machine
 	if (mode == MAIN_SETUP) {
-		if (display_serial_menu) {
-			printf("Setup\n" \
-			       "s:   exit to main menu\n\n");
-			display_serial_menu = 0;
-		}
 		static uint8_t selected = 0;
 		int y = 0;
 
@@ -328,10 +381,6 @@ static int32_t Main_Work(void) {
 			len = snprintf(buf, sizeof(buf), setupmenu[i].formatstr, value);
 			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected == i) ? INVERT : 0);
 			y += 7;
-
-			// TODO: disable continious printing of settings.
-			printf(setupmenu[i].formatstr, value);
-			printf("\n");
 		}
 
 		// buttons
@@ -344,18 +393,12 @@ static int32_t Main_Work(void) {
 
 		//LCD_BMPDisplay(stopbmp,127-17,0);
 
-		if (keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) { // Leave setup
+		if (keyspressed & KEY_S) { // Leave setup
 			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
 	} else if (mode == MAIN_ABOUT) {
-		if (display_serial_menu) {
-			printf(format_about, Version_GetGitVersion());
-			printf("s:  return to main menu\n\n");
-			display_serial_menu = 0;
-		}
-
 		LCD_FB_Clear();
 		LCD_BMPDisplay(logobmp, 0, 0);
 
@@ -371,15 +414,8 @@ static int32_t Main_Work(void) {
 		if (keyspressed & KEY_ANY || strcmp(serial_cmd, "s") == 0) {
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 	} else if (mode == MAIN_REFLOW) {
-		if (display_serial_menu) {
-			printf("\nStarting reflow with profile: %s \n" \
-			       "press S to stop.\n\n", Reflow_GetProfileName());
-			display_serial_menu = 0;
-		}
-
 		uint32_t ticks = RTC_Read();
 
 		//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
@@ -411,24 +447,15 @@ static int32_t Main_Work(void) {
 		LCD_FB_Clear();
 
 		// Prev profile
-		if (keyspressed & KEY_F1 || strcmp(serial_cmd, "1") == 0) {
+		if (keyspressed & KEY_F1) {
 			curprofile--;
 		}
 		// Next profile
-		if (keyspressed & KEY_F2 || strcmp(serial_cmd, "2") == 0) {
+		if (keyspressed & KEY_F2) {
 			curprofile++;
 		}
 
 		Reflow_SelectProfileIdx(curprofile);
-
-		if (display_serial_menu) {
-			printf("Select reflow profile.\n current: %d, %s\n\n" \
-			       "1:  previous profile\n" \
-			       "2:  next profile\n" \
-			       "s:  return to main menu\n\n",
-			       curprofile, Reflow_GetProfileName());
-			display_serial_menu = 0;
-		}
 
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(selectbmp, 127 - 17, 0);
@@ -446,10 +473,9 @@ static int32_t Main_Work(void) {
 		}
 
 		// Select current profile
-		if (keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) {
+		if (keyspressed & KEY_S) {
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 	} else if (mode == MAIN_BAKE) {
@@ -460,24 +486,15 @@ static int32_t Main_Work(void) {
 		if (keyrepeataccel > 30) keyrepeataccel = 30;
 
 		// Setpoint-
-		if (keyspressed & KEY_F1 || strcmp(serial_cmd, "1") == 0) {
+		if (keyspressed & KEY_F1) {
 			setpoint -= keyrepeataccel;
 			if (setpoint < 30) setpoint = 30;
 		}
 
 		// Setpoint+
-		if (keyspressed & KEY_F2 || strcmp(serial_cmd, "2") == 0) {
+		if (keyspressed & KEY_F2) {
 			setpoint += keyrepeataccel;
 			if (setpoint > 300) setpoint = 300;
-		}
-
-		if (display_serial_menu) {
-			printf("Bake mode\n setpoint: %d degC\n" \
-			       "1:  increase setpoint\n" \
-			       "2:  decrease setpoint\n" \
-			       "s:  exit to main menu\n\n",
-			       (int)setpoint);
-			display_serial_menu = 0;
 		}
 
 		len = snprintf(buf, sizeof(buf),"- SETPOINT %u` +", (unsigned int)setpoint);
@@ -522,11 +539,12 @@ static int32_t Main_Work(void) {
 		Reflow_SetSetpoint(setpoint);
 
 		// Abort bake
-		if (keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) {
+		if (keyspressed & KEY_S) {
+			printf("Starting reflow with profile: %s\n", Reflow_GetProfileName());
+
 			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 	} else if (mode == MAIN_EDIT_PROFILE) { // Edit ee1 or 2
@@ -562,27 +580,13 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 
 		// Done editing
-		if (keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) {
+		if (keyspressed & KEY_S) {
 			Reflow_SaveEEProfile();
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 	} else { // Main menu
-
-		if (display_serial_menu) {
-			printf("\nMain menu commands: \n" \
-			       "1: about\n" \
-			       "2: setup\n" \
-			       "3: bake\n" \
-			       "4: select profile\n" \
-			       "s: run reflow\n" \
-			       "q: no logging in standby mode\n" \
-			       "?: display menu options\n\n");
-			display_serial_menu = 0;
-		}
-
 		LCD_FB_Clear();
 
 		len = snprintf(buf, sizeof(buf),"MAIN MENU");
@@ -610,40 +614,35 @@ static int32_t Main_Work(void) {
 		}
 
 		// About
-		if (keyspressed & KEY_F1 || strcmp(serial_cmd, "1") == 0) {
+		if (keyspressed & KEY_F1) {
 			mode = MAIN_ABOUT;
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
-		if (keyspressed & KEY_F2|| strcmp(serial_cmd, "2") == 0) { // Setup/cal
+		if (keyspressed & KEY_F2) { // Setup/cal
 			mode = MAIN_SETUP;
 			Reflow_SetMode(REFLOW_STANDBYFAN);
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 		// Bake mode
-		if (keyspressed & KEY_F3 || strcmp(serial_cmd, "3") == 0) {
+		if (keyspressed & KEY_F3) {
 			mode = MAIN_BAKE;
 			Reflow_Init();
 			Reflow_SetMode(REFLOW_BAKE);
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 		// Select profile
-		if (keyspressed & KEY_F4 || strcmp(serial_cmd, "4") == 0) {
+		if (keyspressed & KEY_F4) {
 			mode = MAIN_SELECT_PROFILE;
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
 		}
 
 		// Start reflow
-		if (keyspressed & KEY_S || strcmp(serial_cmd, "s") == 0) {
+		if (keyspressed & KEY_S) {
 			mode = MAIN_REFLOW;
 			LCD_FB_Clear();
-			printf("\nStarting reflow with profile: %s \n" \
-				   "press S to stop.\n\n", Reflow_GetProfileName());
+			printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
 			Reflow_Init();
 			Reflow_PlotProfile(-1);
 			LCD_BMPDisplay(stopbmp, 127 - 17, 0);
@@ -651,16 +650,6 @@ static int32_t Main_Work(void) {
 			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 			Reflow_SetMode(REFLOW_REFLOW);
 			retval = 0; // Force immediate refresh
-			display_serial_menu = 1;
-		}
-
-		// toggle logging of temperatures in standby mode
-		if (strcmp(serial_cmd, "q") == 0) {
-			Reflow_ToggleStandbyLogging();
-			display_serial_menu = 1;
-		}
-		if (strcmp("serial_cmd", "?") == 0) {
-			display_serial_menu = 1;
 		}
 	}
 
