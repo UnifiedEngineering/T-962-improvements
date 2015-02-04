@@ -376,7 +376,7 @@ static int32_t Main_Work(void) {
 	} else if (mode == MAIN_REFLOW) {
 		if (display_serial_menu) {
 			printf("\nStarting reflow with profile: %s \n" \
-				"press S to stop.\n\n", Reflow_GetProfileName());
+			       "press S to stop.\n\n", Reflow_GetProfileName());
 			display_serial_menu = 0;
 		}
 
@@ -473,10 +473,10 @@ static int32_t Main_Work(void) {
 
 		if (display_serial_menu) {
 			printf("Bake mode\n setpoint: %d degC\n" \
-				   "1:  increase setpoint\n" \
-				   "2:  decrease setpoint\n" \
-				   "s:  exit to main menu\n\n",
-				   (int)setpoint);
+			       "1:  increase setpoint\n" \
+			       "2:  decrease setpoint\n" \
+			       "s:  exit to main menu\n\n",
+			       (int)setpoint);
 			display_serial_menu = 0;
 		}
 
