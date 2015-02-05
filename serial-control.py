@@ -9,12 +9,14 @@
 # - pyserial (python-serial in ubuntu, pip install pyserial)
 # - matplotlib (python-matplotlib in ubuntu, pip install matplotlib)
 #
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 import csv
 import datetime
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import serial
+import sys
+from time import time
 
 # settings
 #
@@ -24,12 +26,11 @@ BAUD_RATE = 115200
 
 logdir = 'logs/'
 
-MAX_X = 400
+MAX_X = 470
 MAX_Y_temperature = 300
 MAX_Y_pwm = 260
 #
 # end of settings
-
 
 def timestamp(dt=None):
 	if dt is None:
@@ -42,7 +43,7 @@ def logname(filetype, profile):
 	return '%s%s-%s.%s' % (
 		logdir,
 		timestamp(),
-		profile.replace(' ', '_'),
+		profile.replace(' ', '_').replace('/', '_'),
 		filetype
 	)
 
@@ -85,18 +86,23 @@ class Line(object):
 		self.update()
 
 class Log(object):
-	mode = ''
 	profile = ''
-	raw_log = []
+	last_action = None
 
 	def __init__(self):
 		self.init_plot()
+		self.clear_logs()
+
+	def clear_logs(self):
+		self.raw_log = []
+		map(Line.clear, self.lines)
+		self.mode = ''
 
 	def init_plot(self):
 		plt.ion()
 
 		gs = gridspec.GridSpec(2, 1, height_ratios=(4, 1))
-		fig = plt.figure(figsize=(16, 10))
+		fig = plt.figure(figsize=(14, 10))
 
 		axis_upper = fig.add_subplot(gs[0])
 		axis_lower = fig.add_subplot(gs[1])
@@ -143,10 +149,6 @@ class Log(object):
 			for l in self.raw_log:
 				writer.writerow(l)
 
-	def clear_logs(self):
-		self.raw_log = []
-		map(Line.clear, self.lines)
-
 	def parse(self, line):
 		values = map(str.strip, line.split(','))
 		# Convert all values to float, except the mode
@@ -157,7 +159,7 @@ class Log(object):
 			raise ValueError('Expected %d fields, found %d' % (len(fields), len(values)))
 
 		return dict(zip(fields, values))
-		
+
 	def process_log(self, logline):
 		# ignore 'comments'
 		if logline.startswith('#'):
@@ -167,6 +169,10 @@ class Log(object):
 		# parse Profile name
 		if logline.startswith('Starting reflow with profile: '):
 			self.profile = logline[30:].strip()
+			return
+
+		if logline.startswith('Selected profile'):
+			self.profile = logline[20:].strip()
 			return
 
 		try:
@@ -189,6 +195,8 @@ class Log(object):
 			if log['Mode'] == 'BAKE':
 				self.profile = 'bake'
 
+			if log['Mode'] in ('REFLOW', 'BAKE'):
+				self.last_action = time()
 			self.axis_upper.set_title('Profile: %s Mode: %s ' % (self.profile, self.mode))
 
 		if 'Time' in log and log['Time'] != 0.0:
@@ -202,10 +210,53 @@ class Log(object):
 		# update view
 		plt.draw()
 
+	def isdone(self):
+		return (
+			self.last_action is not None and
+			time() - self.last_action > 5
+		)
 
+
+def loop_all_profiles(num_profiles=6):
+	log = Log()
+
+	with get_tty() as port:
+		profile = 0
+		def select_profile(profile):
+			port.write('stop\n')
+			port.write('select profile %d\n' % profile)
+			port.write('reflow\n')
+
+		select_profile(profile)
+
+		while True:
+			logline = port.readline().strip()
+
+			if log.isdone():
+				log.last_action = None
+				profile += 1
+				if profile > 6:
+					print 'Done.'
+					sys.exit()
+				select_profile(profile)
+
+			log.process_log(logline)
+
+def logging_only():
+	log = Log()
+
+	with get_tty() as port:
+		log.process_log(port.readline.strip())
 
 if __name__ == '__main__':
-	log = Log()
-	with get_tty() as port:
-		while True:
-			log.process_log(port.readline().strip())
+	action = sys.argv[1] if len(sys.argv) > 1 else 'log'
+
+	if action == 'log':
+		print 'Logging reflow sessions...'
+		logging_only()
+
+	elif action == 'test':
+		print 'Looping over all profiles'
+		loop_all_profiles()
+	else:
+		print 'Unknown action', action
