@@ -16,10 +16,9 @@ make
 
 ## Flashing in Linux
 
-Using [lpc21isp], (after entering the bootloader) it's a matter of running
+The makefile has a target to download and build the [lpc21isp utility from sourceforge](http://sourceforge.net/projects/lpc21isp/). Just run
 
 ```
-./lpc21isp build/T-962-controller.hex /dev/ttyUSB0 57600 11059
+make flash
 ```
-
-[lpc21isp]:  http://sourceforge.net/projects/lpc21isp/
+and it wil be downloaded and compiled for you.
