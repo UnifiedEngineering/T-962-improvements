@@ -9,7 +9,6 @@ SRC_DIR := ./src/
 BUILD_DIR := ./build/
 TARGET := $(BUILD_DIR)$(BASE_NAME).axf
 
-
 vpath %.c $(SRC_DIR)
 vpath %.o $(BUILD_DIR)
 vpath %.d $(BUILD_DIR)
@@ -22,6 +21,10 @@ FLASH_TOOL := ./lpc21isp
 FLASH_TTY := /dev/ttyUSB0
 FLASH_BAUD := 57600
 MCU_CLOCK := 11059
+
+COLOR_GREEN = $(shell echo "\033[0;32m")
+COLOR_RED = $(shell echo "\033[0;31m")
+COLOR_END = $(shell echo "\033[0m")
 
 # Source files
 C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
@@ -46,14 +49,15 @@ $(BUILD_DIR)tag:
 	touch $(BUILD_DIR)tag
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
-	@echo 'Finished building: $<'
+	@echo 'Building file: $<'
+	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wunused -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
 	@echo 'Building file: $<'
 	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
-	@echo 'Finished building: $<'
+	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 
@@ -61,7 +65,7 @@ axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU Linker'
 	$(CC) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections -flto -Os -mcpu=arm7tdmi --specs=nano.specs -u _printf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
-	@echo 'Finished building target: $@'
+	@echo 'Finished building target: $(COLOR_GREEN)$@$(COLOR_END)'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
 
@@ -77,8 +81,8 @@ post-build:
 	-@echo ' '
 
 flash: axf
-	@echo ''
-	@echo 'Flashing $(BASE_NAME).hex to $(FLASH_TTY)'
+	@echo 'Flashing $(COLOR_GREEN)$(BASE_NAME).hex$(COLOR_END) to $(COLOR_RED)$(FLASH_TTY)$(COLOR_END)'
+	@echo ' '
 	$(FLASH_TOOL) "$(BUILD_DIR)$(BASE_NAME).hex" $(FLASH_TTY) $(FLASH_BAUD) $(MCU_CLOCK)
 
 .PHONY: clean dependents
