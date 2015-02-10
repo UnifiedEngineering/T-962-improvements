@@ -246,7 +246,8 @@ def logging_only():
 	log = Log()
 
 	with get_tty() as port:
-		log.process_log(port.readline.strip())
+		while True:
+			log.process_log(port.readline().strip())
 
 if __name__ == '__main__':
 	action = sys.argv[1] if len(sys.argv) > 1 else 'log'
