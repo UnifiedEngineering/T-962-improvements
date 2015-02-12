@@ -24,7 +24,7 @@
 #include "setup.h"
 
 setupMenuStruct setupmenu[] = {
-	{"Min fan speed   %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
+	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
 	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
 	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
 	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
@@ -70,6 +70,6 @@ void Setup_printFormattedValue(int item) {
 	printf(setupmenu[item].formatstr, Setup_getValue(item));
 }
 
-int Setup_snprintFormattedValue(char* buf, int item) {
-	return snprintf(buf, sizeof(buf), setupmenu[item].formatstr, Setup_getValue(item));
+int Setup_snprintFormattedValue(char* buf, int n, int item) {
+	return snprintf(buf, n, setupmenu[item].formatstr, Setup_getValue(item));
 }

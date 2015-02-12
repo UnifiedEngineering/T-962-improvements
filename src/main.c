@@ -353,7 +353,7 @@ static int32_t Main_Work(void) {
 		y += 7;
 
 		for (int i = 0; i < Setup_getNumItems() ; i++) {
-			len = Setup_snprintFormattedValue(buf, i);
+			len = Setup_snprintFormattedValue(buf, sizeof(buf), i);
 			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected == i) ? INVERT : 0);
 			y += 7;
 		}
@@ -409,7 +409,7 @@ static int32_t Main_Work(void) {
 
 		// Abort reflow
 		if (Reflow_IsDone() || keyspressed & KEY_S) {
-			printf("Reflow done\n");
+			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
 			if (Reflow_IsDone()) {
 				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			}

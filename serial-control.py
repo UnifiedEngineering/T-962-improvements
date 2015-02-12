@@ -139,6 +139,7 @@ class Log(object):
 		self.axis_lower = axis_lower
 
 	def save_logfiles(self):
+		print 'Saved log in %s ' % logname('csv', self.profile)
 		plt.savefig(logname('png', self.profile))
 		plt.savefig(logname('pdf', self.profile))
 
