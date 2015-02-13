@@ -20,6 +20,7 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "serial.h"
 #include "lcd.h"
 #include "io.h"
@@ -37,6 +38,7 @@
 #include "vic.h"
 #include "max31855.h"
 #include "systemfan.h"
+#include "setup.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -46,13 +48,13 @@ extern uint8_t f3editbmp[];
 
 // No version.c file generated for LPCXpresso builds, fall back to this
 __attribute__((weak)) const char* Version_GetGitVersion(void) {
-    return "no version info";
+	return "no version info";
 }
 
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [], unsigned int[]);
 IAP iap_entry = (void*)0x7ffffff1;
-#define IAP_READ_PART     (54)
+#define IAP_READ_PART	 (54)
 #define IAP_REINVOKE_ISP  (57)
 #define PART_REV_ADDR (0x0007D070)
 typedef struct {
@@ -61,42 +63,43 @@ typedef struct {
 } partmapStruct;
 
 partmapStruct partmap[] = {
-		{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
-		{"LPC2132(/01)", 0x0002ff11},
-		{"LPC2134(/01)", 0x0002ff12},
-		{"LPC2136(/01)", 0x0002ff23},
-		{"LPC2138(/01)", 0x0002ff25},
+	{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2132(/01)", 0x0002ff11},
+	{"LPC2134(/01)", 0x0002ff12},
+	{"LPC2136(/01)", 0x0002ff23},
+	{"LPC2138(/01)", 0x0002ff25},
 
-		{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
-		{"LPC2142", 0x0402ff11},
-		{"LPC2144", 0x0402ff12},
-		{"LPC2146", 0x0402ff23},
-		{"LPC2148", 0x0402ff25},
+	{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2142", 0x0402ff11},
+	{"LPC2144", 0x0402ff12},
+	{"LPC2146", 0x0402ff23},
+	{"LPC2148", 0x0402ff25},
 };
 #define NUM_PARTS (sizeof(partmap) / sizeof(partmap[0]))
 
-uint32_t partid,partrev;
+uint32_t partid, partrev;
 uint32_t command[1];
 uint32_t result[3];
 
-typedef struct {
-	const char* formatstr;
-	const NVItem_t nvval;
-	const uint8_t minval;
-	const uint8_t maxval;
-	const int8_t offset;
-	const float multiplier;
-} setupMenuStruct;
+char* format_about = \
+"\nT-962-controller open source firmware (%s)" \
+"\n" \
+"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
+"\n" \
+"\nInitializing improved reflow oven...";
 
-setupMenuStruct setupmenu[] = {
-		{"Min fan speed     %3.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
-		{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
-		{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
-		{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
-		{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
-		{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
-};
-#define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
+char* help_text = \
+"\nT-962-controller serial interface.\n\n" \
+" bake <setpoint>       Enter Bake mode with setpoint\n" \
+" help                  Display help text\n" \
+" list profiles         List available reflow profiles\n" \
+" list settings         List machine settings\n" \
+" quiet                 No logging in standby mode\n" \
+" reflow                Start reflow with selected profile\n" \
+" setting <id> <value>  Set setting id to value\n" \
+" select profile <id>   Select reflow profile by id\n" \
+" stop                  Exit reflow or bake mode\n" \
+"\n";
 
 static int32_t Main_Work(void);
 
@@ -106,17 +109,17 @@ int main(void) {
 
 	/* Hold F1-Key at boot to force ISP mode */
 	if ((IOPIN0 & (1 << 23)) == 0) {
-		//NB: If you want to call this later need to set a bunch of registers back
-		//    to reset state. Haven't fully figured this out yet, might want to
-		//    progmatically call bootloader, not sure. If calling later be sure
-		//    to crank up watchdog time-out, as it's impossible to disable
+		// NB: If you want to call this later need to set a bunch of registers back
+		// to reset state. Haven't fully figured this out yet, might want to
+		// progmatically call bootloader, not sure. If calling later be sure
+		// to crank up watchdog time-out, as it's impossible to disable
 		//
-		//    Bootloader must use legacy mode IO if you call this later too, so do:
-		//    SCS = 0;
+		// Bootloader must use legacy mode IO if you call this later too, so do:
+		// SCS = 0;
 
-		//Turn off FAN & Heater using legacy registers so they stay off during bootloader
-		//Fan = PIN0.8
-		//Heater = PIN0.9
+		// Turn off FAN & Heater using legacy registers so they stay off during bootloader
+		// Fan = PIN0.8
+		// Heater = PIN0.9
 		IODIR0 = (1 << 8) | (1 << 9);
 		IOSET0 = (1 << 8) | (1 << 9);
 
@@ -143,11 +146,7 @@ int main(void) {
 	Set_Heater(0);
 	Set_Fan(0);
 	Serial_Init();
-	printf(	"\nT-962-controller open source firmware (%s)" \
-			"\n" \
-			"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
-			"\n" \
-			"\nInitializing improved reflow oven...", Version_GetGitVersion());
+	printf(format_about, Version_GetGitVersion());
 	I2C_Init();
 	EEPROM_Init();
 	NV_Init();
@@ -246,6 +245,77 @@ static int32_t Main_Work(void) {
 
 	uint32_t keyspressed = Keypad_Get();
 
+	char serial_cmd[255] = "";
+	char* cmd_select_profile = "select profile %d";
+	char* cmd_bake = "bake %d";
+	char* cmd_setting = "setting %d %d";
+
+	if (uart_isrxready()) {
+		int len = uart_readline(serial_cmd, 255);
+
+		if (len > 0) {
+			int param, param1;
+
+			if (strcmp(serial_cmd, "about") == 0) {
+				printf(format_about, Version_GetGitVersion());
+
+			} else if (strcmp(serial_cmd, "help") == 0 || strcmp(serial_cmd, "?") == 0) {
+				printf(help_text);
+
+			} else if (strcmp(serial_cmd, "list profiles") == 0) {
+				printf("\nReflow profiles available:\n");
+
+				Reflow_ListProfiles();
+				printf("\n");
+
+			} else if (strcmp(serial_cmd, "reflow") == 0) {
+				printf("\nStarting reflow with profile: %s\n", Reflow_GetProfileName());
+				mode = MAIN_HOME;
+				// this is a bit dirty, but with the least code duplication.
+				keyspressed = KEY_S;
+
+			} else if (strcmp(serial_cmd, "list settings") == 0) {
+				printf("\nCurrent settings:\n\n");
+				for (int i = 0; i < Setup_getNumItems() ; i++) {
+					printf("%d: ", i);
+					Setup_printFormattedValue(i);
+					printf("\n");
+				}
+
+			} else if (strcmp(serial_cmd, "stop") == 0) {
+				printf("\nStopping bake/reflow");
+				mode = MAIN_HOME;
+				Reflow_SetMode(REFLOW_STANDBY);
+				retval = 0;
+
+			} else if (strcmp(serial_cmd, "quiet") == 0) {
+				Reflow_ToggleStandbyLogging();
+				printf("\nToggled standby logging\n");
+
+			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
+				// select profile
+				Reflow_SelectProfileIdx(param);
+				printf("\nSelected profile %d: %s\n", param, Reflow_GetProfileName());
+
+			} else if (sscanf(serial_cmd, cmd_bake, &param) > 0) {
+				printf("\nStarting bake with setpoint %d\n", param);
+				setpoint = param;
+				mode = MAIN_BAKE;
+				Reflow_SetMode(REFLOW_BAKE);
+
+			} else if (sscanf(serial_cmd, cmd_setting, &param, &param1) > 0) {
+				// This is currently a bit crude. User has to input
+				// the value as an integer as stored in the NV storage.
+				Setup_setValue(param, param1);
+				printf("\nAdjusted setting: ");
+				Setup_printFormattedValue(param);
+
+			} else {
+				printf("\nCannot understand command, ? for help\n");
+			}
+		}
+	}
+
 	// main menu state machine
 	if (mode == MAIN_SETUP) {
 		static uint8_t selected = 0;
@@ -259,31 +329,22 @@ static int32_t Main_Work(void) {
 			if (selected > 0) { // Prev row
 				selected--;
 			} else { // wrap
-				selected = NUM_SETUP_ITEMS - 1;
+				selected = Setup_getNumItems() - 1;
 			}
 		}
 		if (keyspressed & KEY_F2) {
-			if (selected < (NUM_SETUP_ITEMS - 1)) { // Next row
+			if (selected < (Setup_getNumItems() - 1)) { // Next row
 				selected++;
 			} else { // wrap
 				selected = 0;
 			}
 		}
 
-		int curval = NV_GetConfig(setupmenu[selected].nvval);
-		if (keyspressed & KEY_F3) { // Decrease value
-			int minval = setupmenu[selected].minval;
-			curval -= keyrepeataccel;
-			if (curval < minval) curval = minval;
+		if (keyspressed & KEY_F3) {
+			Setup_decreaseValue(selected, keyrepeataccel);
 		}
-		if (keyspressed & KEY_F4) { // Increase value
-			int maxval = setupmenu[selected].maxval;
-			curval += keyrepeataccel;
-			if( curval > maxval ) curval = maxval;
-		}
-		if (keyspressed & (KEY_F3 | KEY_F4)) {
-			NV_SetConfig(setupmenu[selected].nvval, curval);
-			Reflow_ValidateNV();
+		if (keyspressed & KEY_F4) {
+			Setup_increaseValue(selected, keyrepeataccel);
 		}
 
 		LCD_FB_Clear();
@@ -291,11 +352,8 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)buf, len, 64 - (len * 3), y, FONT6X6);
 		y += 7;
 
-		for (int i = 0; i < NUM_SETUP_ITEMS ; i++) {
-			int intval = NV_GetConfig(setupmenu[i].nvval);
-			intval += setupmenu[i].offset;
-			float value = ((float)intval) * setupmenu[i].multiplier;
-			len = snprintf(buf,sizeof(buf), setupmenu[i].formatstr, value);
+		for (int i = 0; i < Setup_getNumItems() ; i++) {
+			len = Setup_snprintFormattedValue(buf, sizeof(buf), i);
 			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected == i) ? INVERT : 0);
 			y += 7;
 		}
@@ -334,6 +392,7 @@ static int32_t Main_Work(void) {
 		}
 	} else if (mode == MAIN_REFLOW) {
 		uint32_t ticks = RTC_Read();
+
 		//len = snprintf(buf,sizeof(buf),"seconds:%d",ticks);
 		//LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 		len = snprintf(buf, sizeof(buf), "%03u", Reflow_GetSetpoint());
@@ -347,7 +406,10 @@ static int32_t Main_Work(void) {
 		len = snprintf(buf,sizeof(buf),"%03u", (unsigned int)ticks);
 		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
 		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
-		if (Reflow_IsDone() || keyspressed & KEY_S) { // Abort reflow
+
+		// Abort reflow
+		if (Reflow_IsDone() || keyspressed & KEY_S) {
+			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
 			if (Reflow_IsDone()) {
 				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			}
@@ -358,16 +420,19 @@ static int32_t Main_Work(void) {
 
 	} else if (mode == MAIN_SELECT_PROFILE) {
 		int curprofile = Reflow_GetProfileIdx();
-
 		LCD_FB_Clear();
 
-		if (keyspressed & KEY_F1) { // Prev profile
+		// Prev profile
+		if (keyspressed & KEY_F1) {
 			curprofile--;
 		}
-		if (keyspressed & KEY_F2) { // Next profile
+		// Next profile
+		if (keyspressed & KEY_F2) {
 			curprofile++;
 		}
+
 		Reflow_SelectProfileIdx(curprofile);
+
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(selectbmp, 127 - 17, 0);
 		int eeidx = Reflow_GetEEProfileIdx();
@@ -382,7 +447,9 @@ static int32_t Main_Work(void) {
 			current_edit_profile = eeidx;
 			retval = 0; // Force immediate refresh
 		}
-		if (keyspressed & KEY_S) { // Select current profile
+
+		// Select current profile
+		if (keyspressed & KEY_S) {
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
@@ -394,13 +461,16 @@ static int32_t Main_Work(void) {
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
 		if (keyrepeataccel > 30) keyrepeataccel = 30;
 
-		if (keyspressed & KEY_F1) { // Setpoint-
+		// Setpoint-
+		if (keyspressed & KEY_F1) {
 			setpoint -= keyrepeataccel;
-			if (setpoint<30) setpoint = 30;
+			if (setpoint < 30) setpoint = 30;
 		}
-		if (keyspressed & KEY_F2) { // Setpoint+
+
+		// Setpoint+
+		if (keyspressed & KEY_F2) {
 			setpoint += keyrepeataccel;
-			if (setpoint>300) setpoint = 300;
+			if (setpoint > 300) setpoint = 300;
 		}
 
 		len = snprintf(buf, sizeof(buf),"- SETPOINT %u` +", (unsigned int)setpoint);
@@ -444,7 +514,10 @@ static int32_t Main_Work(void) {
 
 		Reflow_SetSetpoint(setpoint);
 
-		if (keyspressed & KEY_S) { // Abort bake
+		// Abort bake
+		if (keyspressed & KEY_S) {
+			printf("Starting reflow with profile: %s\n", Reflow_GetProfileName());
+
 			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
@@ -481,7 +554,9 @@ static int32_t Main_Work(void) {
 
 		len = snprintf(buf, sizeof(buf), "%02u0s %03u`", profile_time_idx, cursetpoint);
 		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
-		if (keyspressed & KEY_S) { // Done editing
+
+		// Done editing
+		if (keyspressed & KEY_S) {
 			Reflow_SaveEEProfile();
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
@@ -514,7 +589,8 @@ static int32_t Main_Work(void) {
 			Buzzer_Beep(BUZZ_NONE, 0, 0);
 		}
 
-		if (keyspressed & KEY_F1) { // About
+		// About
+		if (keyspressed & KEY_F1) {
 			mode = MAIN_ABOUT;
 			retval = 0; // Force immediate refresh
 		}
@@ -523,19 +599,26 @@ static int32_t Main_Work(void) {
 			Reflow_SetMode(REFLOW_STANDBYFAN);
 			retval = 0; // Force immediate refresh
 		}
-		if (keyspressed & KEY_F3) { // Bake mode
+
+		// Bake mode
+		if (keyspressed & KEY_F3) {
 			mode = MAIN_BAKE;
 			Reflow_Init();
 			Reflow_SetMode(REFLOW_BAKE);
 			retval = 0; // Force immediate refresh
 		}
-		if (keyspressed & KEY_F4) { // Select profile
+
+		// Select profile
+		if (keyspressed & KEY_F4) {
 			mode = MAIN_SELECT_PROFILE;
 			retval = 0; // Force immediate refresh
 		}
-		if (keyspressed & KEY_S) { // Start reflow
+
+		// Start reflow
+		if (keyspressed & KEY_S) {
 			mode = MAIN_REFLOW;
 			LCD_FB_Clear();
+			printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
 			Reflow_Init();
 			Reflow_PlotProfile(-1);
 			LCD_BMPDisplay(stopbmp, 127 - 17, 0);
