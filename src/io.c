@@ -19,6 +19,7 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
+#include <stdio.h>
 #include "t962.h"
 #include "io.h"
 #include "sched.h"
@@ -47,13 +48,13 @@ void Set_Fan(uint8_t enable) {
 }
 
 static int32_t Sleep_Work(void) {
-	//FIO0PIN ^= (1<<31); // Toggle debug LED
+	// FIO0PIN ^= (1<<31); // Toggle debug LED
 	// For some reason P0.31 status cannot be read out, so the following is used instead:
 	static uint8_t flip = 0;
 	if (flip) {
 		FIO0SET = (1<<31);
 	} else {
-		 FIO0CLR = (1<<31);
+		FIO0CLR = (1<<31);
 	}
 	flip ^= 1;
 
@@ -63,6 +64,96 @@ static int32_t Sleep_Work(void) {
 	WDFEED = 0x55;
 	VIC_RestoreIRQ(save);
 	return TICKS_SECS(1);
+}
+
+void IO_InitWatchdog(void) {
+	// Setup watchdog
+	// Some margin (PCLKFREQ/4 would be exactly the period the WD is fed by sleep_work)
+	WDTC = PCLKFREQ / 3;
+	WDMOD = 0x03; // Enable
+	WDFEED = 0xaa;
+	WDFEED = 0x55;
+}
+
+void IO_PrintResetReason(void) {
+	uint8_t resetreason = RSIR;
+	RSIR = 0x0f; // Clear it out
+	printf(
+	       "\nReset reason(s): %s%s%s%s",
+	       (resetreason & (1 << 0)) ? "[POR]" : "",
+	       (resetreason & (1 << 1)) ? "[EXTR]" : "",
+	       (resetreason & (1 << 2)) ? "[WDTR]" : "",
+	       (resetreason & (1 << 3)) ? "[BODR]" : "");
+}
+
+
+// Support for boot ROM functions (get part number etc)
+typedef void (*IAP)(unsigned int [], unsigned int[]);
+IAP iap_entry = (void*)0x7ffffff1;
+
+partmapStruct partmap[] = {
+	{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2132(/01)", 0x0002ff11},
+	{"LPC2134(/01)", 0x0002ff12},
+	{"LPC2136(/01)", 0x0002ff23},
+	{"LPC2138(/01)", 0x0002ff25},
+
+	{"LPC2141", 0x0402ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
+	{"LPC2142", 0x0402ff11},
+	{"LPC2144", 0x0402ff12},
+	{"LPC2146", 0x0402ff23},
+	{"LPC2148", 0x0402ff25},
+};
+#define NUM_PARTS (sizeof(partmap) / sizeof(partmap[0]))
+
+uint32_t command[1];
+uint32_t result[3];
+
+int IO_Partinfo(char* buf, int n, char* format) {
+	uint32_t partrev;
+
+	// Request part number
+	command[0] = IAP_READ_PART;
+	iap_entry((void *)command, (void *)result);
+	const char* partstrptr = NULL;
+	for (int i = 0; i < NUM_PARTS; i++) {
+		if (result[1] == partmap[i].id) {
+			partstrptr = partmap[i].name;
+			break;
+		}
+	}
+
+	// Read part revision
+	partrev = *(uint8_t*)PART_REV_ADDR;
+	if (partrev == 0 || partrev > 0x1a) {
+		partrev = '-';
+	} else {
+		partrev += 'A' - 1;
+	}
+	return snprintf(buf, n, format, partstrptr, (int)partrev);
+}
+
+void IO_JumpBootloader(void) {
+	/* Hold F1-Key at boot to force ISP mode */
+	if ((IOPIN0 & (1 << 23)) == 0) {
+		// NB: If you want to call this later need to set a bunch of registers back
+		// to reset state. Haven't fully figured this out yet, might want to
+		// progmatically call bootloader, not sure. If calling later be sure
+		// to crank up watchdog time-out, as it's impossible to disable
+		//
+		// Bootloader must use legacy mode IO if you call this later too, so do:
+		// SCS = 0;
+
+		// Turn off FAN & Heater using legacy registers so they stay off during bootloader
+		// Fan = PIN0.8
+		// Heater = PIN0.9
+		IODIR0 = (1 << 8) | (1 << 9);
+		IOSET0 = (1 << 8) | (1 << 9);
+
+		//Re-enter ISP Mode, this function will never return
+		command[0] = IAP_REINVOKE_ISP;
+		iap_entry((void *)command, (void *)result);
+	}
 }
 
 void IO_Init(void) {
