@@ -9,6 +9,7 @@ SRC_DIR := ./src/
 BUILD_DIR := ./build/
 TARGET := $(BUILD_DIR)$(BASE_NAME).axf
 
+
 vpath %.c $(SRC_DIR)
 vpath %.o $(BUILD_DIR)
 vpath %.d $(BUILD_DIR)
@@ -80,9 +81,21 @@ post-build:
 	-arm-none-eabi-objcopy -v -O ihex "$(TARGET)" "$(BUILD_DIR)$(BASE_NAME).hex"
 	-@echo ' '
 
-flash: axf
+lpc21isp: $(BUILD_DIR)tag
+	-@echo ''
+	-@echo 'Downloading lpc21isp 1.97 source from sourceforge'
+	wget http://sourceforge.net/projects/lpc21isp/files/lpc21isp/1.97/lpc21isp_197.zip/download -O $(BUILD_DIR)lpc21isp.zip
+	unzip -qq -o $(BUILD_DIR)lpc21isp.zip -d $(BUILD_DIR)
+
+	-@echo 'Making lpc21isp'
+	$(MAKE) -C $(BUILD_DIR)lpc21isp_197/
+	-@echo 'Copy lpc21isp binary to current directory'
+	cp $(BUILD_DIR)lpc21isp_197/lpc21isp .
+	-@echo ''
+
+flash: axf lpc21isp
+	@echo ''
 	@echo 'Flashing $(COLOR_GREEN)$(BASE_NAME).hex$(COLOR_END) to $(COLOR_RED)$(FLASH_TTY)$(COLOR_END)'
-	@echo ' '
 	$(FLASH_TOOL) "$(BUILD_DIR)$(BASE_NAME).hex" $(FLASH_TTY) $(FLASH_BAUD) $(MCU_CLOCK)
 
 .PHONY: clean dependents
