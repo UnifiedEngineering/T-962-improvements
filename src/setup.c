@@ -37,8 +37,12 @@ int Setup_getNumItems(void) {
 	return NUM_SETUP_ITEMS;
 }
 
+int _getRawValue(int item) {
+	return NV_GetConfig(setupmenu[item].nvval);
+}
+
 float Setup_getValue(int item) {
-	int intval = NV_GetConfig(setupmenu[item].nvval);
+	int intval = _getRawValue(item);
 	intval += setupmenu[item].offset;
 	return ((float)intval) * setupmenu[item].multiplier;
 }
@@ -49,7 +53,7 @@ void Setup_setValue(int item, int value) {
 }
 
 void Setup_increaseValue(int item, int amount) {
-	int curval = Setup_getValue(item) + amount;
+	int curval = _getRawValue(item) + amount;
 
 	int maxval = setupmenu[item].maxval;
 	if (curval > maxval) curval = maxval;
@@ -58,7 +62,7 @@ void Setup_increaseValue(int item, int amount) {
 }
 
 void Setup_decreaseValue(int item, int amount) {
-	int curval = Setup_getValue(item) - amount;
+	int curval = _getRawValue(item) - amount;
 
 	int minval = setupmenu[item].minval;
 	if (curval < minval) curval = minval;
