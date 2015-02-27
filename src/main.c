@@ -175,6 +175,7 @@ static int32_t Main_Work(void) {
 	char* cmd_select_profile = "select profile %d";
 	char* cmd_bake = "bake %d";
 	char* cmd_bake_timer = "bake %d %d";
+	char* cmd_dump_profile = "dump profile %d";
 	char* cmd_setting = "setting %d %d";
 
 	if (uart_isrxready()) {
@@ -269,6 +270,21 @@ static int32_t Main_Work(void) {
 				timer = -1;
 				mode = MAIN_BAKE;
 				Reflow_SetMode(REFLOW_BAKE);
+
+			} else if (sscanf(serial_cmd, cmd_dump_profile, &param) > 0) {
+				int current = Reflow_GetProfileIdx();
+				Reflow_SelectProfileIdx(param);
+				printf("\nDumping profile %d: %s\n ", param, Reflow_GetProfileName());
+
+				for (int i = 0; i < NUMPROFILETEMPS; i++) {
+					printf("%4d,", Reflow_GetSetpointAtIdx(i));
+					if (i == 15 || i == 31) {
+						printf("\n ");
+					}
+				}
+				printf("\n");
+				// restore current profile
+				Reflow_SelectProfileIdx(current);
 
 			} else if (sscanf(serial_cmd, cmd_setting, &param, &param1) > 0) {
 				// This is currently a bit crude. User has to input
