@@ -68,8 +68,10 @@ uint8_t tempvalid = 0;
 int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
+uint16_t numticks = 0;
 
 int standby_logging = 1;
+int bake_timer = 0;
 
 // Amtech 4300 63Sn/37Pb leaded profile
 const profile am4300profile = {
@@ -104,7 +106,7 @@ const profile rampspeed_testprofile = {
 	"RAMP SPEED TEST", {
 		 50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245, // 0-150s
 		245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50, // 160-310s
-	 	 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
+		 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
 	}
 };
 #endif
@@ -153,7 +155,6 @@ static void ByteswapTempProfile(uint16_t* buf) {
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
-	static uint16_t numticks = 0;
 	static uint32_t lasttick = 0;
 	uint16_t temp[2];
 	uint8_t fan, heat;
@@ -255,12 +256,15 @@ static int32_t Reflow_Work(void) {
 			 fan = 0;
 		}
 		modestr = "STANDBY";
+
 	} else if(mymode == REFLOW_BAKE) {
-		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
+		reflowdone = Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint) ? 1 : 0;
 		modestr = "BAKE";
+
 	} else if(mymode == REFLOW_REFLOW) {
 		reflowdone = Reflow_Run(ticks, avgtemp, &heat, &fan, 0) ? 1 : 0;
 		modestr = "REFLOW";
+
 	} else {
 		heat = fan = 0;
 	}
@@ -271,10 +275,21 @@ static int32_t Reflow_Work(void) {
 		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
 		oldmode = mymode;
 		numticks = 0;
-	} else {
-		if (mymode == REFLOW_BAKE || mymode == REFLOW_REFLOW) {
+	} else if (mymode == REFLOW_BAKE) {
+		if (bake_timer > 0 && numticks >= bake_timer) {
+			printf("\n DONE baking, set bake timer to 0.");
+			bake_timer = 0;
+			Reflow_SetMode(REFLOW_STANDBY);
+		}
+
+		// start increasing ticks after setpoint is reached...
+		if (avgtemp < intsetpoint && bake_timer > 0) {
+			modestr = "BAKE-PREHEAT";
+		} else {
 			numticks++;
 		}
+	} else if (mymode == REFLOW_REFLOW) {
+		numticks++;
 	}
 
 	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
@@ -540,11 +555,30 @@ uint16_t Reflow_GetSetpoint(void) {
 	return intsetpoint;
 }
 
+void Reflow_SetBakeTimer(int seconds) {
+	// reset ticks to 0 when adjusting timer.
+	numticks = 0;
+	bake_timer = seconds * (1000 / PID_TIMEBASE);
+}
+
+int Reflow_GetTimeLeft(void) {
+	if (bake_timer > 0 && avgtemp < intsetpoint) {
+		return -2;
+	} else if (bake_timer == 0) {
+		return -1;
+	}
+	return (bake_timer - numticks) / (1000 / PID_TIMEBASE);
+}
+
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
 	int32_t retval = 0;
 
 	if (manualsetpoint) {
 		PID.mySetpoint = (float)manualsetpoint;
+
+		if (bake_timer > 0 && numticks > bake_timer) {
+			retval = -1;
+		}
 	} else {
 		// Figure out what setpoint to use from the profile, brute-force way. Fix this.
 		uint8_t idx = thetime / 10;
