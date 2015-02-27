@@ -65,7 +65,7 @@ $(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
 axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU Linker'
-	$(CC) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections -flto -Os -mcpu=arm7tdmi --specs=nano.specs -u _printf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
+	$(CC) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections -flto -Os -mcpu=arm7tdmi --specs=nano.specs -u _printf_float -u _scanf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $(COLOR_GREEN)$@$(COLOR_END)'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
