@@ -32,6 +32,8 @@
 #include "eeprom.h"
 #include "keypad.h"
 #include "reflow.h"
+#include "reflow_profiles.h"
+#include "sensor.h"
 #include "buzzer.h"
 #include "nvstorage.h"
 #include "version.h"
@@ -222,20 +224,7 @@ static int32_t Main_Work(void) {
 
 			} else if (strcmp(serial_cmd, "values") == 0) {
 				printf("\nActual measured values:\n");
-				printf("\nLeft:      %4.1fdegC", Reflow_GetTempSensor(TC_LEFT));
-				printf("\nRight:     %4.1fdegC", Reflow_GetTempSensor(TC_RIGHT));
-
-				if (Reflow_IsTempSensorValid(TC_EXTRA1)) {
-					printf("\nExtra 1:   %4.1fdegC", Reflow_GetTempSensor(TC_EXTRA1));
-				}
-				if (Reflow_IsTempSensorValid(TC_EXTRA2)) {
-					printf("\nExtra 2:   %4.1fdegC", Reflow_GetTempSensor(TC_EXTRA2));
-				}
-				if (Reflow_IsTempSensorValid(TC_COLD_JUNCTION)) {
-					printf("\nPCB:       %4.1fdegC (cold junction)", Reflow_GetTempSensor(TC_COLD_JUNCTION));
-				} else {
-					printf("\nNo cold-junction sensor on PCB");
-				}
+				Sensor_ListAll();
 
 			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
 				// select profile
@@ -273,6 +262,8 @@ static int32_t Main_Work(void) {
 
 			} else if (sscanf(serial_cmd, cmd_dump_profile, &param) > 0) {
 				int current = Reflow_GetProfileIdx();
+
+				// TODO: do this without selecting profile first
 				Reflow_SelectProfileIdx(param);
 				printf("\nDumping profile %d: %s\n ", param, Reflow_GetProfileName());
 
@@ -494,7 +485,7 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)"F4", 2, 127 - 12, y, FONT6X6 | INVERT);
 
 		y = 26;
-		len = snprintf(buf, sizeof(buf), "ACTUAL %.1f`", Reflow_GetTempSensor(TC_AVERAGE));
+		len = snprintf(buf, sizeof(buf), "ACTUAL %.1f`", Sensor_GetTemp(TC_AVERAGE));
 		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
 
 		int time_left = Reflow_GetTimeLeft();
@@ -514,27 +505,27 @@ static int32_t Main_Work(void) {
 		}
 
 		y += 8;
-		len = snprintf(buf, sizeof(buf), "L %.1f`", Reflow_GetTempSensor(TC_LEFT));
+		len = snprintf(buf, sizeof(buf), "L %.1f`", Sensor_GetTemp(TC_LEFT));
 		LCD_disp_str((uint8_t*)buf, len, 32 - (len * 3), y, FONT6X6);
 
-		len = snprintf(buf, sizeof(buf), "R %.1f`", Reflow_GetTempSensor(TC_RIGHT));
+		len = snprintf(buf, sizeof(buf), "R %.1f`", Sensor_GetTemp(TC_RIGHT));
 		LCD_disp_str((uint8_t*)buf, len, 96 - (len * 3), y, FONT6X6);
 
-		if (Reflow_IsTempSensorValid(TC_EXTRA1) | Reflow_IsTempSensorValid(TC_EXTRA1)) {
+		if (Sensor_IsValid(TC_EXTRA1) | Sensor_IsValid(TC_EXTRA1)) {
 			y += 8;
-			if (Reflow_IsTempSensorValid(TC_EXTRA1)) {
-				len = snprintf(buf, sizeof(buf), "X1 %.1f`", Reflow_GetTempSensor(TC_EXTRA1));
+			if (Sensor_IsValid(TC_EXTRA1)) {
+				len = snprintf(buf, sizeof(buf), "X1 %.1f`", Sensor_GetTemp(TC_EXTRA1));
 				LCD_disp_str((uint8_t*)buf, len, 32 - (len * 3), y, FONT6X6);
 			}
-			if (Reflow_IsTempSensorValid(TC_EXTRA2)) {
-				len = snprintf(buf, sizeof(buf), "X2 %.1f`", Reflow_GetTempSensor(TC_EXTRA2));
+			if (Sensor_IsValid(TC_EXTRA2)) {
+				len = snprintf(buf, sizeof(buf), "X2 %.1f`", Sensor_GetTemp(TC_EXTRA2));
 				LCD_disp_str((uint8_t*)buf, len, 96 - (len * 3), y, FONT6X6);
 			}
 		}
 
 		y += 8;
-		if (Reflow_IsTempSensorValid(TC_COLD_JUNCTION)) {
-			len = snprintf(buf, sizeof(buf), "COLD-JUNCTION %.1f`", Reflow_GetTempSensor(TC_COLD_JUNCTION));
+		if (Sensor_IsValid(TC_COLD_JUNCTION)) {
+			len = snprintf(buf, sizeof(buf), "COLD-JUNCTION %.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
 		} else {
 			len = snprintf(buf, sizeof(buf), "NO COLD-JUNCTION TS!");
 		}

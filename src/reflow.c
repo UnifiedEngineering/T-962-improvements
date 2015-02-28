@@ -21,17 +21,15 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "t962.h"
-#include "reflow.h"
-#include "eeprom.h"
+#include "reflow_profiles.h"
 #include "io.h"
 #include "lcd.h"
 #include "rtc.h"
 #include "PID_v1.h"
 #include "sched.h"
-#include "onewire.h"
-#include "adc.h"
 #include "nvstorage.h"
-#include "max31855.h"
+#include "sensor.h"
+#include "reflow.h"
 
 /*
  * Normally the control input is the average of the first two TCs.
@@ -43,28 +41,15 @@
  */
 //#define MAXTEMPOVERRIDE
 
-#define RAMPTEST
-#define PIDTEST
+
 #define STANDBYTEMP (50) // Standby temperature in degrees Celsius
 
 #define PID_TIMEBASE (250) // 250ms between each run
 
-// Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
-float adcgainadj[2];
- // Offset adjust, this will definitely have to be calibrated per device
-float adcoffsetadj[2];
-
-extern uint8_t graphbmp[];
-#define YAXIS (57)
-#define XAXIS (12)
-
 PidType PID;
 uint16_t intsetpoint;
-float avgtemp; // The feedback temperature
-float coldjunction;
-float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-uint8_t cjsensorpresent = 0;
-uint8_t tempvalid = 0;
+
+float avgtemp;
 int16_t intavgtemp;
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
@@ -73,86 +58,6 @@ uint16_t numticks = 0;
 int standby_logging = 1;
 int bake_timer = 0;
 
-// Amtech 4300 63Sn/37Pb leaded profile
-const profile am4300profile = {
-	"4300 63SN/37PB", {
-		 50, 50, 50, 60, 73, 86,100,113,126,140,143,147,150,154,157,161, // 0-150s
-		164,168,171,175,179,183,195,207,215,207,195,183,168,154,140,125, // Adjust peak from 205 to 220C
-		111, 97, 82, 68, 54,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
-	}
-};
-
-// NC-31 low-temp lead-free profile
-const profile nc31profile = {
-	"NC-31 LOW-TEMP LF", {
-		 50, 50, 50, 50, 55, 70, 85, 90, 95,100,102,105,107,110,112,115, // 0-150s
-		117,120,122,127,132,138,148,158,160,158,148,138,130,122,114,106, // Adjust peak from 158 to 165C
-		 98, 90, 82, 74, 66, 58,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
-	}
-};
-
-// SynTECH-LF normal temp lead-free profile
-const profile syntechlfprofile = {
-	"AMTECH SYNTECH-LF", {
-		 50, 50, 50, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166, // 0-150s
-		175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191, // Adjust peak from 230 to 249C
-		184,177,157,137,117, 97, 77, 57,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
-	}
-};
-
-#ifdef RAMPTEST
-// Ramp speed test temp profile
-const profile rampspeed_testprofile = {
-	"RAMP SPEED TEST", {
-		 50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245, // 0-150s
-		245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50, // 160-310s
-		 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
-	}
-};
-#endif
-
-#ifdef PIDTEST
-// PID gain adjustment test profile (5% setpoint change)
-const profile pidcontrol_testprofile = {
-	"PID CONTROL TEST",	{
-		171,171,171,171,171,171,171,171,171,171,171,171,171,171,171,171, // 0-150s
-		180,180,180,180,180,180,180,180,171,171,171,171,171,171,171,171, // 160-310s
-		  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
-	}
-};
-#endif
-
-// EEPROM profile 1
-ramprofile ee1 = { "CUSTOM #1" };
-
-// EEPROM profile 2
-ramprofile ee2 = { "CUSTOM #2" };
-
-const profile* profiles[] = {
-	&syntechlfprofile,
-	&nc31profile,
-	&am4300profile,
-#ifdef RAMPTEST
-	&rampspeed_testprofile,
-#endif
-#ifdef PIDTEST
-	&pidcontrol_testprofile,
-#endif
-	(profile*) &ee1,
-	(profile*) &ee2
-};
-
-#define NUMPROFILES (sizeof(profiles) / sizeof(profiles[0]))
-
-uint8_t profileidx = 0;
-
-static void ByteswapTempProfile(uint16_t* buf) {
-	for (int i = 0; i < NUMPROFILETEMPS; i++) {
-		uint16_t word = buf[i];
-		buf[i] = word >> 8 | word << 8;
-	}
-}
-
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
 	static uint32_t lasttick = 0;
@@ -160,87 +65,8 @@ static int32_t Reflow_Work(void) {
 	uint8_t fan, heat;
 	uint32_t ticks = RTC_Read();
 
-	/*
-	 * These are the temperature readings we get from the thermocouple interfaces
-	 * Right now it is assumed that if they are indeed present the first two
-	 * channels will be used as feedback
-	 */
-	float tctemp[4], tccj[4];
-	uint8_t tcpresent[4];
-	tempvalid = 0; // Assume no valid readings;
-	for (int i = 0; i < 4; i++) { // Get 4 TC channels
-		tcpresent[i] = OneWire_IsTCPresent(i);
-		if (tcpresent[i]) {
-			tctemp[i] = OneWire_GetTCReading(i);
-			tccj[i] = OneWire_GetTCColdReading(i);
-			if (i > 1) {
-				temperature[i] = tctemp[i];
-				tempvalid |= (1 << i);
-			}
-		} else {
-			tcpresent[i] = SPI_IsTCPresent(i);
-			if (tcpresent[i]) {
-				tctemp[i] = SPI_GetTCReading(i);
-				tccj[i] = SPI_GetTCColdReading(i);
-				if (i > 1) {
-					temperature[i] = tctemp[i];
-					tempvalid |= (1 << i);
-				}
-			}
-		}
-	}
-
-	// Assume no CJ sensor
-	cjsensorpresent = 0;
-	if (tcpresent[0] && tcpresent[1]) {
-		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
-		temperature[0] = tctemp[0];
-		temperature[1] = tctemp[1];
-		tempvalid |= 0x03;
-		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
-		cjsensorpresent = 1;
-	} else {
-		// If the external TC interface is not present we fall back to the
-		// built-in ADC, with or without compensation
-		coldjunction = OneWire_GetTempSensorReading();
-		if (coldjunction < 127.0f) {
-			cjsensorpresent = 1;
-		} else {
-			coldjunction = 25.0f; // Assume 25C ambient if not found
-		}
-		temp[0] = ADC_Read(1);
-		temp[1] = ADC_Read(2);
-
-		// ADC oversamples to supply 4 additional bits of resolution
-		temperature[0] = ((float)temp[0]) / 16.0f;
-		temperature[1] = ((float)temp[1]) / 16.0f;
-
-		// Gain adjust
-		temperature[0] *= adcgainadj[0];
-		temperature[1] *= adcgainadj[1];
-
-		// Offset adjust
-		temperature[0] += coldjunction + adcoffsetadj[0];
-		temperature[1] += coldjunction + adcoffsetadj[1];
-
-		tempvalid |= 0x03;
-
-		avgtemp = (temperature[0] + temperature[1]) / 2.0f;
-	}
-
-#ifdef MAXTEMPOVERRIDE
-	// If one of the temperature sensors reports higher than 5C above
-	// the average, use that as control input
-	float newtemp = avgtemp;
-	for (int i=0; i < 4; i++) {
-		if (tcpresent[i] && temperature[i] > (avgtemp + 5.0f) && temperature[i] > newtemp) {
-			newtemp = temperature[i];
-		}
-	}
-	if (avgtemp != newtemp) {
-		avgtemp = newtemp;
-	}
-#endif
+	Sensor_DoConversion();
+	avgtemp = Sensor_GetTemp(TC_AVERAGE);
 
 	const char* modestr = "UNKNOWN";
 
@@ -295,11 +121,13 @@ static int32_t Reflow_Work(void) {
 	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
 		       ((float)numticks / (1000.0f / PID_TIMEBASE)),
-		       temperature[0], temperature[1],
-		       (tempvalid & (1 << 2)) ? temperature[2] : 0.0f,
-		       (tempvalid & (1 << 3)) ? temperature[3] : 0.0f,
-		       intsetpoint, avgtemp, heat, fan,
-		       cjsensorpresent ? coldjunction : 0.0f,
+		       Sensor_GetTemp(TC_LEFT),
+		       Sensor_GetTemp(TC_RIGHT),
+		       Sensor_GetTemp(TC_EXTRA1),
+		       Sensor_GetTemp(TC_EXTRA2),
+		       intsetpoint, avgtemp,
+		       heat, fan,
+		       Sensor_GetTemp(TC_COLD_JUNCTION),
 		       modestr);
 	}
 
@@ -325,49 +153,6 @@ static int32_t Reflow_Work(void) {
 	return nexttick;
 }
 
-void Reflow_ValidateNV(void) {
-	int temp;
-
-	if (NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255) {
-		// Default 1 second beep length
-		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10);
-	}
-
-	if (NV_GetConfig(REFLOW_MIN_FAN_SPEED) == 255) {
-		// Default fan speed is now 8
-		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8);
-	}
-
-	temp = NV_GetConfig(TC_LEFT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[0] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_RIGHT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[1] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_LEFT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[0] = ((float)(temp - 100)) * 0.25f;
-
-	temp = NV_GetConfig(TC_RIGHT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[1] = ((float)(temp - 100)) * 0.25f;
-	//printf("\nlo=%f lg=%f ro=%f, rg=%f ", adcoffsetadj[0], adcgainadj[0], adcoffsetadj[1], adcgainadj[1]);
-}
-
 void Reflow_Init(void) {
 	Sched_SetWorkfunc(REFLOW_WORK, Reflow_Work);
 	//PID_init(&PID, 10, 0.04, 5, PID_Direction_Direct); // This does not reach the setpoint fast enough
@@ -389,14 +174,12 @@ void Reflow_Init(void) {
 	//PID_SetTunings(&PID, 10, 0.2, 0);
 	//PID_SetTunings(&PID, 10, 0.020, 1.0); // Experimental
 
-	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
-	ByteswapTempProfile(ee1.temperatures);
-
-	EEPROM_Read((uint8_t*)ee2.temperatures, 128 + 2, 96);
-	ByteswapTempProfile(ee2.temperatures);
+	Reflow_LoadCustomProfiles();
 
 	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
 	Reflow_ValidateNV();
+	Sensor_ValidateNV();
+
 	intsetpoint = 30;
 	PID.mySetpoint = 30.0f; // Default setpoint
 	PID_SetOutputLimits(&PID, 0, 255 + 248);
@@ -418,137 +201,11 @@ void Reflow_SetSetpoint(uint16_t thesetpoint) {
 }
 
 int16_t Reflow_GetActualTemp(void) {
-	return intavgtemp;
-}
-
-float Reflow_GetTempSensor(TempSensor_t sensor) {
-	if (sensor == TC_COLD_JUNCTION) {
-		return coldjunction;
-	} else if(sensor == TC_AVERAGE) {
-		return avgtemp;
-	} else if(sensor < TC_NUM_ITEMS) {
-		return temperature[sensor - TC_LEFT];
-	} else {
-		 return 0.0f;
-	}
-}
-
-uint8_t Reflow_IsTempSensorValid(TempSensor_t sensor) {
-	if (sensor == TC_COLD_JUNCTION) {
-		return cjsensorpresent;
-	} else if(sensor == TC_AVERAGE) {
-		return 1;
-	} else if(sensor >= TC_NUM_ITEMS) {
-		return 0;
-	}
-	return (tempvalid & (1 << (sensor - TC_LEFT))) ? 1 : 0;
+	return (int)Sensor_GetTemp(TC_AVERAGE);
 }
 
 uint8_t Reflow_IsDone(void) {
 	return reflowdone;
-}
-
-void Reflow_PlotProfile(int highlight) {
-	LCD_BMPDisplay(graphbmp, 0, 0);
-
-	// No need to plot first value as it is obscured by Y-axis
-	for(int x = 1; x < NUMPROFILETEMPS; x++) {
-		int realx = (x << 1) + XAXIS;
-		int y = profiles[profileidx]->temperatures[x] / 5;
-		y = YAXIS - y;
-		LCD_SetPixel(realx, y);
-
-		if (highlight == x) {
-			LCD_SetPixel(realx - 1, y - 1);
-			LCD_SetPixel(realx + 1, y + 1);
-			LCD_SetPixel(realx - 1, y + 1);
-			LCD_SetPixel(realx + 1, y - 1);
-		}
-	}
-}
-
-int Reflow_GetProfileIdx(void) {
-	return profileidx;
-}
-
-int Reflow_SelectProfileIdx(int idx) {
-	if (idx < 0) {
-		profileidx = (NUMPROFILES - 1);
-	} else if(idx >= NUMPROFILES) {
-		profileidx = 0;
-	} else {
-		profileidx = idx;
-	}
-	NV_SetConfig(REFLOW_PROFILE, profileidx);
-	return profileidx;
-}
-
-int Reflow_SelectEEProfileIdx(int idx) {
-	if (idx == 1) {
-		profileidx = (NUMPROFILES - 2);
-	} else if (idx == 2) {
-		profileidx = (NUMPROFILES - 1);
-	}
-	return profileidx;
-}
-
-int Reflow_GetEEProfileIdx(void) {
-	if (profileidx == (NUMPROFILES - 2)) {
-		return 1;
-	} else 	if (profileidx == (NUMPROFILES - 1)) {
-		return 2;
-	} else {
-		return 0;
-	}
-}
-
-int Reflow_SaveEEProfile(void) {
-	int retval = 0;
-	uint8_t offset;
-	uint16_t* tempptr;
-	if (profileidx == (NUMPROFILES - 2)) {
-		offset = 0;
-		tempptr = ee1.temperatures;
-	} else if (profileidx == (NUMPROFILES - 1)) {
-		offset = 128;
-		tempptr = ee2.temperatures;
-	} else {
-		return -1;
-	}
-	offset += 2; // Skip "magic"
-	ByteswapTempProfile(tempptr);
-
-	// Store profile
-	retval = EEPROM_Write(offset, (uint8_t*)tempptr, 96);
-	ByteswapTempProfile(tempptr);
-	return retval;
-}
-
-void Reflow_ListProfiles(void) {
-	for (int i = 0; i < NUMPROFILES; i++) {
-		printf("%d: %s\n", i, profiles[i]->name);
-	}
-}
-
-const char* Reflow_GetProfileName(void) {
-	return profiles[profileidx]->name;
-}
-
-uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
-	if (idx > (NUMPROFILETEMPS - 1)) {
-		return 0;
-	}
-	return profiles[profileidx]->temperatures[idx];
-}
-
-void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
-	if (idx > (NUMPROFILETEMPS - 1)) { return; }
-	if (value > 300) { return; }
-
-	uint16_t* temp = (uint16_t*) &profiles[profileidx]->temperatures[idx];
-	if (temp >= (uint16_t*)0x40000000) {
-		 *temp = value; // If RAM-based
-	}
 }
 
 uint16_t Reflow_GetSetpoint(void) {
@@ -585,11 +242,11 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 		uint16_t start = idx * 10;
 		uint16_t offset = thetime - start;
 		if (idx < (NUMPROFILETEMPS - 2)) {
-			uint32_t value = profiles[profileidx]->temperatures[idx];
-			uint32_t value2 = profiles[profileidx]->temperatures[idx + 1];
+			uint16_t value = Reflow_GetSetpointAtIdx(idx);
+			uint16_t value2 = Reflow_GetSetpointAtIdx(idx + 1);
 
 			if (value > 0 && value2 > 0) {
-				uint32_t avg = (value * (10 - offset) + value2 * offset) / 10;
+				uint16_t avg = (value * (10 - offset) + value2 * offset) / 10;
 
 				// Keep the setpoint for the UI...
 				intsetpoint = avg;
