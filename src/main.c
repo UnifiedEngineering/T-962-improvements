@@ -222,17 +222,17 @@ static int32_t Main_Work(void) {
 
 			} else if (strcmp(serial_cmd, "values") == 0) {
 				printf("\nActual measured values:\n");
-				printf("\nLeft:      %4.1f", Reflow_GetTempSensor(TC_LEFT));
-				printf("\nRight:     %4.1f", Reflow_GetTempSensor(TC_RIGHT));
+				printf("\nLeft:      %4.1fdegC", Reflow_GetTempSensor(TC_LEFT));
+				printf("\nRight:     %4.1fdegC", Reflow_GetTempSensor(TC_RIGHT));
 
 				if (Reflow_IsTempSensorValid(TC_EXTRA1)) {
-					printf("\nExtra 1:   %4.1f", Reflow_GetTempSensor(TC_EXTRA1));
+					printf("\nExtra 1:   %4.1fdegC", Reflow_GetTempSensor(TC_EXTRA1));
 				}
 				if (Reflow_IsTempSensorValid(TC_EXTRA2)) {
-					printf("\nExtra 2:   %4.1f", Reflow_GetTempSensor(TC_EXTRA2));
+					printf("\nExtra 2:   %4.1fdegC", Reflow_GetTempSensor(TC_EXTRA2));
 				}
 				if (Reflow_IsTempSensorValid(TC_COLD_JUNCTION)) {
-					printf("\nPCB:       %4.1f (cold junction)", Reflow_GetTempSensor(TC_COLD_JUNCTION));
+					printf("\nPCB:       %4.1fdegC (cold junction)", Reflow_GetTempSensor(TC_COLD_JUNCTION));
 				} else {
 					printf("\nNo cold-junction sensor on PCB");
 				}
@@ -244,7 +244,7 @@ static int32_t Main_Work(void) {
 
 			} else if (sscanf(serial_cmd, cmd_bake_timer, &param, &param1) > 0) {
 				if (param < 30) {
-					printf("\nSetpoint must be greater than or equal to 30\n");
+					printf("\nSetpoint must be >= 30degC\n");
 					param = 30;
 				}
 				if (param1 < 1) {
@@ -252,7 +252,7 @@ static int32_t Main_Work(void) {
 					param1 = 1;
 				}
 
-				printf("\nStarting bake with setpoint %d for %ds after reaching setpoint\n", param, param1);
+				printf("\nStarting bake with setpoint %ddegC for %ds after reaching setpoint\n", param, param1);
 
 				setpoint = param;
 				timer = param1;
@@ -262,10 +262,10 @@ static int32_t Main_Work(void) {
 
 			} else if (sscanf(serial_cmd, cmd_bake, &param) > 0) {
 				if (param < 30) {
-					printf("\nSetpoint must be greater than or equal to 30\n");
+					printf("\nSetpoint must be >= 30degC\n");
 					param = 30;
 				}
-				printf("\nStarting bake with setpoint %d\n", param);
+				printf("\nStarting bake with setpoint %ddegC\n", param);
 				setpoint = param;
 				timer = -1;
 				mode = MAIN_BAKE;
