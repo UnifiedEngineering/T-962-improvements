@@ -120,12 +120,15 @@ class Log(object):
 		axis_lower.set_ylabel('PWM value')
 		axis_lower.set_xlabel('Time [s]')
 
+		# select values to be plotted
 		self.lines = [
 			Line(axis_upper, 'Actual'),
 			Line(axis_upper, 'Temp0'),
 			Line(axis_upper, 'Temp1'),
 			Line(axis_upper, 'Set', u'Setpoint'),
 			Line(axis_upper, 'ColdJ', u'Coldjunction'),
+		#	Line(axis_upper, 'Temp2'),
+		#	Line(axis_upper, 'Temp3'),
 
 			Line(axis_lower, 'Fan'),
 			Line(axis_lower, 'Heat', 'Heater')
