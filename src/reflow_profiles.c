@@ -103,8 +103,6 @@ void Reflow_LoadCustomProfiles(void) {
 }
 
 void Reflow_ValidateNV(void) {
-	int temp;
-
 	if (NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255) {
 		// Default 1 second beep length
 		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10);

@@ -31,37 +31,30 @@
 #include "sensor.h"
 #include "reflow.h"
 
-/*
- * Normally the control input is the average of the first two TCs.
- * By defining this any TC that has a readout 5C (or more) higher
- * than the TC0 and TC1 average will be used as control input instead.
- * Use if you have very sensitive components. Note that this will also
- * kick in if the two sides of the oven has different readouts, as the
- * code treats all four TCs the same way.
- */
-//#define MAXTEMPOVERRIDE
+// Standby temperature in degrees Celsius
+#define STANDBYTEMP (50)
 
+// 250ms between each run
+#define PID_TIMEBASE (250)
 
-#define STANDBYTEMP (50) // Standby temperature in degrees Celsius
-
-#define PID_TIMEBASE (250) // 250ms between each run
+#define TICKS_PER_SECOND (1000 / PID_TIMEBASE)
 
 PidType PID;
+
 uint16_t intsetpoint;
+int bake_timer = 0;
 
 float avgtemp;
-int16_t intavgtemp;
+
 uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
 uint16_t numticks = 0;
 
 int standby_logging = 1;
-int bake_timer = 0;
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
 	static uint32_t lasttick = 0;
-	uint16_t temp[2];
 	uint8_t fan, heat;
 	uint32_t ticks = RTC_Read();
 
@@ -120,7 +113,7 @@ static int32_t Reflow_Work(void) {
 
 	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
-		       ((float)numticks / (1000.0f / PID_TIMEBASE)),
+		       ((float)numticks / TICKS_PER_SECOND),
 		       Sensor_GetTemp(TC_LEFT),
 		       Sensor_GetTemp(TC_RIGHT),
 		       Sensor_GetTemp(TC_EXTRA1),
@@ -130,9 +123,6 @@ static int32_t Reflow_Work(void) {
 		       Sensor_GetTemp(TC_COLD_JUNCTION),
 		       modestr);
 	}
-
-	// Average temperature for UI
-	intavgtemp = (int16_t)avgtemp;
 
 	if (numticks & 1) {
 		// Force UI refresh every other cycle
@@ -215,7 +205,7 @@ uint16_t Reflow_GetSetpoint(void) {
 void Reflow_SetBakeTimer(int seconds) {
 	// reset ticks to 0 when adjusting timer.
 	numticks = 0;
-	bake_timer = seconds * (1000 / PID_TIMEBASE);
+	bake_timer = seconds * TICKS_PER_SECOND;
 }
 
 int Reflow_GetTimeLeft(void) {
@@ -224,7 +214,7 @@ int Reflow_GetTimeLeft(void) {
 	} else if (bake_timer == 0) {
 		return -1;
 	}
-	return (bake_timer - numticks) / (1000 / PID_TIMEBASE);
+	return (bake_timer - numticks) / TICKS_PER_SECOND;
 }
 
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {

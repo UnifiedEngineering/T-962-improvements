@@ -10,11 +10,21 @@
 
 #include "sensor.h"
 
+/*
+* Normally the control input is the average of the first two TCs.
+* By defining this any TC that has a readout 5C (or more) higher
+* than the TC0 and TC1 average will be used as control input instead.
+* Use if you have very sensitive components. Note that this will also
+* kick in if the two sides of the oven has different readouts, as the
+* code treats all four TCs the same way.
+*/
+//#define MAXTEMPOVERRIDE
+
+
 // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcgainadj[2];
  // Offset adjust, this will definitely have to be calibrated per device
 float adcoffsetadj[2];
-
 
 float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 uint8_t tempvalid = 0;
@@ -158,7 +168,6 @@ float Sensor_GetTemp(TempSensor_t sensor) {
 		return 0.0f;
 	}
 }
-
 
 uint8_t Sensor_IsValid(TempSensor_t sensor) {
 	if (sensor == TC_COLD_JUNCTION) {
