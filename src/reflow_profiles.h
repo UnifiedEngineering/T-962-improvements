@@ -8,13 +8,13 @@
 #define XAXIS (12)
 
 typedef struct {
-    const char* name;
-    const uint16_t temperatures[NUMPROFILETEMPS];
+	const char* name;
+	const uint16_t temperatures[NUMPROFILETEMPS];
 } profile;
 
 typedef struct {
-    const char* name;
-    uint16_t temperatures[NUMPROFILETEMPS];
+	const char* name;
+	uint16_t temperatures[NUMPROFILETEMPS];
 } ramprofile;
 
 void Reflow_LoadCustomProfiles(void);

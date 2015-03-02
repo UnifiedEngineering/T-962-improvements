@@ -475,7 +475,7 @@ static int32_t Main_Work(void) {
 		} else if (timer < 0) {
 			len = snprintf(buf, sizeof(buf), "    TIMER  inf +");
 		} else {
-			len = snprintf(buf, sizeof(buf), "- TIMER %5ds +", timer);
+			len = snprintf(buf, sizeof(buf), "- TIMER %3d:%02d +", timer / 60, timer % 60);
 		}
 		LCD_disp_str((uint8_t*)buf, len, 64 - (len * 3), y, FONT6X6);
 
@@ -488,20 +488,16 @@ static int32_t Main_Work(void) {
 		len = snprintf(buf, sizeof(buf), "ACTUAL %.1f`", Sensor_GetTemp(TC_AVERAGE));
 		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
 
-		int time_left = Reflow_GetTimeLeft();
 		if (timer > 0) {
-			if (time_left == -2) {
+			int time_left = Reflow_GetTimeLeft();
+			if (Reflow_IsPreheating()) {
 				len = snprintf(buf, sizeof(buf), "PREHEAT");
-			} else if (time_left == -1) {
+			} else if (Reflow_IsDone() || time_left < 0) {
 				len = snprintf(buf, sizeof(buf), "DONE");
 			} else {
-				len = snprintf(buf, sizeof(buf), "%ds", time_left);
+				len = snprintf(buf, sizeof(buf), "%d:%02d", time_left / 60, time_left % 60);
 			}
 			LCD_disp_str((uint8_t*)buf, len, 127 - (len * 6), y, FONT6X6);
-		}
-
-		if (Reflow_IsDone()) {
-			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 		}
 
 		y += 8;
@@ -511,7 +507,7 @@ static int32_t Main_Work(void) {
 		len = snprintf(buf, sizeof(buf), "R %.1f`", Sensor_GetTemp(TC_RIGHT));
 		LCD_disp_str((uint8_t*)buf, len, 96 - (len * 3), y, FONT6X6);
 
-		if (Sensor_IsValid(TC_EXTRA1) | Sensor_IsValid(TC_EXTRA1)) {
+		if (Sensor_IsValid(TC_EXTRA1) || Sensor_IsValid(TC_EXTRA1)) {
 			y += 8;
 			if (Sensor_IsValid(TC_EXTRA1)) {
 				len = snprintf(buf, sizeof(buf), "X1 %.1f`", Sensor_GetTemp(TC_EXTRA1));
@@ -534,6 +530,12 @@ static int32_t Main_Work(void) {
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 
 		Reflow_SetSetpoint(setpoint);
+
+		if (timer > 0 && Reflow_IsDone()) {
+			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+			Reflow_SetBakeTimer(0);
+			Reflow_SetMode(REFLOW_STANDBY);
+		}
 
 		if (keyspressed & KEY_F3 || keyspressed & KEY_F4) {
 			if (timer == 0) {

@@ -184,6 +184,10 @@ void Reflow_Init(void) {
 
 void Reflow_SetMode(ReflowMode_t themode) {
 	mymode = themode;
+	// reset reflowdone if mode is set to standby.
+	if (themode == REFLOW_STANDBY)  {
+		reflowdone = 0;
+	}
 }
 
 void Reflow_SetSetpoint(uint16_t thesetpoint) {
@@ -208,22 +212,25 @@ void Reflow_SetBakeTimer(int seconds) {
 	bake_timer = seconds * TICKS_PER_SECOND;
 }
 
+int Reflow_IsPreheating(void) {
+	return bake_timer > 0 && avgtemp < intsetpoint;
+}
+
 int Reflow_GetTimeLeft(void) {
-	if (bake_timer > 0 && avgtemp < intsetpoint) {
-		return -2;
-	} else if (bake_timer == 0) {
+	if (bake_timer == 0) {
 		return -1;
 	}
 	return (bake_timer - numticks) / TICKS_PER_SECOND;
 }
 
+// returns -1 if the reflow process is done.
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
 	int32_t retval = 0;
 
 	if (manualsetpoint) {
 		PID.mySetpoint = (float)manualsetpoint;
 
-		if (bake_timer > 0 && numticks > bake_timer) {
+		if (bake_timer > 0 && Reflow_GetTimeLeft() == 0 || Reflow_GetTimeLeft() == -1) {
 			retval = -1;
 		}
 	} else {

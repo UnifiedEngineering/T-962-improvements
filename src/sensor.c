@@ -20,7 +20,6 @@
 */
 //#define MAXTEMPOVERRIDE
 
-
 // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 float adcgainadj[2];
  // Offset adjust, this will definitely have to be calibrated per device
