@@ -170,8 +170,8 @@ void Reflow_Init(void) {
 	Reflow_ValidateNV();
 	Sensor_ValidateNV();
 
-	intsetpoint = 30;
-	PID.mySetpoint = 30.0f; // Default setpoint
+	intsetpoint = SETPOINT_DEFAULT;
+	PID.mySetpoint = (float)SETPOINT_DEFAULT;
 	PID_SetOutputLimits(&PID, 0, 255 + 248);
 	PID_SetMode(&PID, PID_Mode_Manual);
 	PID.myOutput = 248; // Between fan and heat
@@ -230,7 +230,7 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	if (manualsetpoint) {
 		PID.mySetpoint = (float)manualsetpoint;
 
-		if (bake_timer > 0 && Reflow_GetTimeLeft() == 0 || Reflow_GetTimeLeft() == -1) {
+		if (bake_timer > 0 && (Reflow_GetTimeLeft() == 0 || Reflow_GetTimeLeft() == -1)) {
 			retval = -1;
 		}
 	} else {

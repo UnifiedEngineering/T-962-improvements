@@ -5,6 +5,7 @@
 #include "lcd.h"
 #include "nvstorage.h"
 #include "eeprom.h"
+#include "reflow.h"
 
 #include "reflow_profiles.h"
 
@@ -190,7 +191,7 @@ uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
 
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
 	if (idx > (NUMPROFILETEMPS - 1)) { return; }
-	if (value > 300) { return; }
+	if (value > SETPOINT_MAX) { return; }
 
 	uint16_t* temp = (uint16_t*) &profiles[profileidx]->temperatures[idx];
 	if (temp >= (uint16_t*)0x40000000) {
@@ -215,4 +216,23 @@ void Reflow_PlotProfile(int highlight) {
 			LCD_SetPixel(realx + 1, y - 1);
 		}
 	}
+}
+
+void Reflow_DumpProfile(int profile) {
+	if (profile > NUMPROFILES) {
+		printf("\nNo profile with id: %d\n", profile);
+		return;
+	}
+
+	int current = profileidx;
+	profileidx = profile;
+
+	for (int i = 0; i < NUMPROFILETEMPS; i++) {
+		printf("%4d,", Reflow_GetSetpointAtIdx(i));
+		if (i == 15 || i == 31) {
+			printf("\n ");
+		}
+	}
+	printf("\n");
+	profileidx = current;
 }

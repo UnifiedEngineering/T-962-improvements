@@ -9,6 +9,10 @@ typedef enum eReflowMode {
 	REFLOW_STANDBYFAN
 } ReflowMode_t;
 
+#define SETPOINT_MIN (30)
+#define SETPOINT_MAX (300)
+#define SETPOINT_DEFAULT (30)
+
 void Reflow_Init(void);
 void Reflow_SetMode(ReflowMode_t themode);
 void Reflow_SetSetpoint(uint16_t thesetpoint);
