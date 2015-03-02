@@ -159,7 +159,11 @@ typedef enum eMainMode {
 
 static int32_t Main_Work(void) {
 	static MainMode_t mode = MAIN_HOME;
-	static uint32_t setpoint = 30;
+	static uint16_t setpoint = 0;
+	if (setpoint == 0) {
+		Reflow_LoadSetpoint();
+		setpoint = Reflow_GetSetpoint();
+	}
 	static int timer = 0;
 
 	// profile editing
@@ -175,8 +179,7 @@ static int32_t Main_Work(void) {
 
 	char serial_cmd[255] = "";
 	char* cmd_select_profile = "select profile %d";
-	char* cmd_bake = "bake %d";
-	char* cmd_bake_timer = "bake %d %d";
+	char* cmd_bake = "bake %d %d";
 	char* cmd_dump_profile = "dump profile %d";
 	char* cmd_setting = "setting %d %d";
 
@@ -225,13 +228,14 @@ static int32_t Main_Work(void) {
 			} else if (strcmp(serial_cmd, "values") == 0) {
 				printf("\nActual measured values:\n");
 				Sensor_ListAll();
+				printf("\n");
 
 			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
 				// select profile
 				Reflow_SelectProfileIdx(param);
 				printf("\nSelected profile %d: %s\n", param, Reflow_GetProfileName());
 
-			} else if (sscanf(serial_cmd, cmd_bake_timer, &param, &param1) > 0) {
+			} else if (sscanf(serial_cmd, cmd_bake, &param, &param1) > 0) {
 				if (param < SETPOINT_MIN) {
 					printf("\nSetpoint must be >= %ddegC\n", SETPOINT_MIN);
 					param = SETPOINT_MIN;
@@ -245,26 +249,16 @@ static int32_t Main_Work(void) {
 					param1 = 1;
 				}
 
-				printf("\nStarting bake with setpoint %ddegC for %ds after reaching setpoint\n", param, param1);
+				if (param1 < BAKE_TIMER_MAX) {
+					printf("\nStarting bake with setpoint %ddegC for %ds after reaching setpoint\n", param, param1);
+					timer = param1;
+					Reflow_SetBakeTimer(timer);
+				} else {
+					printf("\nStarting bake with setpoint %ddegC\n", param);
+				}
 
 				setpoint = param;
-				timer = param1;
-				Reflow_SetBakeTimer(timer);
-				mode = MAIN_BAKE;
-				Reflow_SetMode(REFLOW_BAKE);
-
-			} else if (sscanf(serial_cmd, cmd_bake, &param) > 0) {
-				if (param < SETPOINT_MIN) {
-					printf("\nSetpoint must be >= %ddegC\n", SETPOINT_MIN);
-					param = SETPOINT_MIN;
-				}
-				if (param > SETPOINT_MAX) {
-					printf("\nSetpont must be <= %ddegC\n", SETPOINT_MAX);
-					param = SETPOINT_MAX;
-				}
-				printf("\nStarting bake with setpoint %ddegC\n", param);
-				setpoint = param;
-				timer = -1;
+				Reflow_SetSetpoint(setpoint);
 				mode = MAIN_BAKE;
 				Reflow_SetMode(REFLOW_BAKE);
 

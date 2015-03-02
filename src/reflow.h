@@ -13,9 +13,13 @@ typedef enum eReflowMode {
 #define SETPOINT_MAX (300)
 #define SETPOINT_DEFAULT (30)
 
+// 36 hours max timer
+#define BAKE_TIMER_MAX (60 * 60 * 36)
+
 void Reflow_Init(void);
 void Reflow_SetMode(ReflowMode_t themode);
 void Reflow_SetSetpoint(uint16_t thesetpoint);
+void Reflow_LoadSetpoint(void);
 int16_t Reflow_GetActualTemp(void);
 uint8_t Reflow_IsDone(void);
 int Reflow_IsPreheating(void);

@@ -113,6 +113,14 @@ void Reflow_ValidateNV(void) {
 		// Default fan speed is now 8
 		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8);
 	}
+
+	if (NV_GetConfig(REFLOW_BAKE_SETPOINT_H) == 255 || NV_GetConfig(REFLOW_BAKE_SETPOINT_L) == 255) {
+		NV_SetConfig(REFLOW_BAKE_SETPOINT_H, SETPOINT_DEFAULT >> 8);
+		NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)SETPOINT_DEFAULT);
+		printf("Resetting bake setpoint to default.");
+	}
+
+	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
 }
 
 int Reflow_GetProfileIdx(void) {

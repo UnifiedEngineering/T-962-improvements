@@ -50,7 +50,7 @@ uint8_t reflowdone = 0;
 ReflowMode_t mymode = REFLOW_STANDBY;
 uint16_t numticks = 0;
 
-int standby_logging = 1;
+int standby_logging = 0;
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
@@ -166,11 +166,11 @@ void Reflow_Init(void) {
 
 	Reflow_LoadCustomProfiles();
 
-	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
 	Reflow_ValidateNV();
 	Sensor_ValidateNV();
 
-	intsetpoint = SETPOINT_DEFAULT;
+	Reflow_LoadSetpoint();
+
 	PID.mySetpoint = (float)SETPOINT_DEFAULT;
 	PID_SetOutputLimits(&PID, 0, 255 + 248);
 	PID_SetMode(&PID, PID_Mode_Manual);
@@ -192,6 +192,18 @@ void Reflow_SetMode(ReflowMode_t themode) {
 
 void Reflow_SetSetpoint(uint16_t thesetpoint) {
 	intsetpoint = thesetpoint;
+
+	NV_SetConfig(REFLOW_BAKE_SETPOINT_H, (uint8_t)(thesetpoint >> 8));
+	NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)thesetpoint);
+}
+
+void Reflow_LoadSetpoint(void) {
+	intsetpoint = NV_GetConfig(REFLOW_BAKE_SETPOINT_H) << 8;
+	intsetpoint |= NV_GetConfig(REFLOW_BAKE_SETPOINT_L);
+
+	printf("\n bake setpoint values: %x, %x, %d\n",
+		NV_GetConfig(REFLOW_BAKE_SETPOINT_H),
+		NV_GetConfig(REFLOW_BAKE_SETPOINT_L), intsetpoint);
 }
 
 int16_t Reflow_GetActualTemp(void) {
