@@ -62,6 +62,7 @@ char* format_about = \
 
 char* help_text = \
 "\nT-962-controller serial interface.\n\n" \
+" about                   Show about + debug information\n" \
 " bake <setpoint>         Enter Bake mode with setpoint\n" \
 " bake <setpoint> <time>  Enter Bake mode with setpoint for <time> seconds\n" \
 " help                    Display help text\n" \
@@ -191,6 +192,12 @@ static int32_t Main_Work(void) {
 
 			if (strcmp(serial_cmd, "about") == 0) {
 				printf(format_about, Version_GetGitVersion());
+				len = IO_Partinfo(buf, sizeof(buf), "\nPart number: %s rev %c\n");
+				printf(buf);
+				EEPROM_Dump();
+
+				printf("\nSensor values:\n");
+				Sensor_ListAll();
 
 			} else if (strcmp(serial_cmd, "help") == 0 || strcmp(serial_cmd, "?") == 0) {
 				printf(help_text);
