@@ -37,33 +37,33 @@ NV_t myNV; // RAM copy of the NV data
 uint8_t nvupdatepending=0;
 
 static void SetNVUpdatePending(void) {
-	nvupdatepending=1;
-	Sched_SetState(NV_WORK,1,0);
+	nvupdatepending = 1;
+	Sched_SetState(NV_WORK, 1, 0);
 }
 
 void NV_Init(void) {
-	EEPROM_Read( (uint8_t*)&myNV, 0x62, sizeof(myNV) );
-	if( myNV.magic != NVMAGIC ) {
+	EEPROM_Read((uint8_t*)&myNV, 0x62, sizeof(myNV));
+	if (myNV.magic != NVMAGIC ) {
 		myNV.magic = NVMAGIC;
 		myNV.numitems = NVITEM_NUM_ITEMS;
-		memset( myNV.config, 0xff, NVITEM_NUM_ITEMS );
+		memset(myNV.config, 0xff, NVITEM_NUM_ITEMS);
 		printf("\nNV initialization cleared %d items", NVITEM_NUM_ITEMS);
 		SetNVUpdatePending();
-	} else if( myNV.numitems < NVITEM_NUM_ITEMS ) {
+	} else if(myNV.numitems < NVITEM_NUM_ITEMS) {
 		uint8_t bytestoclear = NVITEM_NUM_ITEMS - myNV.numitems;
-		memset( myNV.config + myNV.numitems, 0xff, bytestoclear );
+		memset(myNV.config + myNV.numitems, 0xff, bytestoclear);
 		myNV.numitems = NVITEM_NUM_ITEMS;
 		printf("\nNV upgrade cleared %d new items", bytestoclear);
 		SetNVUpdatePending();
 	}
 #ifndef MINIMALISTIC
 	Sched_SetWorkfunc(NV_WORK,NV_Work);
-	Sched_SetState(NV_WORK,1,0);
+	Sched_SetState(NV_WORK, 1, 0);
 #endif
 }
 
 uint8_t NV_GetConfig(NVItem_t item) {
-	if(item<NVITEM_NUM_ITEMS) {
+	if (item < NVITEM_NUM_ITEMS) {
 		return myNV.config[item];
 	} else {
 		return 0;
@@ -71,21 +71,22 @@ uint8_t NV_GetConfig(NVItem_t item) {
 }
 
 void NV_SetConfig(NVItem_t item, uint8_t value) {
-	if(item<NVITEM_NUM_ITEMS) {
-		if(value != myNV.config[item]) {
-			myNV.config[item]=value;
+	if (item < NVITEM_NUM_ITEMS) {
+		if (value != myNV.config[item]) {
+			myNV.config[item] = value;
 			SetNVUpdatePending();
 		}
 	}
 }
 
-int32_t NV_Work(void) { // Periodic updater of NV
-	static uint8_t cnt=0;
-	if(nvupdatepending) cnt++;
-	if(cnt==4) {
-		nvupdatepending=cnt=0;
+// Periodic updater of NV
+int32_t NV_Work(void) {
+	static uint8_t count = 0;
+	if (nvupdatepending) count ++;
+	if (count == 4) {
+		nvupdatepending = count = 0;
 		printf("\nFlushing NV copy to EE...");
-		EEPROM_Write( 0x62, (uint8_t*)&myNV, sizeof(myNV) );
+		EEPROM_Write(0x62, (uint8_t*)&myNV, sizeof(myNV));
 	}
-	return nvupdatepending?(TICKS_SECS(2)):-1;
+	return nvupdatepending ? (TICKS_SECS(2)) : -1;
 }
