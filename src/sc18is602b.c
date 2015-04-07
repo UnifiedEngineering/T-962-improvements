@@ -25,16 +25,23 @@
 #include "sc18is602b.h"
 
 #define SCADDR (0x28<<1)
+uint8_t scaddr;
 
 int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 	uint8_t function[2];
 	int32_t retval;
 	printf("\n%s ",__FUNCTION__);
-	function[0] = 0xf0;
-	function[1] = clk | mode | order;
-	retval = I2C_Xfer(SCADDR, function, sizeof(function), 1); // Attempt to initialize I2C to SPI bridge
+	for( uint8_t scan=0; scan<8; scan++ ) {
+		function[0] = 0xf0;
+		function[1] = clk | mode | order;
+		retval = I2C_Xfer(SCADDR | (scan<<1), function, sizeof(function), 1); // Attempt to initialize I2C to SPI bridge
+		if (retval==0) {
+			scaddr = SCADDR | (scan<<1);
+			break;
+		}
+	}
 	if( retval == 0 ) {
-		printf( "- Done");
+		printf( "- Done (addr 0x%02x)", scaddr>>1);
 	} else {
 		printf( "- No chip found");
 	}
@@ -47,11 +54,11 @@ int32_t SC18IS602B_SPI_Xfer( SPIxfer_t* item ) {
 		printf("\n%s: Invalid length!",__FUNCTION__);
 		return -1;
 	}
-	retval = I2C_Xfer(SCADDR, (uint8_t*)item, item->len + 1, 1); // Initialize transfer, ssmask + data
+	retval = I2C_Xfer(scaddr, (uint8_t*)item, item->len + 1, 1); // Initialize transfer, ssmask + data
 	if( retval == 0 ) {
 		// TODO: There should be a timeout here
 		do {
-			retval = I2C_Xfer(SCADDR + 1, (uint8_t*)item->data, item->len, 1); // Initialize read transfer, data only
+			retval = I2C_Xfer(scaddr + 1, (uint8_t*)item->data, item->len, 1); // Initialize read transfer, data only
 		} while( retval != 0 ); // Wait for chip to be done with transaction
 	}
 	return retval;
