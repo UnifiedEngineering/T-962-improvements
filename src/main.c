@@ -171,13 +171,14 @@ static int32_t Main_Work(void) {
 	char serial_cmd[255] = "";
 	char* cmd_select_profile = "select profile %d";
 	char* cmd_bake = "bake %d";
-	char* cmd_setting = "setting %d %d";
+	char* cmd_setting = "setting %d %f";
 
 	if (uart_isrxready()) {
 		int len = uart_readline(serial_cmd, 255);
 
 		if (len > 0) {
 			int param, param1;
+			float paramF;
 
 			if (strcmp(serial_cmd, "about") == 0) {
 				printf(format_about, Version_GetGitVersion());
@@ -226,10 +227,8 @@ static int32_t Main_Work(void) {
 				mode = MAIN_BAKE;
 				Reflow_SetMode(REFLOW_BAKE);
 
-			} else if (sscanf(serial_cmd, cmd_setting, &param, &param1) > 0) {
-				// This is currently a bit crude. User has to input
-				// the value as an integer as stored in the NV storage.
-				Setup_setValue(param, param1);
+			} else if (sscanf(serial_cmd, cmd_setting, &param, &paramF) > 0) {
+				Setup_setRealValue(param, paramF);
 				printf("\nAdjusted setting: ");
 				Setup_printFormattedValue(param);
 

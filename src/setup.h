@@ -12,6 +12,7 @@ typedef struct {
 
 int Setup_getNumItems(void);
 float Setup_getValue(int item);
+void Setup_setRealValue(int item, float value);
 void Setup_setValue(int item, int value);
 void Setup_increaseValue(int item, int amount);
 void Setup_decreaseValue(int item, int amount);

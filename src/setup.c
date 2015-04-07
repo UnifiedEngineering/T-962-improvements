@@ -52,6 +52,12 @@ void Setup_setValue(int item, int value) {
 	Reflow_ValidateNV();
 }
 
+void Setup_setRealValue(int item, float value) {
+	int intval = (int)(value / setupmenu[item].multiplier);
+	intval -= setupmenu[item].offset;
+	Setup_setValue(item, intval);
+}
+
 void Setup_increaseValue(int item, int amount) {
 	int curval = _getRawValue(item) + amount;
 
