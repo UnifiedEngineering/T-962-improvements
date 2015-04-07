@@ -8,12 +8,15 @@
 #ifndef LCD_H_
 #define LCD_H_
 
-
 #define FB_HEIGHT (64)
 #define FB_WIDTH (128)
 
 #define FONT6X6 (0)
 #define INVERT (0x80)
+
+#define LCD_CENTER (64)
+#define LCD_ALIGN_CENTER(x) (LCD_CENTER - (x * 3))
+#define LCD_ALIGN_RIGHT(x) (127 - (x * 6))
 
 void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y);
 void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat);

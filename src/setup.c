@@ -20,7 +20,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "nvstorage.h"
-#include "reflow.h"
+#include "reflow_profiles.h"
 #include "setup.h"
 
 setupMenuStruct setupmenu[] = {

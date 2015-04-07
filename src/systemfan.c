@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include "systemfan.h"
 #include "sched.h"
-#include "reflow.h"
+#include "sensor.h"
 
 #define SYSFAN_PWM_PERIOD (TICKS_MS( 10 ))
 
@@ -60,8 +60,8 @@ static int32_t SystemFanPWM_Work(void) {
 static int32_t SystemFanSense_Work(void) {
 	uint8_t sysfanspeed = 0;
 
-	if (Reflow_IsTempSensorValid(TC_COLD_JUNCTION)) {
-		float systemp = Reflow_GetTempSensor(TC_COLD_JUNCTION);
+	if (Sensor_IsValid(TC_COLD_JUNCTION)) {
+		float systemp = Sensor_GetTemp(TC_COLD_JUNCTION);
 
 		// Sort this out with something better at some point
 		if (systemp > 50.0f) {
