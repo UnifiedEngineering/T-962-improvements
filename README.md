@@ -4,7 +4,7 @@ Custom firmware for the cheap T-962 reflow oven utilizing the _existing_ control
 
  - [Wiki] for more info
  - [Hackaday post]
- - [Modification video] (among many others :)
+ - [Modification video] among many others...
  - We have [Travis-CI] in place to build pull requests
 
 ### Introduction
