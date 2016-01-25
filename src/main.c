@@ -422,7 +422,7 @@ static int32_t Main_Work(void) {
 
 	} else if (mode == MAIN_BAKE) {
 		LCD_FB_Clear();
-		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
+		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, LCD_ALIGN_CENTER(16), 0, FONT6X6);
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
@@ -608,8 +608,7 @@ static int32_t Main_Work(void) {
 	} else { // Main menu
 		LCD_FB_Clear();
 
-		len = snprintf(buf, sizeof(buf),"MAIN MENU");
-		LCD_disp_str((uint8_t*)buf, len, 0, 6 * 0, FONT6X6);
+		LCD_disp_str((uint8_t*)"MAIN MENU", 9, LCD_ALIGN_CENTER(9), 0, FONT6X6);
 		LCD_disp_str((uint8_t*)"F1", 2, 0, 8 * 1, FONT6X6 | INVERT);
 		LCD_disp_str((uint8_t*)"ABOUT", 5, 14, 8 * 1, FONT6X6);
 		LCD_disp_str((uint8_t*)"F2", 2, 0, 8 * 2, FONT6X6 | INVERT);

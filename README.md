@@ -4,6 +4,7 @@ Custom firmware for the cheap T-962 reflow oven utilizing the _existing_ control
 
  - [Wiki] for more info
  - [Hackaday post]
+ - [Modification video] (among many others :)
  - We have [Travis-CI] in place to build pull requests
 
 ### Introduction
@@ -34,7 +35,7 @@ As mentioned elsewhere, make sure the protective earth/ground wire from the main
 
 #### System fan PWM control
 
-The system fan is very noisy an can be turned of most of the time. The custom firmware uses spare `ADO` test point to control it.
+The system fan is very noisy an can be turned off most of the time. The custom firmware uses spare `ADO` test point to control it.
 
 [Wiki: system fan PWM mod](https://github.com/UnifiedEngineering/T-962-improvements/wiki/System-fan-control)
 
@@ -67,3 +68,4 @@ This project is using the C PID Library - Version 1.0.1, GPLv3
 [Flashing firmware]: https://github.com/UnifiedEngineering/T-962-improvements/wiki/Flashing-the-LPC21xx-controller
 [DS18B20]: http://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
 [hackaday post]: http://hackaday.com/2014/11/27/improving-the-t-962-reflow-oven/
+[modification video]: https://www.youtube.com/watch?v=0ITZXY5Mipc

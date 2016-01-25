@@ -30,6 +30,7 @@ setupMenuStruct setupmenu[] = {
 	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
 	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
 	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+	{"SysFan Trip Temp %4.0f", SYSFAN_HITEMP, 15, 65, 0, 1.0f},
 };
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
@@ -50,6 +51,7 @@ float Setup_getValue(int item) {
 void Setup_setValue(int item, int value) {
 	NV_SetConfig(setupmenu[item].nvval, value);
 	Reflow_ValidateNV();
+	SystemFan_ValidateNV();
 }
 
 void Setup_setRealValue(int item, float value) {

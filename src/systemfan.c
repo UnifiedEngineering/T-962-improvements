@@ -36,11 +36,24 @@
 #include <stdio.h>
 #include "systemfan.h"
 #include "sched.h"
+#include "nvstorage.h"
 #include "sensor.h"
 
 #define SYSFAN_PWM_PERIOD (TICKS_MS( 10 ))
 
 uint32_t syspwmval = 0;
+float hitemp = 40.0f;
+
+void SystemFan_ValidateNV(void) {
+	int temp;
+
+	temp = NV_GetConfig(SYSFAN_HITEMP);
+	if ((temp < 15) || (temp > 65)) {
+		temp = 40;
+		NV_SetConfig(SYSFAN_HITEMP, temp); // Default fan trip 40C
+	}
+	hitemp = ((float)temp);
+}
 
 static int32_t SystemFanPWM_Work(void) {
 	static uint8_t state = 0;
@@ -64,13 +77,13 @@ static int32_t SystemFanSense_Work(void) {
 		float systemp = Sensor_GetTemp(TC_COLD_JUNCTION);
 
 		// Sort this out with something better at some point
-		if (systemp > 50.0f) {
+		if (systemp > (10.0f + hitemp)) {
 			sysfanspeed = 0xff;
-		} else if (systemp > 45.0f) {
+		} else if (systemp > (5.0f + hitemp)) {
 			sysfanspeed = 0xc0;
-		} else if (systemp > 42.0f) {
+		} else if (systemp > (2.0f + hitemp)) {
 			sysfanspeed = 0x80;
-		} else if (systemp > 40.0f) {
+		} else if (systemp > hitemp) {
 			sysfanspeed = 0x50;
 		}
 	} else {
@@ -93,6 +106,7 @@ static int32_t SystemFanSense_Work(void) {
 
 void SystemFan_Init(void) {
 	printf("\n%s", __FUNCTION__);
+	SystemFan_ValidateNV();
 	Sched_SetWorkfunc(SYSFANPWM_WORK, SystemFanPWM_Work);
 	Sched_SetWorkfunc(SYSFANSENSE_WORK, SystemFanSense_Work);
 
