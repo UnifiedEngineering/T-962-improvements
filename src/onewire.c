@@ -94,6 +94,7 @@ static inline uint32_t resetbus(void) {
 #define OW_READ_SCRATCHPAD (0xbe)
 #define OW_FAMILY_TEMP1 (0x22) // DS1822
 #define OW_FAMILY_TEMP2 (0x28) // DS18B20
+#define OW_FAMILY_TEMP3 (0x10) // DS18S20
 #define OW_FAMILY_TC (0x3b)
 
 #define MAX_OW_DEVICES (5)
@@ -348,12 +349,14 @@ uint32_t OneWire_Init(void) {
 				printf("%02x", owdeviceids[iter][idloop]);
 			}
 			uint8_t family = owdeviceids[iter][0];
-			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2) {
+			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2 || family == OW_FAMILY_TEMP3)) {
 				const char* sensorname = "UNKNOWN";
 				if (family == OW_FAMILY_TEMP1) {
 					sensorname = "DS1822";
 				} else if (family == OW_FAMILY_TEMP2) {
 					sensorname = "DS18B20";
+				} else if (family == OW_FAMILY_TEMP3) {
+					sensorname = "DS18S20";
 				}
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
