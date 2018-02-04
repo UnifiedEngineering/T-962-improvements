@@ -349,7 +349,7 @@ uint32_t OneWire_Init(void) {
 				printf("%02x", owdeviceids[iter][idloop]);
 			}
 			uint8_t family = owdeviceids[iter][0];
-			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2 || family == OW_FAMILY_TEMP3)) {
+			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2 || family == OW_FAMILY_TEMP3) {
 				const char* sensorname = "UNKNOWN";
 				if (family == OW_FAMILY_TEMP1) {
 					sensorname = "DS1822";
