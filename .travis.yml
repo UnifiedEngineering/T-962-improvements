@@ -19,9 +19,10 @@ git:
 deploy:
   provider: releases
   api-key:
-    secure: FJ1Ber0YA38hVvkhai+Dx3WjdEahaAv5kPm6XR6w56MzrC5OKlaGA/a9L13KD6GRmte5RI1CZw6aIM3SvwB9dFIjrv1tvgQNPGYv5lWr9WGPRloHxJq3ty/cGWs/0eoA60ZCeqhkMEX7XCiEYA1n1X7MR/Z/kBa1eaIDaOpb0iE=
+    secure: RYGBzgLnsjZ8JGjuZhor+lRVTvPYpm2QVccDyLf5Mr9cPhoOpULa6RhNkzdRAltJxoTlA7AS6l8ZpHIKyjMysFKC5pu8VJHWNdGvnrVURs4ML0qXUCPw2epDztTIdH2tMbkKI86Ov8EAmdvvR0GakEvkzC2z+rwPzGK95k3ovX4=
   file: "build/T-962-controller.hex"
   skip_cleanup: true
   on:
     tags: true
     all_branches: true
+    repo: UnifiedEngineering/T-962-improvements
