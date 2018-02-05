@@ -26,7 +26,7 @@
 #include "smallfont.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
-uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
+static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
 
 typedef struct __attribute__ ((packed)) {
 	uint8_t bfType[2]; // 'BM' only in this case

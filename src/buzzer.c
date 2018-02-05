@@ -22,9 +22,9 @@
 #include <stdio.h>
 #include "sched.h"
 
-BuzzFreq_t requested_buzz_freq;
-uint8_t requested_buzz_volume;
-int32_t requested_buzz_length;
+static BuzzFreq_t requested_buzz_freq;
+static uint8_t requested_buzz_volume;
+static int32_t requested_buzz_length;
 
 /*
  * The buzzer is hooked up to PWM5 output, but contains an oscillator of

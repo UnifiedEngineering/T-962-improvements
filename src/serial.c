@@ -44,8 +44,8 @@
 #endif
 
 /* UART Buffers */
-tcirc_buf txbuf;
-tcirc_buf rxbuf;
+static tcirc_buf txbuf;
+static tcirc_buf rxbuf;
 
 static void uart_putc(char thebyte) {
 	if (thebyte == '\n')

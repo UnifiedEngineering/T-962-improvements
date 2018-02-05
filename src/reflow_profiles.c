@@ -15,7 +15,7 @@
 extern uint8_t graphbmp[];
 
 // Amtech 4300 63Sn/37Pb leaded profile
-const profile am4300profile = {
+static const profile am4300profile = {
 	"4300 63SN/37PB", {
 		 50, 50, 50, 60, 73, 86,100,113,126,140,143,147,150,154,157,161, // 0-150s
 		164,168,171,175,179,183,195,207,215,207,195,183,168,154,140,125, // Adjust peak from 205 to 220C
@@ -24,7 +24,7 @@ const profile am4300profile = {
 };
 
 // NC-31 low-temp lead-free profile
-const profile nc31profile = {
+static const profile nc31profile = {
 	"NC-31 LOW-TEMP LF", {
 		 50, 50, 50, 50, 55, 70, 85, 90, 95,100,102,105,107,110,112,115, // 0-150s
 		117,120,122,127,132,138,148,158,160,158,148,138,130,122,114,106, // Adjust peak from 158 to 165C
@@ -33,7 +33,7 @@ const profile nc31profile = {
 };
 
 // SynTECH-LF normal temp lead-free profile
-const profile syntechlfprofile = {
+static const profile syntechlfprofile = {
 	"AMTECH SYNTECH-LF", {
 		 50, 50, 50, 50, 60, 70, 80, 90,100,110,120,130,140,149,158,166, // 0-150s
 		175,184,193,201,210,219,230,240,245,240,230,219,212,205,198,191, // Adjust peak from 230 to 249C
@@ -43,7 +43,7 @@ const profile syntechlfprofile = {
 
 #ifdef RAMPTEST
 // Ramp speed test temp profile
-const profile rampspeed_testprofile = {
+static const profile rampspeed_testprofile = {
 	"RAMP SPEED TEST", {
 		 50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245, // 0-150s
 		245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50, // 160-310s
@@ -54,7 +54,7 @@ const profile rampspeed_testprofile = {
 
 #ifdef PIDTEST
 // PID gain adjustment test profile (5% setpoint change)
-const profile pidcontrol_testprofile = {
+static const profile pidcontrol_testprofile = {
 	"PID CONTROL TEST",	{
 		171,171,171,171,171,171,171,171,171,171,171,171,171,171,171,171, // 0-150s
 		180,180,180,180,180,180,180,180,171,171,171,171,171,171,171,171, // 160-310s
@@ -64,12 +64,12 @@ const profile pidcontrol_testprofile = {
 #endif
 
 // EEPROM profile 1
-ramprofile ee1 = { "CUSTOM #1" };
+static ramprofile ee1 = { "CUSTOM #1" };
 
 // EEPROM profile 2
-ramprofile ee2 = { "CUSTOM #2" };
+static ramprofile ee2 = { "CUSTOM #2" };
 
-const profile* profiles[] = {
+static const profile* profiles[] = {
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
@@ -86,7 +86,7 @@ const profile* profiles[] = {
 #define NUMPROFILES (sizeof(profiles) / sizeof(profiles[0]))
 
 // current profile index
-uint8_t profileidx = 0;
+static uint8_t profileidx = 0;
 
 static void ByteswapTempProfile(uint16_t* buf) {
 	for (int i = 0; i < NUMPROFILETEMPS; i++) {

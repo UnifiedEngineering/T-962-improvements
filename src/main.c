@@ -53,14 +53,14 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 	return "no version info";
 }
 
-char* format_about = \
+static char* format_about = \
 "\nT-962-controller open source firmware (%s)" \
 "\n" \
 "\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
 "\n" \
 "\nInitializing improved reflow oven...";
 
-char* help_text = \
+static char* help_text = \
 "\nT-962-controller serial interface.\n\n" \
 " about                   Show about + debug information\n" \
 " bake <setpoint>         Enter Bake mode with setpoint\n" \

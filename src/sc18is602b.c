@@ -25,7 +25,7 @@
 #include "sc18is602b.h"
 
 #define SCADDR (0x28<<1)
-uint8_t scaddr;
+static uint8_t scaddr;
 
 int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 	uint8_t function[2];

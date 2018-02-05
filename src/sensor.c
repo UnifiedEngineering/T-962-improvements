@@ -21,17 +21,17 @@
 //#define MAXTEMPOVERRIDE
 
 // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
-float adcgainadj[2];
+static float adcgainadj[2];
  // Offset adjust, this will definitely have to be calibrated per device
-float adcoffsetadj[2];
+static float adcoffsetadj[2];
 
-float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-uint8_t tempvalid = 0;
-uint8_t cjsensorpresent = 0;
+static float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+static uint8_t tempvalid = 0;
+static uint8_t cjsensorpresent = 0;
 
 // The feedback temperature
-float avgtemp;
-float coldjunction;
+static float avgtemp;
+static float coldjunction;
 
 void Sensor_ValidateNV(void) {
 	int temp;

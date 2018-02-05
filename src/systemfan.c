@@ -40,7 +40,7 @@
 
 #define SYSFAN_PWM_PERIOD (TICKS_MS( 10 ))
 
-uint32_t syspwmval = 0;
+static uint32_t syspwmval = 0;
 
 static int32_t SystemFanPWM_Work(void) {
 	static uint8_t state = 0;

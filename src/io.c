@@ -89,9 +89,9 @@ void IO_PrintResetReason(void) {
 
 // Support for boot ROM functions (get part number etc)
 typedef void (*IAP)(unsigned int [], unsigned int[]);
-IAP iap_entry = (void*)0x7ffffff1;
+static IAP iap_entry = (void*)0x7ffffff1;
 
-partmapStruct partmap[] = {
+static partmapStruct partmap[] = {
 	{"LPC2131(/01)", 0x0002ff01}, // Probably pointless but present for completeness (32kB flash is too small for factory image)
 	{"LPC2132(/01)", 0x0002ff11},
 	{"LPC2134(/01)", 0x0002ff12},
@@ -106,8 +106,8 @@ partmapStruct partmap[] = {
 };
 #define NUM_PARTS (sizeof(partmap) / sizeof(partmap[0]))
 
-uint32_t command[1];
-uint32_t result[3];
+static uint32_t command[1];
+static uint32_t result[3];
 
 int IO_Partinfo(char* buf, int n, char* format) {
 	uint32_t partrev;

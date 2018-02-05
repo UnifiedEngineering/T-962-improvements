@@ -29,9 +29,9 @@
 #define NUM_ACCUM (256) // This needs to be 4 ^ n
 #define ACCUM_MASK (NUM_ACCUM-1)
 
-uint32_t ADres[NUM_ADCH];
-uint16_t ADidx[NUM_ADCH];
-uint16_t ADaccum[NUM_ADCH][NUM_ACCUM];
+static uint32_t ADres[NUM_ADCH];
+static uint16_t ADidx[NUM_ADCH];
+static uint16_t ADaccum[NUM_ADCH][NUM_ACCUM];
 
 static void ADC_Accum(uint32_t chnum, uint32_t value) {
 	uint16_t temp;
