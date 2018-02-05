@@ -39,18 +39,18 @@
 
 #define TICKS_PER_SECOND (1000 / PID_TIMEBASE)
 
-PidType PID;
+static PidType PID;
 
-uint16_t intsetpoint;
-int bake_timer = 0;
+static uint16_t intsetpoint;
+static int bake_timer = 0;
 
-float avgtemp;
+static float avgtemp;
 
-uint8_t reflowdone = 0;
-ReflowMode_t mymode = REFLOW_STANDBY;
-uint16_t numticks = 0;
+static uint8_t reflowdone = 0;
+static ReflowMode_t mymode = REFLOW_STANDBY;
+static uint16_t numticks = 0;
 
-int standby_logging = 0;
+static int standby_logging = 0;
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;

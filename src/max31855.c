@@ -27,9 +27,9 @@
 #define INVALID_VALUE (999.0f)
 
 #define MAX_SPI_DEVICES (4)
-int16_t spidevreadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
-int16_t spiextrareadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
-int numspidevices = 0;
+static int16_t spidevreadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
+static int16_t spiextrareadout[MAX_SPI_DEVICES]; // Keeps last readout from each device
+static int numspidevices = 0;
 
 static int32_t SPI_TC_Work( void ) {
 	for (int i = 0; i < numspidevices; i++) {

@@ -98,20 +98,20 @@ static inline uint32_t resetbus(void) {
 #define OW_FAMILY_TC (0x3b)
 
 #define MAX_OW_DEVICES (5)
-uint8_t owdeviceids[MAX_OW_DEVICES][8]; // uint64_t results in really odd code
-int16_t devreadout[MAX_OW_DEVICES]; // Keeps last readout from each device
-int16_t extrareadout[MAX_OW_DEVICES]; // Keeps last readout from each device
-int numowdevices = 0;
-int8_t tcidmapping[16]; // Map TC ID to ROM ID index
-int8_t tempidx; // Which ROM ID index that contains the temperature sensor
+static uint8_t owdeviceids[MAX_OW_DEVICES][8]; // uint64_t results in really odd code
+static int16_t devreadout[MAX_OW_DEVICES]; // Keeps last readout from each device
+static int16_t extrareadout[MAX_OW_DEVICES]; // Keeps last readout from each device
+static int numowdevices = 0;
+static int8_t tcidmapping[16]; // Map TC ID to ROM ID index
+static int8_t tempidx; // Which ROM ID index that contains the temperature sensor
 
 // OW functions from Application note 187 (modified for readability)
 // global search state
-uint8_t ROM_NO[8];
-int LastDiscrepancy;
-int LastFamilyDiscrepancy;
-int LastDeviceFlag;
-uint8_t crc8;
+static uint8_t ROM_NO[8];
+static int LastDiscrepancy;
+static int LastFamilyDiscrepancy;
+static int LastDeviceFlag;
+static uint8_t crc8;
 
 static const unsigned char dscrc_table[] = {
 	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,

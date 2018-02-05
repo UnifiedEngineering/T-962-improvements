@@ -32,9 +32,9 @@ typedef struct __attribute__ ((__packed__)) {
 	uint8_t config[NVITEM_NUM_ITEMS];
 } NV_t;
 
-NV_t myNV; // RAM copy of the NV data
+static NV_t myNV; // RAM copy of the NV data
 
-uint8_t nvupdatepending=0;
+static uint8_t nvupdatepending=0;
 
 static void SetNVUpdatePending(void) {
 	nvupdatepending = 1;

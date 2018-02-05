@@ -29,7 +29,7 @@ typedef struct SchedItem {
 	uint8_t enabled;
 } SchedItem_t;
 
-SchedItem_t tasks[SCHED_NUM_ITEMS];
+static SchedItem_t tasks[SCHED_NUM_ITEMS];
 
 void Sched_Init(void) {
 	T0CTCR = 0; // Normal timer mode

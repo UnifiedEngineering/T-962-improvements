@@ -33,7 +33,7 @@
 
 #define KEYREPEATDELAY (6)
 
-uint32_t latchedkeypadstate = 0;
+static uint32_t latchedkeypadstate = 0;
 
 static uint32_t Keypad_GetRaw(void) {
 	return ~FIO0PIN & (F1KEY_PORTBIT | F2KEY_PORTBIT | F3KEY_PORTBIT | F4KEY_PORTBIT | S_KEY_PORTBIT);
