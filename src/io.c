@@ -24,6 +24,7 @@
 #include "io.h"
 #include "sched.h"
 #include "vic.h"
+#include "config.h"
 
 void Set_Heater(uint8_t enable) {
 	if (enable < 0xff) {
@@ -32,7 +33,11 @@ void Set_Heater(uint8_t enable) {
 		PINSEL0 &= ~(2<<18); // Disable PWM6 function on pin
 		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
 	}
+#ifdef USE_FET_DRIVER
+	PWMMR6 = enable;
+#else
 	PWMMR6 = 0xff - enable;
+#endif
 	PWMLER |= (1<<6);
 }
 
@@ -43,7 +48,11 @@ void Set_Fan(uint8_t enable) {
 		PINSEL0 &= ~(2<<16); // Disable PWM4 function on pin
 		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
 	}
+#ifdef USE_FET_DRIVER
+	PWMMR4 = enable;
+#else
 	PWMMR4 = 0xff - enable;
+#endif
 	PWMLER |= (1<<4);
 }
 
@@ -144,12 +153,14 @@ void IO_JumpBootloader(void) {
 		// Bootloader must use legacy mode IO if you call this later too, so do:
 		// SCS = 0;
 
-		// Turn off FAN & Heater using legacy registers so they stay off during bootloader
+		// Turn off FAN & Heater(s) using legacy registers so they stay off during bootloader
 		// Fan = PIN0.8
 		// Heater = PIN0.9
-		IODIR0 = (1 << 8) | (1 << 9);
+#ifdef defined(USE_FET_DRIVER)
 		IOSET0 = (1 << 8) | (1 << 9);
-
+#else
+		IOCLR0 = (1 << 8) | (1 << 9);
+#endif
 		//Re-enter ISP Mode, this function will never return
 		command[0] = IAP_REINVOKE_ISP;
 		iap_entry((void *)command, (void *)result);
@@ -159,22 +170,30 @@ void IO_JumpBootloader(void) {
 void IO_Init(void) {
 	SCS = 0b11; // Enable fast GPIO on both port 0 and 1
 
-	PINSEL0 = 0b10100000000001010101; // PWM6 + PWM4 + I2C0 + UART0
+	// don't care to select PMW pins here, they are enabled on the fly in Set_Heater() etc.
+	// the default GPIO is selected here!
+	PINSEL0 = 0b01010101; // I2C0 + UART0
 	PINSEL1 = 0b00000101000000000000000000000000; // ADC0 1+2
 
 	FIO0MASK = 0b01001101000000100000010001100000; // Mask out all unknown/unused pins
-	FIO1MASK = 0b11111111000000001111111111111111; // Only LCD D0-D7
-
 	FIO0DIR = 0b10000010011011000011101100000001; // Default output pins
+
+	FIO1MASK = 0b11111111000000001111111111111111; // Only LCD D0-D7
 	FIO1DIR = 0b00000000000000000000000000000000;
 
+#ifdef USE_FET_DRIVER
+	// PMW 6 is P0.9, PWM 4 is P0.8, set them high if GPIO selected
+	FIO0PIN = 0x300;
+#else
 	FIO0PIN = 0x00; // Turn LED on and make PWM outputs active when in GPIO mode (to help 100% duty cycle issue)
+#endif
 
 	PWMPR = PCLKFREQ / (256 * 5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
 	PWMMCR = (1<<1); // Reset TC on mr0 overflow (period time)
 	PWMMR0 = 0xff; // Period time
 	PWMLER = (1<<0); // Enable latch on mr0 (Do I really need to do this?)
-	PWMPCR = (1<<12) | (1<<14); // Enable PWM4 and 6
+	// Enable PWM4 and 6
+	PWMPCR = (1<<12) | (1<<14);
 	PWMTCR = (1<<3) | (1<<0); // Enable timer in PWM mode
 
 	Sched_SetWorkfunc(SLEEP_WORK, Sleep_Work);

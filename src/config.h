@@ -18,6 +18,13 @@
  */
 
 /*
+ * if the 74hc04 is replaced by 2 FETs to make sure the Opto-TRIAC
+ * receives the correct amount of drive current, the drive logic is
+ * inverted, i.e. high means TRIAC on. This changes the logic in io.c
+ */
+#define USE_FET_DRIVER
+
+/*
 * Normally the control input is the average of the first two TCs.
 * By defining this any TC that has a readout 5C (or more) higher
 * than the TC0 and TC1 average will be used as control input instead.
