@@ -18,6 +18,15 @@
  */
 
 /*
+ * this is a patch that drives a mica heating element placed
+ * underneath the PCB to be soldered. To use it an additional
+ * PWM channel is required, currently the only one left is used
+ * by the cold junction compensation patch, but this can be
+ * moved to P1.25 (pin 28), which is moved by this define!
+ */
+#define USE_SECONDARY_HEATER
+
+/*
  * if the 74hc04 is replaced by 2 FETs to make sure the Opto-TRIAC
  * receives the correct amount of drive current, the drive logic is
  * inverted, i.e. high means TRIAC on. This changes the logic in io.c

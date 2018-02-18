@@ -25,24 +25,21 @@
 #include "onewire.h"
 #include "sched.h"
 #include "vic.h"
+#include "config.h"
 
-static inline void setpin0() {
-	FIO0CLR = (1<<7);
-	FIO0DIR |= (1<<7);
-}
-
-static inline void setpin1() {
-	FIO0SET = (1<<7);
-	FIO0DIR |= (1<<7);
-}
-
-static inline void setpinhiz() {
-	FIO0DIR &= ~(1<<7);
-}
-
-static inline uint32_t getpin() {
-	return !!(FIO0PIN & (1<<7));
-}
+#ifdef USE_SECONDARY_HEATER
+// this needs the PWM2 output, originally this is patched to 1-wire
+// switch this to P0.5 (which is only available at the uC pin 29)
+static inline void setpin0() { FIO0CLR = (1<<5); FIO0DIR |= (1<<5); }
+static inline void setpin1() { FIO0SET = (1<<5); FIO0DIR |= (1<<5); }
+static inline void setpinhiz() { FIO0DIR &= ~(1<<5); }
+static inline uint32_t getpin() { return !!(FIO0PIN & (1<<5)); }
+#else
+static inline void setpin0() { FIO0CLR = (1<<7); FIO0DIR |= (1<<7); }
+static inline void setpin1() { FIO0SET = (1<<7); FIO0DIR |= (1<<7); }
+static inline void setpinhiz() { FIO0DIR &= ~(1<<7); }
+static inline uint32_t getpin() { return !!(FIO0PIN & (1<<7)); }
+#endif
 
 static inline uint32_t xferbyte(uint32_t thebyte) {
 	for (uint32_t bits = 0; bits < 8; bits++) {
