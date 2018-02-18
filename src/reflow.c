@@ -88,6 +88,8 @@ static int32_t Reflow_Work(void) {
 		heat = fan = 0;
 	}
 	Set_Heater(heat);
+	// for now drive the both equally
+	Set_Secondary_Heater(heat);
 	Set_Fan(fan);
 
 	if (mymode != oldmode) {

@@ -22,7 +22,7 @@
  * underneath the PCB to be soldered. To use it an additional
  * PWM channel is required, currently the only one left is used
  * by the cold junction compensation patch, but this can be
- * moved to P1.25 (pin 28), which is moved by this define!
+ * moved to P0.5 (pin 29), which is moved by this define!
  */
 #define USE_SECONDARY_HEATER
 

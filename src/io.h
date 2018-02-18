@@ -11,6 +11,7 @@ typedef struct {
 } partmapStruct;
 
 void Set_Heater(uint8_t enable);
+void Set_Secondary_Heater(uint8_t enable);
 void Set_Fan(uint8_t enable);
 void IO_InitWatchdog(void);
 void IO_PrintResetReason(void);
