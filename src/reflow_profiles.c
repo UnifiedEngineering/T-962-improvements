@@ -8,9 +8,7 @@
 #include "reflow.h"
 
 #include "reflow_profiles.h"
-
-#define RAMPTEST
-#define PIDTEST
+#include "config.h"
 
 extern uint8_t graphbmp[];
 
@@ -41,7 +39,7 @@ static const profile syntechlfprofile = {
 	}
 };
 
-#ifdef RAMPTEST
+#ifdef RAMPTEST_PROFILE
 // Ramp speed test temp profile
 static const profile rampspeed_testprofile = {
 	"RAMP SPEED TEST", {
@@ -52,7 +50,7 @@ static const profile rampspeed_testprofile = {
 };
 #endif
 
-#ifdef PIDTEST
+#ifdef PIDTEST_PROFILE
 // PID gain adjustment test profile (5% setpoint change)
 static const profile pidcontrol_testprofile = {
 	"PID CONTROL TEST",	{
@@ -73,10 +71,10 @@ static const profile* profiles[] = {
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
-#ifdef RAMPTEST
+#ifdef RAMPTEST_PROFILE
 	&rampspeed_testprofile,
 #endif
-#ifdef PIDTEST
+#ifdef PIDTEST_PROFILE
 	&pidcontrol_testprofile,
 #endif
 	(profile*) &ee1,

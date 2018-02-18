@@ -26,7 +26,6 @@
 #include "i2c.h"
 
 #define EEADDR (0x50<<1)
-//#define DUMP_EEPROM
 
 void EEPROM_Init(void) {
 	#ifdef DUMP_EEPROM

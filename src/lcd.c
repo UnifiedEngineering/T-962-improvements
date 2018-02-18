@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
+#include "config.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];

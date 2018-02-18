@@ -23,6 +23,7 @@
 #include "vic.h"
 #include "circbuffer.h"
 #include "serial.h"
+#include "config.h"
 
 #ifdef __NEWLIB__
 #define __sys_write _write
