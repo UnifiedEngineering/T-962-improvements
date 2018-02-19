@@ -271,16 +271,6 @@ static void minimal_shell(void) {
 }
 #endif
 
-/*
- * TODO: This needs work, they really should not be global
- */
-static uint16_t setpoint = 0;
-static int timer = 0;
-
-// profile editing
-static uint8_t profile_time_idx = 0;
-static uint8_t current_edit_profile;
-
 static MainMode_t Home_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(1, 1);
 	LCD_FB_Clear();
@@ -426,6 +416,9 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	return mode;
 }
 
+// profile editing, this is shared between Select_Profile_Mode() and Edit_Profile_Mode()
+static uint8_t current_edit_profile;
+
 static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 	int curprofile = Reflow_GetProfileIdx();
 	fkey_t key = Keypad_Get(1, 1);
@@ -465,7 +458,15 @@ static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 }
 
 static MainMode_t Bake_Mode(MainMode_t mode) {
+	static uint16_t setpoint = 0;
+	static int timer = 0;
+
 	fkey_t key = Keypad_Get(2, 60);
+
+	if (setpoint == 0) {
+		Reflow_LoadSetpoint();
+		setpoint = Reflow_GetSetpoint();
+	}
 
 	LCD_FB_Clear();
 	LCD_printf(0, 0, CENTERED, "MANUAL/BAKE MODE");
@@ -601,6 +602,8 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 }
 
 static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
+	static uint8_t profile_time_idx = 0;
+
 	int16_t cursetpoint;
 
 	fkey_t key = Keypad_Get(2, 60);
@@ -644,11 +647,6 @@ static int32_t Main_Work(void) {
 	static MainMode_t mode = MAIN_HOME;
 	int32_t retval = TICKS_MS(500);
 	MainMode_t new_mode = MAIN_HOME;
-
-	if (setpoint == 0) {
-		Reflow_LoadSetpoint();
-		setpoint = Reflow_GetSetpoint();
-	}
 
 	// main menu state machine
 	switch(mode) {
