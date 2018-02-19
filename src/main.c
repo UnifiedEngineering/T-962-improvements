@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "serial.h"
+#include "log.h"
 #include "lcd.h"
 #include "io.h"
 #include "sched.h"
@@ -101,7 +102,7 @@ int main(void) {
 	Set_Heater(0);
 	Set_Fan(0);
 	Serial_Init();
-	printf(format_about, Version_GetGitVersion());
+	log(LOG_INFO, format_about, Version_GetGitVersion());
 
 	I2C_Init();
 	EEPROM_Init();
@@ -111,11 +112,10 @@ int main(void) {
 	LCD_BMPDisplay(logobmp, 0, 0);
 
 	IO_InitWatchdog();
-	IO_PrintResetReason();
 
 	IO_Partinfo(buf, sizeof(buf), "%s rev %c");
 	LCD_printf(0, 58, 0, buf);
-	printf("\nRunning on an %s", buf);
+	log(LOG_INFO, "Running on an %s", buf);
 
 	LCD_printf(0, 0, CENTERED, Version_GetGitVersion());
 
@@ -307,7 +307,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	case KEY_S:
 		mode = MAIN_REFLOW;
 		LCD_FB_Clear();
-		printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
+		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName());
 		Reflow_Init();
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
@@ -405,7 +405,7 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 
 	// Abort reflow
 	if (Reflow_IsDone() || key.priorized_key == KEY_S) {
-		printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
+		log(LOG_INFO, "Reflow %s", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
 		if (Reflow_IsDone()) {
 			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 		}
@@ -583,7 +583,7 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 				Reflow_SetBakeTimer(0);
 			} else if (timer > 0) {
 				Reflow_SetBakeTimer(timer);
-				printf("\nSetting bake timer to %d\n", timer);
+				log(LOG_INFO, "Setting bake timer to %d\n", timer);
 			}
 			Reflow_SetMode(REFLOW_BAKE);
 		}
@@ -591,7 +591,7 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 
 	// Abort bake
 	if (key.priorized_key == KEY_S) {
-		printf("\nEnd bake mode by keypress\n");
+		log(LOG_INFO, "End bake mode by keypress");
 
 		mode = MAIN_HOME;
 		Reflow_SetBakeTimer(0);

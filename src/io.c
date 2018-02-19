@@ -101,6 +101,7 @@ void IO_InitWatchdog(void) {
 	WDFEED = 0x55;
 }
 
+// this should be a shell command not logging!
 void IO_PrintResetReason(void) {
 	uint8_t resetreason = RSIR;
 	RSIR = 0x0f; // Clear it out

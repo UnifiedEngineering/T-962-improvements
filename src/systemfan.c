@@ -33,7 +33,7 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
+#include "log.h"
 #include "systemfan.h"
 #include "sched.h"
 #include "sensor.h"
@@ -92,7 +92,7 @@ static int32_t SystemFanSense_Work(void) {
 }
 
 void SystemFan_Init(void) {
-	printf("\n%s", __FUNCTION__);
+	log(LOG_DEBUG, "%s", __FUNCTION__);
 	Sched_SetWorkfunc(SYSFANPWM_WORK, SystemFanPWM_Work);
 	Sched_SetWorkfunc(SYSFANSENSE_WORK, SystemFanSense_Work);
 

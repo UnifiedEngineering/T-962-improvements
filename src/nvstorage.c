@@ -18,8 +18,8 @@
  */
 
 #include <string.h>
-#include <stdio.h>
 #include <stdint.h>
+#include "log.h"
 #include "nvstorage.h"
 #include "eeprom.h"
 #include "sched.h"
@@ -47,13 +47,13 @@ void NV_Init(void) {
 		myNV.magic = NVMAGIC;
 		myNV.numitems = NVITEM_NUM_ITEMS;
 		memset(myNV.config, 0xff, NVITEM_NUM_ITEMS);
-		printf("\nNV initialization cleared %d items", NVITEM_NUM_ITEMS);
+		log(LOG_INFO, "NV initialization cleared %d items", NVITEM_NUM_ITEMS);
 		SetNVUpdatePending();
 	} else if(myNV.numitems < NVITEM_NUM_ITEMS) {
 		uint8_t bytestoclear = NVITEM_NUM_ITEMS - myNV.numitems;
 		memset(myNV.config + myNV.numitems, 0xff, bytestoclear);
 		myNV.numitems = NVITEM_NUM_ITEMS;
-		printf("\nNV upgrade cleared %d new items", bytestoclear);
+		log(LOG_INFO, "NV upgrade cleared %d new items", bytestoclear);
 		SetNVUpdatePending();
 	}
 #ifndef MINIMALISTIC
@@ -85,7 +85,7 @@ int32_t NV_Work(void) {
 	if (nvupdatepending) count ++;
 	if (count == 4) {
 		nvupdatepending = count = 0;
-		printf("\nFlushing NV copy to EE...");
+		log(LOG_VERBOSE, "Flushing NV copy to EE...");
 		EEPROM_Write(0x62, (uint8_t*)&myNV, sizeof(myNV));
 	}
 	return nvupdatepending ? (TICKS_SECS(2)) : -1;

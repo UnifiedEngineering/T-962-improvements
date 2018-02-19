@@ -19,7 +19,7 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
+#include "log.h"
 #include "adc.h"
 #include "t962.h"
 #include "sched.h"
@@ -57,7 +57,7 @@ static int32_t ADC_Work(void) {
 }
 
 void ADC_Init( void ) {
-	printf("\n%s called", __FUNCTION__);
+	log(LOG_DEBUG, "%s called", __FUNCTION__);
 	Sched_SetWorkfunc(ADC_WORK, ADC_Work);
 
 	// 1MHz adc clock, enabling ch1 and 2

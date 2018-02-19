@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
+#include "log.h"
 #include "i2c.h"
 #include "sc18is602b.h"
 
@@ -30,7 +30,6 @@ static uint8_t scaddr;
 int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 	uint8_t function[2];
 	int32_t retval;
-	printf("\n%s ",__FUNCTION__);
 	for( uint8_t scan=0; scan<8; scan++ ) {
 		function[0] = 0xf0;
 		function[1] = clk | mode | order;
@@ -41,9 +40,9 @@ int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 		}
 	}
 	if( retval == 0 ) {
-		printf( "- Done (addr 0x%02x)", scaddr>>1);
+		log(LOG_INFO, "%s - Done (addr 0x%02x)", __FUNCTION__, scaddr>>1);
 	} else {
-		printf( "- No chip found");
+		log(LOG_INFO, "%s - No chip found", __FUNCTION__);
 	}
 	return retval;
 }
@@ -51,7 +50,7 @@ int32_t SC18IS602B_Init( SPIclk_t clk, SPImode_t mode, SPIorder_t order ) {
 int32_t SC18IS602B_SPI_Xfer( SPIxfer_t* item ) {
 	int32_t retval;
 	if( item->len > (sizeof(SPIxfer_t) - 2) ) {
-		printf("\n%s: Invalid length!",__FUNCTION__);
+		log(LOG_WARN, "%s: Invalid length!", __FUNCTION__);
 		return -1;
 	}
 	retval = I2C_Xfer(scaddr, (uint8_t*)item, item->len + 1, 1); // Initialize transfer, ssmask + data

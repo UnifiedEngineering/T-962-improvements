@@ -76,10 +76,6 @@ void Setup_decreaseValue(int item, int amount) {
 	Setup_setValue(item, curval);
 }
 
-void Setup_printFormattedValue(int item) {
-	printf(setupmenu[item].formatstr, Setup_getValue(item));
-}
-
 int Setup_snprintFormattedValue(char* buf, int n, int item) {
 	return snprintf(buf, n, setupmenu[item].formatstr, Setup_getValue(item));
 }

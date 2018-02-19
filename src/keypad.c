@@ -19,8 +19,8 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
 #include "t962.h"
+#include "log.h"
 #include "keypad.h"
 #include "io.h"
 #include "sched.h"
@@ -113,10 +113,10 @@ fkey_t Keypad_Get(uint16_t lowlimit, uint16_t highlimit) {
 
 void Keypad_Init(void) {
 	Sched_SetWorkfunc(KEYPAD_WORK, Keypad_Work);
-	printf("\nWaiting for keys to be released... ");
+	log(LOG_DEBUG, "Waiting for keys to be released ...");
 	// Note that if this takes longer than ~1 second the watchdog will bite
-	while (Keypad_GetRaw());
-	printf("Done!");
+	while (Keypad_GetRaw()) ;
+	log(LOG_DEBUG, "Done waiting for keys");
 
 	// Potential noise gets suppressed as well
 	Sched_SetState(KEYPAD_WORK, 1, TICKS_MS(250)); // Wait 250ms before starting to scan the keypad

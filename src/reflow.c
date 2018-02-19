@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "t962.h"
+#include "log.h"
 #include "reflow_profiles.h"
 #include "io.h"
 #include "lcd.h"
@@ -98,7 +99,7 @@ static int32_t Reflow_Work(void) {
 		numticks = 0;
 	} else if (mymode == REFLOW_BAKE) {
 		if (bake_timer > 0 && numticks >= bake_timer) {
-			printf("\n DONE baking, set bake timer to 0.");
+			log(LOG_INFO, "DONE baking, set bake timer to 0.");
 			bake_timer = 0;
 			Reflow_SetMode(REFLOW_STANDBY);
 		}
@@ -138,7 +139,7 @@ static int32_t Reflow_Work(void) {
 
 	int32_t nexttick = (2 * TICKS_MS(PID_TIMEBASE)) - (thistick - lasttick);
 	if ((thistick - lasttick) > (2 * TICKS_MS(PID_TIMEBASE))) {
-		printf("\nReflow can't keep up with desired PID_TIMEBASE!");
+		log(LOG_ERROR, "Reflow can't keep up with desired PID_TIMEBASE!");
 		nexttick = 0;
 	}
 	lasttick += TICKS_MS(PID_TIMEBASE);
@@ -203,7 +204,7 @@ void Reflow_LoadSetpoint(void) {
 	intsetpoint = NV_GetConfig(REFLOW_BAKE_SETPOINT_H) << 8;
 	intsetpoint |= NV_GetConfig(REFLOW_BAKE_SETPOINT_L);
 
-	printf("\n bake setpoint values: %x, %x, %d\n",
+	log(LOG_DEBUG, "bake setpoint values: %x, %x, %d",
 		NV_GetConfig(REFLOW_BAKE_SETPOINT_H),
 		NV_GetConfig(REFLOW_BAKE_SETPOINT_L), intsetpoint);
 }

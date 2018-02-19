@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
+#include "log.h"
 #include "sc18is602b.h"
 #include "sched.h"
 
@@ -50,7 +50,7 @@ static int32_t SPI_TC_Work( void ) {
 }
 
 uint32_t SPI_TC_Init(void) {
-	printf("\n%s called", __FUNCTION__);
+	log(LOG_DEBUG, "%s called", __FUNCTION__);
 	Sched_SetWorkfunc(SPI_TC_WORK, SPI_TC_Work);
 
 	for (int i = 0; i < MAX_SPI_DEVICES; i++) {
@@ -60,7 +60,7 @@ uint32_t SPI_TC_Init(void) {
 
 	// Only continue of we find the I2C to SPI bridge chip
 	if (SC18IS602B_Init(SPICLK_1843KHZ, SPIMODE_0, SPIORDER_MSBFIRST) >= 0) {
-		printf("\nProbing for MAX31855 devices...");
+		log(LOG_INFO, "Probing for MAX31855 devices...");
 
 		// Assume all devices are present for SPI_TC_Work
 		numspidevices = MAX_SPI_DEVICES;
@@ -74,9 +74,9 @@ uint32_t SPI_TC_Init(void) {
 		for (int i = 0; i < MAX_SPI_DEVICES; i++) {
 			if ((spidevreadout[i] == -1 && spiextrareadout[i] == -1) ||
 			    (spidevreadout[i] == 0 && spiextrareadout[i] == 0)) {
-				//printf(" Unknown/Invalid/Absent device");
+				log(LOG_WARN, "Unknown/Invalid/Absent MAX31855 device");
 			} else {
-				printf("\nSS%x: [SPI Thermocouple interface]", i);
+				log(LOG_INFO, "SS%x: [SPI Thermocouple interface]", i);
 				// A bit of a hack as it assumes all earlier devices are present
 				numspidevices = i + 1;
 			}
@@ -86,7 +86,7 @@ uint32_t SPI_TC_Init(void) {
 			 // Enable SPI TC task if there's at least one device
 			Sched_SetState(SPI_TC_WORK, 2, 0);
 		} else {
-			printf(" No MAX31855 devices found!");
+			log(LOG_DEBUG, "No MAX31855 devices found!");
 		}
 	}
 	return numspidevices;

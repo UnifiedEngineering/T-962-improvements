@@ -20,8 +20,8 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
+#include "log.h"
 #include "onewire.h"
 #include "sched.h"
 #include "vic.h"
@@ -101,6 +101,12 @@ static int16_t extrareadout[MAX_OW_DEVICES]; // Keeps last readout from each dev
 static int numowdevices = 0;
 static int8_t tcidmapping[16]; // Map TC ID to ROM ID index
 static int8_t tempidx; // Which ROM ID index that contains the temperature sensor
+
+// helper to cast 8byte ID into 2 32bit values
+typedef struct {
+	unsigned int lower;
+	unsigned int higher;
+} two_32bits;
 
 // OW functions from Application note 187 (modified for readability)
 // global search state
@@ -317,9 +323,9 @@ static int32_t OneWire_Work(void) {
 }
 
 uint32_t OneWire_Init(void) {
-	printf("\n%s called", __FUNCTION__);
+	log(LOG_DEBUG, "%s called", __FUNCTION__);
 	Sched_SetWorkfunc(ONEWIRE_WORK, OneWire_Work);
-	printf("\nScanning 1-wire bus...");
+	log(LOG_INFO, "Scanning 1-wire bus...");
 
 	tempidx = -1; // Assume we don't find a temperature sensor
 	for (int i = 0; i < sizeof(tcidmapping); i++) {
@@ -341,11 +347,10 @@ uint32_t OneWire_Init(void) {
 
 	if (numowdevices) {
 		for (int iter = 0; iter < numowdevices; iter++) {
-			printf("\n Found ");
-			for (int idloop = 7; idloop >= 0; idloop--) {
-				printf("%02x", owdeviceids[iter][idloop]);
-			}
 			uint8_t family = owdeviceids[iter][0];
+			// all but portable!
+			two_32bits *debug_id = (two_32bits *) &owdeviceids[iter];
+
 			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2 || family == OW_FAMILY_TEMP3) {
 				const char* sensorname = "UNKNOWN";
 				if (family == OW_FAMILY_TEMP1) {
@@ -363,7 +368,9 @@ uint32_t OneWire_Init(void) {
 				xferbyte(0x1f); // Reduce resolution to 0.5C to keep conversion time reasonable
 				VIC_RestoreIRQ(save);
 				tempidx = iter; // Keep track of where we saw the last/only temperature sensor
-				printf(" [%s Temperature sensor]", sensorname);
+				log(LOG_INFO, "Found %08x%08x [%s Temperature sensor]",
+						debug_id->higher, debug_id->lower,
+						sensorname);
 			} else if (family == OW_FAMILY_TC) {
 				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
@@ -375,11 +382,13 @@ uint32_t OneWire_Init(void) {
 				uint8_t tcid = xferbyte(0xff) & 0x0f;
 				VIC_RestoreIRQ( save );
 				tcidmapping[tcid] = iter; // Keep track of the ID mapping
-				printf(" [Thermocouple interface, ID %x]",tcid);
+				log(LOG_INFO, "Found %08x%08x [Thermocouple interface, ID 0x%x]",
+						debug_id->higher, debug_id->lower,
+						(unsigned int) tcid);
 			}
 		}
 	} else {
-		printf(" No devices found!");
+		log(LOG_INFO, "No 1-wire devices found!");
 	}
 
 	if (numowdevices) {
@@ -388,6 +397,7 @@ uint32_t OneWire_Init(void) {
 	return numowdevices;
 }
 
+/* probably this should not log! */
 float OneWire_GetTempSensorReading(void) {
 	float retval = 999.0f; // Report invalid temp if not found
 	if(tempidx >= 0) {

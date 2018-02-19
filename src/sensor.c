@@ -177,6 +177,7 @@ uint8_t Sensor_IsValid(TempSensor_t sensor) {
 	return (tempvalid & (1 << (sensor - TC_LEFT))) ? 1 : 0;
 }
 
+/* this is not logging, but shell output! */
 void Sensor_ListAll(void) {
 	int count = 5;
 	char* names[] = {"Left", "Right", "Extra 1", "Extra 2", "Cold junction"};
