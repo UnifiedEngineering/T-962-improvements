@@ -80,8 +80,33 @@ static int32_t Keypad_Work(void) {
 	return TICKS_MS(100);
 }
 
-uint32_t Keypad_Get(void) {
-	uint32_t retval = latchedkeypadstate;
+/*
+ * get pressed key info: mask, acceleration and priorized key
+ */
+fkey_t Keypad_Get(uint16_t lowlimit, uint16_t highlimit) {
+	fkey_t retval;
+
+	retval.acceleration = latchedkeypadstate >> 16;
+	if (retval.acceleration > highlimit)
+		retval.acceleration = highlimit;
+	if (retval.acceleration < lowlimit)
+		retval.acceleration = lowlimit;
+
+	retval.keymask = latchedkeypadstate & 0xffff;
+
+	// ternery ?: has pretty unpredictable precedence, so be more eplicit
+	retval.priorized_key = 0;
+	if (retval.keymask & KEY_S)
+		retval.priorized_key = KEY_S;
+	else if (retval.keymask & KEY_F1)
+		retval.priorized_key = KEY_F1;
+	else if (retval.keymask & KEY_F2)
+		retval.priorized_key = KEY_F2;
+	else if (retval.keymask & KEY_F3)
+		retval.priorized_key = KEY_F3;
+	else if (retval.keymask & KEY_F4)
+		retval.priorized_key = KEY_F4;
+
 	latchedkeypadstate = 0;
 	return retval;
 }

@@ -1,14 +1,22 @@
 #ifndef KEYPAD_H_
 #define KEYPAD_H_
 
-#define KEY_F1 (1<<0)
-#define KEY_F2 (1<<1)
-#define KEY_F3 (1<<2)
-#define KEY_F4 (1<<3)
-#define KEY_S (1<<4)
-#define KEY_ANY (KEY_F1 | KEY_F2 | KEY_F3 | KEY_F4 | KEY_S)
+/* bit masks */
+typedef enum {
+	KEY_F1 = 1,
+	KEY_F2 = 2,
+	KEY_F3 = 4,
+	KEY_F4 = 8,
+	KEY_S  = 16
+} key_mask_t;
 
-uint32_t Keypad_Get(void);
+typedef struct {
+	key_mask_t priorized_key;
+	uint8_t keymask;
+	uint16_t acceleration;
+} fkey_t;
+
+fkey_t Keypad_Get(uint16_t, uint16_t);
 void Keypad_Init(void);
 
 #endif /* KEYPAD_H_ */
