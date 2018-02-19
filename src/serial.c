@@ -30,7 +30,7 @@
 #endif
 
 /* The following baud rates assume a 55.296MHz system clock */
-#ifdef SERIAL_2MBs
+#if UART0_BAUDRATE == 2000842
 /* Settings for 2Mb/s */
 #define BAUD_M  11
 #define BAUD_D  8
@@ -38,10 +38,11 @@
  * this works just fine! */
 #define BAUD_DL 1
 #else
-/* Settings for 115kbps */
+/* calculate from 11.0592MHz * 5 / 16 / 30 / baudrate_divisor * 1 */
 #define BAUD_M  1
 #define BAUD_D  0
-#define BAUD_DL 30
+/* in multiples of 115200 */
+#define BAUD_DL (30 * (115200 / UART0_BAUDRATE))
 #endif
 
 /* UART Buffers */

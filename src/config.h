@@ -64,8 +64,9 @@
  */
 // #define MINIMALISTIC
 
+
 /*
- * use a super-fast serial line (2Mbit/s)
- * improve speed if the transceiver works at this speed
+ *  serial baudrate:
+ *  allowed values 2000842 (special), 115200, 57600, 38400, 19200, 9600, 4800
  */
-// #define SERIAL_2MBs
+#define UART0_BAUDRATE	115200

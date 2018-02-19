@@ -280,7 +280,7 @@ static int32_t Main_Work(void) {
 				Setup_printFormattedValue(param);
 
 			} else {
-				printf("\nCannot understand command, ? for help\n");
+				printf("\nUnknown command '%s', ? for help\n", serial_cmd);
 			}
 		}
 	}
