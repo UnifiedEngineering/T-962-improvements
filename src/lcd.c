@@ -20,6 +20,7 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
 #include "lcd.h"
@@ -48,7 +49,10 @@ typedef struct __attribute__ ((packed)) {
 	uint32_t aColors[2]; // Palette data, first color is used if pixel bit is 0, second if pixel bit is 1
 } BMhdr_t;
 
-void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
+#define LCD_ALIGN_CENTER(x) (LCD_CENTER - (x * 3))
+#define LCD_ALIGN_RIGHT(x) (127 - (x * 6))
+
+static void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	// First of all, make lowercase into uppercase
 	// (as there are no lowercase letters in the font)
 	if ((theChar & 0x7f) >= 0x61 && (theChar & 0x7f) <= 0x7a) {
@@ -85,7 +89,7 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	}
 }
 
-void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat) {
+static void disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat) {
 #ifdef MINIMALISTIC
 	for (uint8_t q = 0; q < theLen; q++) {
 		charoutsmall(theStr[q], startx, y);
@@ -100,19 +104,24 @@ void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, ui
 #endif
 }
 
-void LCD_MultiLineH(uint8_t startx, uint8_t endx, uint64_t ymask) {
-	for (uint8_t x = startx; x <= endx; x++) {
-		FB[0][x] |= ymask & 0xff;
-		FB[1][x] |= ymask >> 8;
-		FB[2][x] |= ymask >> 16;
-		FB[3][x] |= ymask >> 24;
-#if FB_HEIGHT == 64
-		FB[4][x] |= ymask >> 32;
-		FB[5][x] |= ymask >> 40;
-		FB[6][x] |= ymask >> 48;
-		FB[7][x] |= ymask >> 56;
-#endif
+
+void LCD_printf(uint8_t x, uint8_t y, uint8_t flags, const char *format, ...) {
+	char buf[22];
+	uint8_t len;
+    va_list arg;
+
+    va_start(arg, format);
+	len = vsnprintf(buf, sizeof(buf), format, arg);
+
+	if (flags & CENTERED) {
+		x = LCD_ALIGN_CENTER(len);
+	} else if (flags & RIGHT_ALIGNED) {
+		x = LCD_ALIGN_RIGHT(len);
 	}
+	// filter flags again
+	flags &= ~(CENTERED | RIGHT_ALIGNED);
+	disp_str((uint8_t *) buf, len, x, y, flags);
+    va_end(arg);
 }
 
 /*
