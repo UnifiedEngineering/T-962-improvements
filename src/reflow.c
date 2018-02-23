@@ -193,11 +193,16 @@ void Reflow_SetMode(ReflowMode_t themode) {
 	}
 }
 
-void Reflow_SetSetpoint(uint16_t thesetpoint) {
-	intsetpoint = thesetpoint;
+ReflowMode_t Reflow_GetMode(void) {
+	return mymode;
+}
 
-	NV_SetConfig(REFLOW_BAKE_SETPOINT_H, (uint8_t)(thesetpoint >> 8));
-	NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)thesetpoint);
+void Reflow_SetSetpoint(uint16_t thesetpoint) {
+	if (intsetpoint != thesetpoint) {
+		NV_SetConfig(REFLOW_BAKE_SETPOINT_H, (uint8_t)(thesetpoint >> 8));
+		NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)thesetpoint);
+	}
+	intsetpoint = thesetpoint;
 }
 
 void Reflow_LoadSetpoint(void) {
@@ -225,6 +230,10 @@ void Reflow_SetBakeTimer(int seconds) {
 	// reset ticks to 0 when adjusting timer.
 	numticks = 0;
 	bake_timer = seconds * TICKS_PER_SECOND;
+}
+
+int Reflow_GetBakeTimer(void) {
+	return bake_timer / TICKS_PER_SECOND;
 }
 
 int Reflow_IsPreheating(void) {

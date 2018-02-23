@@ -1,7 +1,7 @@
 #ifndef SENSORS_H_
 #define SENSORS_H_
 
-typedef enum eTempSensor {
+typedef enum {
 	TC_COLD_JUNCTION=0,
 	TC_AVERAGE,
 	TC_LEFT,
