@@ -29,6 +29,7 @@ typedef enum eTask {
 	REFLOW_WORK,
 	SYSFANSENSE_WORK,
 	NV_WORK,
+	SHELL_WORK,
 	SCHED_NUM_ITEMS // Last value
 } Task_t;
 

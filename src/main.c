@@ -93,30 +93,10 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 	return "no version info";
 }
 
-static char* format_about = \
-"\nT-962-controller open source firmware (%s)" \
-"\n" \
-"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
-"\n" \
-"\nInitializing improved reflow oven...";
-
-static char* help_text = \
-"\nT-962-controller serial interface.\n\n" \
-" about                   Show about + debug information\n" \
-" bake <setpoint>         Enter Bake mode with setpoint\n" \
-" bake <setpoint> <time>  Enter Bake mode with setpoint for <time> seconds\n" \
-" help                    Display help text\n" \
-" list profiles           List available reflow profiles\n" \
-" list settings           List machine settings\n" \
-" quiet                   No logging in standby mode\n" \
-" reflow                  Start reflow with selected profile\n" \
-" setting <id> <value>    Set setting id to value\n" \
-" select profile <id>     Select reflow profile by id\n" \
-" stop                    Exit reflow or bake mode\n" \
-" values                  Dump currently measured values\n" \
-"\n";
-
 static int32_t Main_Work(void);
+
+extern int32_t Shell_Work(void);
+extern void Shell_Init(void);
 
 int main(void) {
 	char buf[22];
@@ -141,7 +121,7 @@ int main(void) {
 	Set_Heater(0);
 	Set_Fan(0);
 	Serial_Init();
-	log(LOG_INFO, format_about, Version_GetGitVersion());
+	log(LOG_INFO, "Starting version: %s", Version_GetGitVersion());
 
 	I2C_Init();
 	EEPROM_Init();
@@ -167,9 +147,12 @@ int main(void) {
 	SPI_TC_Init();
 	Reflow_Init();
 	SystemFan_Init();
+	Shell_Init();
 
 	Sched_SetWorkfunc(MAIN_WORK, Main_Work);
 	Sched_SetState(MAIN_WORK, 1, TICKS_SECS(2)); // Enable in 2 seconds
+	Sched_SetWorkfunc(SHELL_WORK, Shell_Work);
+	Sched_SetState(SHELL_WORK, 1, TICKS_SECS(2)); // Enable in 2 seconds
 
 	Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100));
 
@@ -194,121 +177,6 @@ typedef enum eMainMode {
 	MAIN_EDIT_PROFILE,
 	MAIN_REFLOW
 } MainMode_t;
-
-#if 0
-/*
- * this is simply stripped out of Main_Work() to simplify
- *   replacement.
- */
-static void minimal_shell(void) {
-	char serial_cmd[255] = "";
-	char* cmd_select_profile = "select profile %d";
-	char* cmd_bake = "bake %d %d";
-	char* cmd_dump_profile = "dump profile %d";
-	char* cmd_setting = "setting %d %f";
-
-	if (uart_isrxready()) {
-		int len = uart_readline(serial_cmd, 255);
-
-		if (len > 0) {
-			int param, param1;
-			float paramF;
-
-			if (strcmp(serial_cmd, "about") == 0) {
-				printf(format_about, Version_GetGitVersion());
-				len = IO_Partinfo(buf, sizeof(buf), "\nPart number: %s rev %c\n");
-				printf(buf);
-				EEPROM_Dump();
-
-				printf("\nSensor values:\n");
-				Sensor_ListAll();
-
-			} else if (strcmp(serial_cmd, "help") == 0 || strcmp(serial_cmd, "?") == 0) {
-				printf(help_text);
-
-			} else if (strcmp(serial_cmd, "list profiles") == 0) {
-				printf("\nReflow profiles available:\n");
-
-				Reflow_ListProfiles();
-				printf("\n");
-
-			} else if (strcmp(serial_cmd, "reflow") == 0) {
-				printf("\nStarting reflow with profile: %s\n", Reflow_GetProfileName());
-				mode = MAIN_HOME;
-				// this is a bit dirty, but with the least code duplication.
-				keyspressed = KEY_S;
-
-			} else if (strcmp(serial_cmd, "list settings") == 0) {
-				printf("\nCurrent settings:\n\n");
-				for (int i = 0; i < Setup_getNumItems() ; i++) {
-					printf("%d: ", i);
-					Setup_printFormattedValue(i);
-					printf("\n");
-				}
-
-			} else if (strcmp(serial_cmd, "stop") == 0) {
-				printf("\nStopping bake/reflow");
-				mode = MAIN_HOME;
-				Reflow_SetMode(REFLOW_STANDBY);
-				retval = 0;
-
-			} else if (strcmp(serial_cmd, "quiet") == 0) {
-				Reflow_ToggleStandbyLogging();
-				printf("\nToggled standby logging\n");
-
-			} else if (strcmp(serial_cmd, "values") == 0) {
-				printf("\nActual measured values:\n");
-				Sensor_ListAll();
-				printf("\n");
-
-			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
-				// select profile
-				Reflow_SelectProfileIdx(param);
-				printf("\nSelected profile %d: %s\n", param, Reflow_GetProfileName());
-
-			} else if (sscanf(serial_cmd, cmd_bake, &param, &param1) > 0) {
-				if (param < SETPOINT_MIN) {
-					printf("\nSetpoint must be >= %ddegC\n", SETPOINT_MIN);
-					param = SETPOINT_MIN;
-				}
-				if (param > SETPOINT_MAX) {
-					printf("\nSetpont must be <= %ddegC\n", SETPOINT_MAX);
-					param = SETPOINT_MAX;
-				}
-				if (param1 < 1) {
-					printf("\nTimer must be greater than 0\n");
-					param1 = 1;
-				}
-
-				if (param1 < BAKE_TIMER_MAX) {
-					printf("\nStarting bake with setpoint %ddegC for %ds after reaching setpoint\n", param, param1);
-					timer = param1;
-					Reflow_SetBakeTimer(timer);
-				} else {
-					printf("\nStarting bake with setpoint %ddegC\n", param);
-				}
-
-				setpoint = param;
-				Reflow_SetSetpoint(setpoint);
-				mode = MAIN_BAKE;
-				Reflow_SetMode(REFLOW_BAKE);
-
-			} else if (sscanf(serial_cmd, cmd_dump_profile, &param) > 0) {
-				printf("\nDumping profile %d: %s\n ", param, Reflow_GetProfileName());
-				Reflow_DumpProfile(param);
-
-			} else if (sscanf(serial_cmd, cmd_setting, &param, &paramF) > 0) {
-				Setup_setRealValue(param, paramF);
-				printf("\nAdjusted setting: ");
-				Setup_printFormattedValue(param);
-
-			} else {
-				printf("\nUnknown command '%s', ? for help\n", serial_cmd);
-			}
-		}
-	}
-}
-#endif
 
 static MainMode_t Home_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(1, 1);
