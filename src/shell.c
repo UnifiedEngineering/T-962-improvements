@@ -13,6 +13,7 @@
 #include "reflow_profiles.h"
 #include "nvstorage.h"
 #include "setup.h"
+#include "reflow.h"
 
 #include "SimpleCLI/inc/scliCore.h"
 
@@ -178,6 +179,39 @@ SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
 	return 0;
 }
 
+SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
+{
+	int value;
+
+	if (argc < 2) {
+		// no \n shell reports error aswell
+		printf(RED "\n ... set what?" WHITE);
+		return -1;
+	}
+
+	if (strcmp(argv[1], "log_lvl") == 0) {
+		value = 0;
+		if (argc > 2) {
+			value = atoi(argv[2]);
+		}
+		set_log_level(value);
+	} else if (strcmp(argv[1], "reflow_log_lvl") == 0) {
+		value = 0;
+		if (argc > 2) {
+			value = atoi(argv[2]);
+		}
+		Reflow_SetLogLevel(value);
+	} else {
+		printf(RED "\n ... don't know how to set '%s'" WHITE, argv[1]);
+		return -1;
+	}
+
+	printf("\n%s is now set to %d\n", argv[1], value);
+
+	return 0;
+}
+
+
 SCLI_CMD_T commands[] = {
 		{ cmd_info, "info", "some system information",
 				"show version, CPU information and more" },
@@ -187,7 +221,13 @@ SCLI_CMD_T commands[] = {
 				"list settings" },
 		{ cmd_dump, "dump", "dump [profile|eeprom|...] [nr]",
 				"dump profile [no] .. with number 'no' or the currently selected\n"
+				"dump eeprom .. show eeprom dump\n"
 		},
+		{ cmd_set, "set", "set var [value]",
+				"set 'var' to a 'value' or default\n"
+				"  var = [log_lvl, reflow_log_lvl]"
+		},
+
 		SCLI_CMD_LIST_END
 };
 

@@ -51,7 +51,8 @@ static uint8_t reflowdone = 0;
 static ReflowMode_t mymode = REFLOW_STANDBY;
 static uint16_t numticks = 0;
 
-static int standby_logging = 0;
+// default to no logging at all, needs serial communication (i.e. shell anyway)
+static int reflow_log_level = LOG_NONE;
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
@@ -94,7 +95,8 @@ static int32_t Reflow_Work(void) {
 	Set_Fan(fan);
 
 	if (mymode != oldmode) {
-		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
+		if (reflow_log_level >= LOG_INFO)
+			printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
 		oldmode = mymode;
 		numticks = 0;
 	} else if (mymode == REFLOW_BAKE) {
@@ -114,7 +116,7 @@ static int32_t Reflow_Work(void) {
 		numticks++;
 	}
 
-	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
+	if (reflow_log_level >= LOG_VERBOSE || (reflow_log_level >= LOG_INFO && mymode != REFLOW_STANDBY)) {
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
 		       ((float)numticks / TICKS_PER_SECOND),
 		       Sensor_GetTemp(TC_LEFT),
@@ -313,6 +315,6 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	return retval;
 }
 
-void Reflow_ToggleStandbyLogging(void) {
-	standby_logging = !standby_logging;
+void Reflow_SetLogLevel(int lvl) {
+	reflow_log_level = lvl;
 }
