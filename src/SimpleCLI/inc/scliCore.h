@@ -27,7 +27,7 @@
 #include "SimpleCLI/inc/scliText.h"
 #include "SimpleCLI/inc/scliConf.h"
 
-#if SCLI_USE_OWN_PRINTF == 1
+#if SCLI_USE_OWN_PRINTF > 0
 #include <printf.h>
 #else
 #include <stdio.h>

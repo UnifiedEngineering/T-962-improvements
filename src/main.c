@@ -201,11 +201,11 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	case KEY_S:
 		mode = MAIN_REFLOW;
 		LCD_FB_Clear();
-		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName());
+		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName(-1));
 		Reflow_Init();
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
-		LCD_printf(13, 0, 0, Reflow_GetProfileName());
+		LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
 		Reflow_SetMode(REFLOW_REFLOW);
 		return mode;
 	}
@@ -218,7 +218,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	LCD_printf(0, 24, INVERT, "F3"); LCD_printf(14, 24, 0, "BAKE MODE");
 	LCD_printf(0, 32, INVERT, "F4"); LCD_printf(14, 32, 0, "SELECT PROFILE");
 	LCD_printf(0, 40, INVERT,  "S"); LCD_printf(14, 40, 0, "RUN REFLOW PROFILE");
-	LCD_printf(0, 48, INVERT | CENTERED, Reflow_GetProfileName());
+	LCD_printf(0, 48, INVERT | CENTERED, Reflow_GetProfileName(-1));
 	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
 
 	return mode;
@@ -337,7 +337,7 @@ static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 	if (Reflow_GetEEProfileIdx()) {
 		LCD_BMPDisplay(f3editbmp, 127 - 17, 29);
 	}
-	LCD_printf(13, 0, 0, Reflow_GetProfileName());
+	LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
 
 	return mode;
 }
@@ -484,41 +484,53 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 	return mode;
 }
 
+static MainMode_t current_mode = MAIN_HOME;
+
+// external interface (for the shell) to switch modes
+int Set_Mode(MainMode_t new_mode)
+{
+	// only switch to new mode if in HOME, avoid strange things ...
+	if (current_mode != MAIN_HOME)
+		return -1;
+
+	current_mode = new_mode;
+	return 0;
+}
+
 static int32_t Main_Work(void) {
-	static MainMode_t mode = MAIN_HOME;
 	int32_t retval = TICKS_MS(500);
 	MainMode_t new_mode = MAIN_HOME;
 
 	// main menu state machine
-	switch(mode) {
+	switch(current_mode) {
 	case MAIN_HOME:
-		new_mode = Home_Mode(mode);
+		new_mode = Home_Mode(current_mode);
 		break;
 	case MAIN_ABOUT:
-		new_mode = About_Mode(mode);
+		new_mode = About_Mode(current_mode);
 		break;
 	case MAIN_SETUP:
-		new_mode = Setup_Mode(mode);
+		new_mode = Setup_Mode(current_mode);
 		break;
 	case MAIN_BAKE:
-		new_mode = Bake_Mode(mode);
+		new_mode = Bake_Mode(current_mode);
 		break;
 	case MAIN_SELECT_PROFILE:
-		new_mode = Select_Profile_Mode(mode);
+		new_mode = Select_Profile_Mode(current_mode);
 		break;
 	case MAIN_EDIT_PROFILE:
-		new_mode = Edit_Profile_Mode(mode);
+		new_mode = Edit_Profile_Mode(current_mode);
 		break;
 	case MAIN_REFLOW:
-		new_mode = Reflow_Mode(mode);
+		new_mode = Reflow_Mode(current_mode);
 		break;
 	}
 
 	LCD_FB_Update();
 	// whenever mode is switched return immediately
-	if (new_mode != mode) {
+	if (new_mode != current_mode) {
 		retval = 0;
-		mode = new_mode;
+		current_mode = new_mode;
 	}
 
 	return retval;

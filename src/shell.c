@@ -1,34 +1,34 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "serial.h"
 #include "sched.h"
 #include "log.h"
+#include "io.h"
+#include "sensor.h"
+#include "eeprom.h"
+#include "version.h"
+#include "reflow_profiles.h"
+#include "nvstorage.h"
+#include "setup.h"
+
 #include "SimpleCLI/inc/scliCore.h"
 
-#if 0
-static char* format_about = \
-"\nT-962-controller open source firmware (%s)" \
-"\n" \
-"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
-"\n" \
-"\nInitializing improved reflow oven...";
+// some color shortcuts
+#define RED			"\x1b[01;31m"
+#define GREEN		"\x1b[01;32m"
+#define YELLOW		"\x1b[01;33m"
+#define BLUE		"\x1b[01;34m"
+#define MAGENTA		"\x1b[01;35m"
+#define CYAN		"\x1b[01;36m"
+// actually the foreground color might as well be black
+#define WHITE		"\x1b[0m"
+#define WHITE_BOLD	"\x1b[01;30m"
 
-static char* help_text = \
-"\nT-962-controller serial interface.\n\n" \
-" about                   Show about + debug information\n" \
-" bake <setpoint>         Enter Bake mode with setpoint\n" \
-" bake <setpoint> <time>  Enter Bake mode with setpoint for <time> seconds\n" \
-" help                    Display help text\n" \
-" list profiles           List available reflow profiles\n" \
-" list settings           List machine settings\n" \
-" quiet                   No logging in standby mode\n" \
-" reflow                  Start reflow with selected profile\n" \
-" setting <id> <value>    Set setting id to value\n" \
-" select profile <id>     Select reflow profile by id\n" \
-" stop                    Exit reflow or bake mode\n" \
-" values                  Dump currently measured values\n" \
-"\n";
+
+#if 0
 
 /*
  * this is simply stripped out of Main_Work() to simplify
@@ -48,37 +48,11 @@ static void minimal_shell(void) {
 			int param, param1;
 			float paramF;
 
-			if (strcmp(serial_cmd, "about") == 0) {
-				printf(format_about, Version_GetGitVersion());
-				len = IO_Partinfo(buf, sizeof(buf), "\nPart number: %s rev %c\n");
-				printf(buf);
-				EEPROM_Dump();
-
-				printf("\nSensor values:\n");
-				Sensor_ListAll();
-
-			} else if (strcmp(serial_cmd, "help") == 0 || strcmp(serial_cmd, "?") == 0) {
-				printf(help_text);
-
-			} else if (strcmp(serial_cmd, "list profiles") == 0) {
-				printf("\nReflow profiles available:\n");
-
-				Reflow_ListProfiles();
-				printf("\n");
-
 			} else if (strcmp(serial_cmd, "reflow") == 0) {
 				printf("\nStarting reflow with profile: %s\n", Reflow_GetProfileName());
 				mode = MAIN_HOME;
 				// this is a bit dirty, but with the least code duplication.
 				keyspressed = KEY_S;
-
-			} else if (strcmp(serial_cmd, "list settings") == 0) {
-				printf("\nCurrent settings:\n\n");
-				for (int i = 0; i < Setup_getNumItems() ; i++) {
-					printf("%d: ", i);
-					Setup_printFormattedValue(i);
-					printf("\n");
-				}
 
 			} else if (strcmp(serial_cmd, "stop") == 0) {
 				printf("\nStopping bake/reflow");
@@ -90,10 +64,6 @@ static void minimal_shell(void) {
 				Reflow_ToggleStandbyLogging();
 				printf("\nToggled standby logging\n");
 
-			} else if (strcmp(serial_cmd, "values") == 0) {
-				printf("\nActual measured values:\n");
-				Sensor_ListAll();
-				printf("\n");
 
 			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
 				// select profile
@@ -127,31 +97,98 @@ static void minimal_shell(void) {
 				mode = MAIN_BAKE;
 				Reflow_SetMode(REFLOW_BAKE);
 
-			} else if (sscanf(serial_cmd, cmd_dump_profile, &param) > 0) {
-				printf("\nDumping profile %d: %s\n ", param, Reflow_GetProfileName());
-				Reflow_DumpProfile(param);
-
 			} else if (sscanf(serial_cmd, cmd_setting, &param, &paramF) > 0) {
 				Setup_setRealValue(param, paramF);
 				printf("\nAdjusted setting: ");
 				Setup_printFormattedValue(param);
-
-			} else {
-				printf("\nUnknown command '%s', ? for help\n", serial_cmd);
 			}
 		}
 	}
 }
 #endif
 
-SCLI_CMD_RET cmd_about(uint8_t argc, char *argv[])
+SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 {
-	printf("about");
+	char buf[40];
+
+	if (argc > 1)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+
+	printf("\nT-962 build version: %s\n", Version_GetGitVersion());
+	IO_Partinfo(buf, sizeof(buf), "Part number: %s rev %c\n\n");
+	printf(buf);
+	EEPROM_Dump();
+
+	printf("\n\nSensor values:\n");
+	Sensor_ListAll();
+
+	return 0;
+}
+
+SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
+{
+	if (argc > 1)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+
+	printf("\n");
+	Reflow_ListProfiles();
+
+	return 0;
+}
+
+SCLI_CMD_RET cmd_settings(uint8_t argc, char *argv[])
+{
+	char buf[40];
+
+	if (argc > 1)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+
+	printf("\nCurrent settings:\n\n");
+	for (int i = 0; i < Setup_getNumItems() ; i++) {
+		printf("%d: ", i);
+		Setup_snprintFormattedValue(buf, sizeof(buf), i);
+		printf("%s\n", buf);
+	}
+
+	return 0;
+}
+
+SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
+{
+	if (argc < 2) {
+		// no \n shell reports error aswell
+		printf(RED "\n ... dump what?" WHITE);
+		return -1;
+	}
+
+	if (strcmp(argv[1], "profile") == 0) {
+		int no = Reflow_GetProfileIdx();
+		if (argc > 2) {
+			no = atoi(argv[2]);
+		}
+		printf("\nProfile (%d) '%s'\n", no, Reflow_GetProfileName(no));
+		Reflow_DumpProfile(no);
+	} else if (strcmp(argv[1], "eeprom") == 0) {
+		EEPROM_Dump();
+	} else {
+		printf(RED "\n ... don't know how to dump '%s'" WHITE, argv[1]);
+		return -1;
+	}
+
 	return 0;
 }
 
 SCLI_CMD_T commands[] = {
-		{ cmd_about, "info", "show basic information", "" }
+		{ cmd_info, "info", "some system information",
+				"show version, CPU information and more" },
+		{ cmd_profiles, "profiles", "list profiles",
+				"list profiles" },
+		{ cmd_settings, "settings", "list settings",
+				"list settings" },
+		{ cmd_dump, "dump", "dump [profile|eeprom|...] [nr]",
+				"dump profile [no] .. with number 'no' or the currently selected\n"
+		},
+		SCLI_CMD_LIST_END
 };
 
 // being cooperative no critical zone management necessary
@@ -181,6 +218,8 @@ SCLI_INTERFACE_T shell_if = {
 
 void Shell_Init(void) {
 	scliCore_Init(&shell_if);
+	// turn off debug logging on shell startup
+	set_log_level(LOG_WARN);
 }
 
 // get a character if any and process it
@@ -192,5 +231,6 @@ int32_t Shell_Work(void) {
 	if (char_handler)
 		char_handler(c);
 
-	return TICKS_MS(100);
+	// return immediately if characters are flowing in
+	return 0;
 }

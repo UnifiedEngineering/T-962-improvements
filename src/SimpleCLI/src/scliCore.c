@@ -556,7 +556,7 @@ void scliCore_ExecuteCommand(SCLI_CMD_INPUT_T *InputBuffer)
   }
 
   /*
-   * Command lookup insideall command
+   * Command lookup inside all command
    * tables
    */
   SCLI_CMD_T* Cmd = _scliCore_CommandLookup(InputBuffer);

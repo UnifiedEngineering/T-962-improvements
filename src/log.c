@@ -16,8 +16,8 @@ const char *log_level_name(int loglvl)
 	switch(loglvl) {
 	case LOG_FATAL: return "FATAL";
 	case LOG_ERROR: return "ERROR";
-	case LOG_INFO:  return "INFO";
 	case LOG_WARN:	return "WARN";
+	case LOG_INFO:  return "INFO";
 	case LOG_DEBUG:	return "DEBUG";
 	case LOG_VERBOSE: return "VERBOSE";
 	default: return "STRANGE";

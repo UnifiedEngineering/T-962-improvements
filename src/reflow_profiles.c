@@ -184,8 +184,13 @@ void Reflow_ListProfiles(void) {
 	}
 }
 
-const char* Reflow_GetProfileName(void) {
-	return profiles[profileidx]->name;
+// use selected profile if index is -1
+const char* Reflow_GetProfileName(int idx) {
+	if (idx > (int) NUMPROFILES)
+		return "unknown";
+	if (idx == -1)
+		idx = profileidx;
+	return profiles[idx]->name;
 }
 
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {

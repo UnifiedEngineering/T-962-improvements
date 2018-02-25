@@ -33,18 +33,20 @@ const char scliText_Error[] =
     "";
 
 const char scliText_WelcomeMsg[] =
-    " SimpleCLI V0.1\r\n \"I aim to misbehave!\"\r\n";
+    " T-962 Reflow Oven";
 
 const char scliText_Prompt[] =
-    " > ";
+    "t-962> ";
 
 const char scliText_Help[] =
     " This is the help function\r\n  help <cmd>";
 
 const char scliText_Version[] =
-    " SimpleCLI V0.1\r\n"
-    " Author Mattias Beckert\r\n"
-    "             <beckert.matthias@googlemail.com>";
+	" T-962-controller\r\n"
+	"       https://github.com/UnifiedEngineering/T-962-improvement\r\n"
+    "    including SimpleCLI V0.1\r\n"
+    "       Author Mattias Beckert\r\n"
+    "       <beckert.matthias@googlemail.com>";
 
 const char scliText_Set[] =
     " Set a system variable to a given value\r\n  set <ident> <value>";
