@@ -20,6 +20,8 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
+
 #include "t962.h"
 #include "log.h"
 #include "reflow_profiles.h"
@@ -42,7 +44,7 @@
 
 static PidType PID;
 
-static uint16_t intsetpoint;
+static uint16_t intsetpoint = SETPOINT_MIN;
 static int bake_timer = 0;
 
 static float avgtemp;
@@ -169,14 +171,10 @@ void Reflow_Init(void) {
 	//PID_SetTunings(&PID, 10, 0.2, 0);
 	//PID_SetTunings(&PID, 10, 0.020, 1.0); // Experimental
 
-	Reflow_LoadCustomProfiles();
+	Reflow_InitNV();
+	Sensor_InitNV();
 
-	Reflow_ValidateNV();
-	Sensor_ValidateNV();
-
-	Reflow_LoadSetpoint();
-
-	PID.mySetpoint = (float)SETPOINT_DEFAULT;
+	PID.mySetpoint = (float) SETPOINT_MIN;
 	PID_SetOutputLimits(&PID, 0, 255 + 248);
 	PID_SetMode(&PID, PID_Mode_Manual);
 	PID.myOutput = 248; // Between fan and heat
@@ -200,20 +198,7 @@ ReflowMode_t Reflow_GetMode(void) {
 }
 
 void Reflow_SetSetpoint(uint16_t thesetpoint) {
-	if (intsetpoint != thesetpoint) {
-		NV_SetConfig(REFLOW_BAKE_SETPOINT_H, (uint8_t)(thesetpoint >> 8));
-		NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)thesetpoint);
-	}
 	intsetpoint = thesetpoint;
-}
-
-void Reflow_LoadSetpoint(void) {
-	intsetpoint = NV_GetConfig(REFLOW_BAKE_SETPOINT_H) << 8;
-	intsetpoint |= NV_GetConfig(REFLOW_BAKE_SETPOINT_L);
-
-	log(LOG_DEBUG, "bake setpoint values: %x, %x, %d",
-		NV_GetConfig(REFLOW_BAKE_SETPOINT_H),
-		NV_GetConfig(REFLOW_BAKE_SETPOINT_L), intsetpoint);
 }
 
 int16_t Reflow_GetActualTemp(void) {

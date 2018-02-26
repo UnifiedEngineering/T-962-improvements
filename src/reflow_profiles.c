@@ -1,12 +1,13 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+
 #include "t962.h"
 #include "lcd.h"
 #include "nvstorage.h"
 #include "eeprom.h"
 #include "reflow.h"
-
+#include "log.h"
 #include "reflow_profiles.h"
 #include "config.h"
 
@@ -61,13 +62,7 @@ static const profile pidcontrol_testprofile = {
 };
 #endif
 
-// EEPROM profile 1
-static ramprofile ee1 = { "CUSTOM #1" };
-
-// EEPROM profile 2
-static ramprofile ee2 = { "CUSTOM #2" };
-
-static const profile* profiles[] = {
+static const profile *rom_profiles[] = {
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
@@ -77,137 +72,89 @@ static const profile* profiles[] = {
 #ifdef PIDTEST_PROFILE
 	&pidcontrol_testprofile,
 #endif
-	(profile*) &ee1,
-	(profile*) &ee2
 };
-
-#define NUMPROFILES (sizeof(profiles) / sizeof(profiles[0]))
 
 // current profile index
 static uint8_t profileidx = 0;
+static int no_of_profiles = ARRAY_SIZE(rom_profiles);
 
-static void ByteswapTempProfile(uint16_t* buf) {
-	for (int i = 0; i < NUMPROFILETEMPS; i++) {
-		uint16_t word = buf[i];
-		buf[i] = word >> 8 | word << 8;
-	}
-}
-
-void Reflow_LoadCustomProfiles(void) {
-	EEPROM_Read((uint8_t*)ee1.temperatures, 2, 96);
-	ByteswapTempProfile(ee1.temperatures);
-
-	EEPROM_Read((uint8_t*)ee2.temperatures, 128 + 2, 96);
-	ByteswapTempProfile(ee2.temperatures);
-}
-
-void Reflow_ValidateNV(void) {
-	if (NV_GetConfig(REFLOW_BEEP_DONE_LEN) == 255) {
-		// Default 1 second beep length
-		NV_SetConfig(REFLOW_BEEP_DONE_LEN, 10);
-	}
-
-	if (NV_GetConfig(REFLOW_MIN_FAN_SPEED) == 255) {
-		// Default fan speed is now 8
-		NV_SetConfig(REFLOW_MIN_FAN_SPEED, 8);
-	}
-
-	if (NV_GetConfig(REFLOW_BAKE_SETPOINT_H) == 255 || NV_GetConfig(REFLOW_BAKE_SETPOINT_L) == 255) {
-		NV_SetConfig(REFLOW_BAKE_SETPOINT_H, SETPOINT_DEFAULT >> 8);
-		NV_SetConfig(REFLOW_BAKE_SETPOINT_L, (uint8_t)SETPOINT_DEFAULT);
-		printf("Resetting bake setpoint to default.");
-	}
-
-	Reflow_SelectProfileIdx(NV_GetConfig(REFLOW_PROFILE));
+// init locals from EEPROM
+void Reflow_InitNV(void) {
+	profileidx = NV_GetConfig(REFLOW_PROFILE);
+	no_of_profiles = ARRAY_SIZE(rom_profiles) + NV_NoOfProfiles();
 }
 
 int Reflow_GetProfileIdx(void) {
 	return profileidx;
 }
 
+bool Reflow_IdxIsInEEPROM(int idx) {
+	if (idx == -1)
+		idx = profileidx;
+	if (idx < ARRAY_SIZE(rom_profiles) || idx > no_of_profiles)
+		return false;
+	return true;
+}
+
 int Reflow_SelectProfileIdx(int idx) {
-	// TODO: this should not wrap here but in the interface!
-	if (idx < 0) {
-		profileidx = (NUMPROFILES - 1);
-	} else if(idx >= NUMPROFILES) {
-		profileidx = 0;
-	} else {
-		profileidx = idx;
-	}
+	// TODO: probably this should not wrap here but in the interface!
+	profileidx = wrap(idx, 0, no_of_profiles-1);
 	NV_SetConfig(REFLOW_PROFILE, profileidx);
 	return profileidx;
 }
 
-int Reflow_SelectEEProfileIdx(int idx) {
-	if (idx == 1) {
-		profileidx = (NUMPROFILES - 2);
-	} else if (idx == 2) {
-		profileidx = (NUMPROFILES - 1);
-	}
-	return profileidx;
-}
-
-int Reflow_GetEEProfileIdx(void) {
-	if (profileidx == (NUMPROFILES - 2)) {
-		return 1;
-	} else 	if (profileidx == (NUMPROFILES - 1)) {
-		return 2;
-	} else {
-		return 0;
-	}
-}
-
+// return 0 if successful
 int Reflow_SaveEEProfile(void) {
-	int retval = 0;
-	uint8_t offset;
-	uint16_t* tempptr;
-	if (profileidx == (NUMPROFILES - 2)) {
-		offset = 0;
-		tempptr = ee1.temperatures;
-	} else if (profileidx == (NUMPROFILES - 1)) {
-		offset = 128;
-		tempptr = ee2.temperatures;
-	} else {
-		return -1;
-	}
-	offset += 2; // Skip "magic"
-	ByteswapTempProfile(tempptr);
-
 	// Store profile
-	retval = EEPROM_Write(offset, (uint8_t*)tempptr, 96);
-	ByteswapTempProfile(tempptr);
-	return retval;
-}
-
-void Reflow_ListProfiles(void) {
-	for (int i = 0; i < NUMPROFILES; i++) {
-		printf("%d: %s\n", i, profiles[i]->name);
-	}
+	if (Reflow_IdxIsInEEPROM(profileidx))
+		return NV_StoreProfile(profileidx - ARRAY_SIZE(rom_profiles));
+	return -1;
 }
 
 // use selected profile if index is -1
 const char* Reflow_GetProfileName(int idx) {
-	if (idx > (int) NUMPROFILES)
+	if (idx > no_of_profiles)
 		return "unknown";
 	if (idx == -1)
 		idx = profileidx;
-	return profiles[idx]->name;
+	if (Reflow_IdxIsInEEPROM(idx))
+		return NV_GetProfileName(idx - ARRAY_SIZE(rom_profiles));
+	return rom_profiles[idx]->name;
 }
 
+// use selected profile if index is -1
+void Reflow_SetProfileName(int idx, const char *name) {
+	if (idx == -1)
+		idx = profileidx;
+	if (Reflow_IdxIsInEEPROM(idx))
+		return NV_SetProfileName(idx - ARRAY_SIZE(rom_profiles), name);
+}
+
+// return temperature at index idx
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx) {
 	if (idx > (NUMPROFILETEMPS - 1)) {
 		return 0;
 	}
-	return profiles[profileidx]->temperatures[idx];
+	if (Reflow_IdxIsInEEPROM(profileidx))
+		return NV_GetSetpoint(profileidx - ARRAY_SIZE(rom_profiles), idx);
+
+	return rom_profiles[profileidx]->temperatures[idx];
 }
 
+// this only works for EEPROM profiles
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
-	if (idx > (NUMPROFILETEMPS - 1)) { return; }
-	if (value > SETPOINT_MAX) { return; }
+	if (idx < NUMPROFILETEMPS && value <= SETPOINT_MAX && Reflow_IdxIsInEEPROM(profileidx))
+		NV_SetSetpoint(profileidx - ARRAY_SIZE(rom_profiles), idx, value);
+	else
+		log(LOG_WARN, "Reflow_SetSetpoint fails: profileidx=%u, idx=%u, value=%u",
+				profileidx, idx, value);
+}
 
-	uint16_t* temp = (uint16_t*) &profiles[profileidx]->temperatures[idx];
-	if (temp >= (uint16_t*)0x40000000) {
-		*temp = value; // If RAM-based
+// high level interface, below
+//
+void Reflow_ListProfiles(void) {
+	for (int i = 0; i < no_of_profiles; i++) {
+		printf("%d: %s\n", i, Reflow_GetProfileName(i));
 	}
 }
 
@@ -217,7 +164,7 @@ void Reflow_PlotProfile(int highlight) {
 	// No need to plot first value as it is obscured by Y-axis
 	for(int x = 1; x < NUMPROFILETEMPS; x++) {
 		int realx = (x << 1) + XAXIS;
-		int y = profiles[profileidx]->temperatures[x] / 5;
+		int y = Reflow_GetSetpointAtIdx(x) / 5;
 		y = YAXIS - y;
 		LCD_SetPixel(realx, y);
 
@@ -231,7 +178,7 @@ void Reflow_PlotProfile(int highlight) {
 }
 
 void Reflow_DumpProfile(int profile) {
-	if (profile > NUMPROFILES) {
+	if (profile > no_of_profiles) {
 		printf("\nNo profile with id: %d\n", profile);
 		return;
 	}
@@ -240,10 +187,7 @@ void Reflow_DumpProfile(int profile) {
 	profileidx = profile;
 
 	for (int i = 0; i < NUMPROFILETEMPS; i++) {
-		printf("%4d,", Reflow_GetSetpointAtIdx(i));
-		if (i == 15 || i == 31) {
-			printf("\n ");
-		}
+		printf("%d,", Reflow_GetSetpointAtIdx(i));
 	}
 	printf("\n");
 	profileidx = current;

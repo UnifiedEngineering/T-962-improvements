@@ -97,6 +97,47 @@ SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
 	return 0;
 }
 
+// use it like:
+// save my_profile 50,50,50,50,55,70,85,90,95,100,102,105,107,110,112,115,117,120,122,127,135,140,145,150,160,170,175,170,160,150,140,130,120
+SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
+{
+	int idx;
+	char *name;
+
+	if (argc < 2 || argc > 3) {
+		printf(RED "\n ... need name and possibly some values (no spaces!)");
+		return -1;
+	}
+
+	idx = Reflow_GetProfileIdx();
+	if (!Reflow_IdxIsInEEPROM(idx)) {
+		printf(RED "\n ... selected index %d is not editable (in EEPROM)", idx);
+		return -1;
+	}
+
+	name = argv[1];
+	if (strcmp(name, "''") == 0) {
+		printf(YELLOW "\nsetting name to default 'CUSTOM #'" WHITE);
+		name = "";
+	}
+	Reflow_SetProfileName(idx, name);
+
+	if (argc == 3) {
+		static char buffer[SCLI_CMD_MAX_LEN];
+	    char *p;
+	    // keep argv intact
+		strcpy(buffer, argv[2]);
+
+		p = strtok(buffer, ",");
+		for (int idx=0; idx < 48 && p; idx++) {
+			Reflow_SetSetpointAtIdx(idx, (uint16_t) atoi(p));
+			p = strtok (NULL, ",");
+		}
+	}
+
+	return Reflow_SaveEEProfile();
+}
+
 SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 {
 	int value;
@@ -213,6 +254,9 @@ SCLI_CMD_T commands[] = {
 				"start bake at setpoint degC, and time in seconds if given (default = max)" },
 		{ cmd_abort, "abort", "abort reflow or bake mode",
 				"abort mode and go to main menu, this stops an ongoing bake or reflow" },
+		{ cmd_save, "save", "profile_name [upto 48 values], stores profile data",
+				"store a profile at current profile with name and values\n"
+				"values must be comma separated (no spaces!), like '17,18,19,20,0'" },
 		SCLI_CMD_LIST_END
 };
 

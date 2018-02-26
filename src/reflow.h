@@ -9,9 +9,8 @@ typedef enum eReflowMode {
 	REFLOW_STANDBYFAN
 } ReflowMode_t;
 
-#define SETPOINT_MIN (30)
-#define SETPOINT_MAX (260)
-#define SETPOINT_DEFAULT (30)
+#define SETPOINT_MIN 30
+#define SETPOINT_MAX 260
 
 // 36 hours max timer
 #define BAKE_TIMER_MAX (60 * 60 * 36)

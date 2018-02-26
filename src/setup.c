@@ -49,7 +49,6 @@ float Setup_getValue(int item) {
 
 void Setup_setValue(int item, int value) {
 	NV_SetConfig(setupmenu[item].nvval, value);
-	Reflow_ValidateNV();
 }
 
 void Setup_setRealValue(int item, float value) {

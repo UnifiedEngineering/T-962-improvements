@@ -33,7 +33,7 @@
  * Size configuration
  */
 #define SCLI_CMD_HIST           10
-#define SCLI_CMD_MAX_LEN        64
+#define SCLI_CMD_MAX_LEN        180
 #define SCLI_CMD_MAX_ARGS       10
 #define SCLI_GETCH_BUF_SIZE     20
 #define SCLI_CMD_NAME_MAX_LEN   10

@@ -24,38 +24,13 @@ static uint8_t cjsensorpresent = 0;
 static float avgtemp;
 static float coldjunction;
 
-void Sensor_ValidateNV(void) {
-	int temp;
-
-	temp = NV_GetConfig(TC_LEFT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[0] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_RIGHT_GAIN);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_GAIN, temp); // Default unity gain
-	}
-	adcgainadj[1] = ((float)temp) * 0.01f;
-
-	temp = NV_GetConfig(TC_LEFT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_LEFT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[0] = ((float)(temp - 100)) * 0.25f;
-
-	temp = NV_GetConfig(TC_RIGHT_OFFSET);
-	if (temp == 255) {
-		temp = 100;
-		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
-	}
-	adcoffsetadj[1] = ((float)(temp - 100)) * 0.25f;
+// preset locals from EEPROM
+void Sensor_InitNV(void) {
+	adcgainadj[0] = ((float) NV_GetConfig(TC_LEFT_GAIN)) * 0.01f;
+	adcgainadj[1] = ((float) NV_GetConfig(TC_RIGHT_GAIN)) * 0.01f;
+	adcoffsetadj[0] = ((float)(NV_GetConfig(TC_LEFT_OFFSET) - 100)) * 0.25f;
+	adcoffsetadj[1] = ((float)(NV_GetConfig(TC_RIGHT_OFFSET) - 100)) * 0.25f;
 }
-
 
 void Sensor_DoConversion(void) {
 	uint16_t temp[2];

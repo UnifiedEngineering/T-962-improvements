@@ -12,7 +12,7 @@ typedef enum {
 } TempSensor_t;
 
 
-void Sensor_ValidateNV(void);
+void Sensor_InitNV(void);
 void Sensor_DoConversion(void);
 
 uint8_t Sensor_ColdjunctionPresent(void);

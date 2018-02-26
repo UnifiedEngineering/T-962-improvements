@@ -322,7 +322,7 @@ static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 	Reflow_PlotProfile(-1);
 	LCD_BMPDisplay(selectbmp, 127 - 17, 0);
 	 // Display edit button
-	if (Reflow_GetEEProfileIdx()) {
+	if (Reflow_IdxIsInEEPROM(-1)) {
 		LCD_BMPDisplay(f3editbmp, 127 - 17, 29);
 	}
 	LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
@@ -344,7 +344,6 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(2, 60);
 	// no abort
 
-	Reflow_SelectEEProfileIdx(Reflow_GetProfileIdx());
 	cursetpoint = Reflow_GetSetpointAtIdx(profile_time_idx);
 
 	// only one key is processed in one run!
