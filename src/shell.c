@@ -28,86 +28,6 @@
 #define WHITE		"\x1b[0m"
 #define WHITE_BOLD	"\x1b[01;30m"
 
-
-#if 0
-
-/*
- * this is simply stripped out of Main_Work() to simplify
- *   replacement.
- */
-static void minimal_shell(void) {
-	char serial_cmd[255] = "";
-	char* cmd_select_profile = "select profile %d";
-	char* cmd_bake = "bake %d %d";
-	char* cmd_dump_profile = "dump profile %d";
-	char* cmd_setting = "setting %d %f";
-
-	if (uart_isrxready()) {
-		int len = uart_readline(serial_cmd, 255);
-
-		if (len > 0) {
-			int param, param1;
-			float paramF;
-
-			} else if (strcmp(serial_cmd, "reflow") == 0) {
-				printf("\nStarting reflow with profile: %s\n", Reflow_GetProfileName());
-				mode = MAIN_HOME;
-				// this is a bit dirty, but with the least code duplication.
-				keyspressed = KEY_S;
-
-			} else if (strcmp(serial_cmd, "stop") == 0) {
-				printf("\nStopping bake/reflow");
-				mode = MAIN_HOME;
-				Reflow_SetMode(REFLOW_STANDBY);
-				retval = 0;
-
-			} else if (strcmp(serial_cmd, "quiet") == 0) {
-				Reflow_ToggleStandbyLogging();
-				printf("\nToggled standby logging\n");
-
-
-			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
-				// select profile
-				Reflow_SelectProfileIdx(param);
-				printf("\nSelected profile %d: %s\n", param, Reflow_GetProfileName());
-
-			} else if (sscanf(serial_cmd, cmd_bake, &param, &param1) > 0) {
-				if (param < SETPOINT_MIN) {
-					printf("\nSetpoint must be >= %ddegC\n", SETPOINT_MIN);
-					param = SETPOINT_MIN;
-				}
-				if (param > SETPOINT_MAX) {
-					printf("\nSetpont must be <= %ddegC\n", SETPOINT_MAX);
-					param = SETPOINT_MAX;
-				}
-				if (param1 < 1) {
-					printf("\nTimer must be greater than 0\n");
-					param1 = 1;
-				}
-
-				if (param1 < BAKE_TIMER_MAX) {
-					printf("\nStarting bake with setpoint %ddegC for %ds after reaching setpoint\n", param, param1);
-					timer = param1;
-					Reflow_SetBakeTimer(timer);
-				} else {
-					printf("\nStarting bake with setpoint %ddegC\n", param);
-				}
-
-				setpoint = param;
-				Reflow_SetSetpoint(setpoint);
-				mode = MAIN_BAKE;
-				Reflow_SetMode(REFLOW_BAKE);
-
-			} else if (sscanf(serial_cmd, cmd_setting, &param, &paramF) > 0) {
-				Setup_setRealValue(param, paramF);
-				printf("\nAdjusted setting: ");
-				Setup_printFormattedValue(param);
-			}
-		}
-	}
-}
-#endif
-
 SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 {
 	char buf[40];
@@ -116,11 +36,9 @@ SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
 	printf("\nT-962 build version: %s\n", Version_GetGitVersion());
-	IO_Partinfo(buf, sizeof(buf), "Part number: %s rev %c\n\n");
+	IO_Partinfo(buf, sizeof(buf), "Part number: %s rev %c\n");
 	printf(buf);
-	EEPROM_Dump();
-
-	printf("\n\nSensor values:\n");
+	printf("\nSensor values:");
 	Sensor_ListAll();
 
 	return 0;
@@ -191,16 +109,26 @@ SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 
 	if (strcmp(argv[1], "log_lvl") == 0) {
 		value = 0;
-		if (argc > 2) {
+		if (argc > 2)
 			value = atoi(argv[2]);
-		}
 		set_log_level(value);
 	} else if (strcmp(argv[1], "reflow_log_lvl") == 0) {
 		value = 0;
-		if (argc > 2) {
+		if (argc > 2)
 			value = atoi(argv[2]);
-		}
 		Reflow_SetLogLevel(value);
+	} else if (strcmp(argv[1], "profile") == 0) {
+		value = Reflow_GetProfileIdx();
+		// test if MAIN_HOME, but don't switch anywhere
+		if (Set_Mode(MAIN_HOME)) {
+			if (argc > 2)
+				value = atoi(argv[2]);
+			value = Reflow_SelectProfileIdx(value);
+			printf("\nProfile (%d) '%s'\n", value, Reflow_GetProfileName(value));
+		} else {
+			printf(RED "\n switch to main screen via keyboard first!" WHITE);
+			return -1;
+		}
 	} else {
 		printf(RED "\n ... don't know how to set '%s'" WHITE, argv[1]);
 		return -1;
@@ -211,6 +139,61 @@ SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 	return 0;
 }
 
+SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
+{
+	if (argc > 1)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+
+	printf("\n");
+	if (!Set_Mode(MAIN_REFLOW)) {
+		printf(RED "\n switch to main screen via keyboard first!" WHITE);
+		return -1;
+	}
+	printf("\nStart reflow with profile: %s\n", Reflow_GetProfileName(-1));
+
+	return 0;
+}
+
+SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
+{
+	if (argc < 2) {
+		printf(RED "\n need setpoint value" WHITE);
+		return -1;
+	}
+	int setpoint = coerce(atoi(argv[1]), SETPOINT_MIN, SETPOINT_MAX);
+
+	int bake_timer = BAKE_TIMER_MAX;
+	if (argc > 2) {
+		// needs to be at least 1, otherwise it ends immediately
+		bake_timer = coerce(atoi(argv[2]), 1, BAKE_TIMER_MAX);
+	}
+
+	printf("\n");
+	if (!Set_Mode(MAIN_BAKE)) {
+		printf(RED "\n switch to main screen via keyboard first!" WHITE);
+		return -1;
+	}
+
+	Reflow_SetSetpoint(setpoint);
+	Reflow_SetBakeTimer(bake_timer);
+	printf("\nStart bake at %ddegC, for %ds after setpoint reached\n", setpoint, bake_timer);
+
+	return 0;
+}
+
+SCLI_CMD_RET cmd_abort(uint8_t argc, char *argv[])
+{
+	if (argc > 1)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+
+	printf("\n");
+	if (!Set_Mode(MAIN_HOME)) {
+		printf(RED "\n only BAKE or REFLOW mode may be aborted" WHITE);
+		return -1;
+	}
+
+	return 0;
+}
 
 SCLI_CMD_T commands[] = {
 		{ cmd_info, "info", "some system information",
@@ -221,13 +204,15 @@ SCLI_CMD_T commands[] = {
 				"list settings" },
 		{ cmd_dump, "dump", "dump [profile|eeprom|...] [nr]",
 				"dump profile [no] .. with number 'no' or the currently selected\n"
-				"dump eeprom .. show eeprom dump\n"
-		},
+				"dump eeprom .. show eeprom dump\n" },
 		{ cmd_set, "set", "set var [value]",
 				"set 'var' to a 'value' or default\n"
-				"  var = [log_lvl, reflow_log_lvl]"
-		},
-
+				"  var is one of: log_lvl reflow_log_lvl profile" },
+		{ cmd_reflow, "reflow", "start reflow", "start reflow" },
+		{ cmd_bake, "bake", "bake setpoint [timer], start bake mode",
+				"start bake at setpoint degC, and time in seconds if given (default = max)" },
+		{ cmd_abort, "abort", "abort reflow or bake mode",
+				"abort mode and go to main menu, this stops an ongoing bake or reflow" },
 		SCLI_CMD_LIST_END
 };
 

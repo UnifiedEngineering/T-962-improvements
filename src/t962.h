@@ -1,6 +1,41 @@
 #ifndef T962_H_
 #define T962_H_
 
+//////////// some helpers
+// trap value within [min, max]
+static inline int coerce(int value, int min, int max)
+{
+	if (value > max)
+		return max;
+	if (value < min)
+		return min;
+
+	return value;
+}
+
+// wrap value within [min, max]
+static inline int wrap(int value, int min, int max)
+{
+	if (value > max)
+		return min;
+	if (value < min)
+		return max;
+
+	return value;
+}
+
+typedef enum eMainMode {
+	MAIN_HOME = 0,
+	MAIN_ABOUT,
+	MAIN_SETUP,
+	MAIN_BAKE,
+	MAIN_SELECT_PROFILE,
+	MAIN_EDIT_PROFILE,
+	MAIN_REFLOW
+} MainMode_t;
+
+int Set_Mode(MainMode_t);
+
 /* Hardware notes and pin mapping:
  *
  * LCD is KS0108 compatible, with two chip selects, active high

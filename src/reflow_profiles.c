@@ -126,6 +126,7 @@ int Reflow_GetProfileIdx(void) {
 }
 
 int Reflow_SelectProfileIdx(int idx) {
+	// TODO: this should not wrap here but in the interface!
 	if (idx < 0) {
 		profileidx = (NUMPROFILES - 1);
 	} else if(idx >= NUMPROFILES) {

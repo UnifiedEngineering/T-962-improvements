@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+
 #include "serial.h"
 #include "log.h"
 #include "lcd.h"
@@ -49,27 +51,9 @@ extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
 extern uint8_t f3editbmp[];
 
-/// some helpers should be moved to header file
-// trap value within [min, max]
-static inline int coerce(int value, int min, int max)
-{
-	if (value > max)
-		return max;
-	if (value < min)
-		return min;
-
-	return value;
-}
-
-// wrap value within [min, max]
-static inline int wrap(int value, int min, int max)
-{
-	if (value > max)
-		return min;
-	if (value < min)
-		return max;
-
-	return value;
+// No version.c file generated for LPCXpresso builds, fall back to this
+__attribute__((weak)) const char* Version_GetGitVersion(void) {
+	return "no version info";
 }
 
 // render time string from seconds into internal buffer
@@ -86,11 +70,6 @@ static char *time_string(int seconds)
 		sprintf(buffer, "H %d", seconds / 3600);
 
 	return buffer;
-}
-
-// No version.c file generated for LPCXpresso builds, fall back to this
-__attribute__((weak)) const char* Version_GetGitVersion(void) {
-	return "no version info";
 }
 
 static int32_t Main_Work(void);
@@ -168,15 +147,8 @@ int main(void) {
 	return 0;
 }
 
-typedef enum eMainMode {
-	MAIN_HOME = 0,
-	MAIN_ABOUT,
-	MAIN_SETUP,
-	MAIN_BAKE,
-	MAIN_SELECT_PROFILE,
-	MAIN_EDIT_PROFILE,
-	MAIN_REFLOW
-} MainMode_t;
+// global abort flag: if set mode returns to main mode and clears the flat
+static bool abort = false;
 
 static MainMode_t Home_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(1, 1);
@@ -187,27 +159,18 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	}
 
 	// this skips out on each key, if none shows menu in intervals
+	// no abort handling here
 	switch (key.priorized_key) {
 	case KEY_F1:
 		return MAIN_ABOUT;
 	case KEY_F2:
-		Reflow_SetMode(REFLOW_STANDBYFAN);
 		return MAIN_SETUP;
 	case KEY_F3:
-		Reflow_Init();
 		return MAIN_BAKE;
 	case KEY_F4:
 		return MAIN_SELECT_PROFILE;
 	case KEY_S:
-		mode = MAIN_REFLOW;
-		LCD_FB_Clear();
-		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName(-1));
-		Reflow_Init();
-		Reflow_PlotProfile(-1);
-		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
-		LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
-		Reflow_SetMode(REFLOW_REFLOW);
-		return mode;
+		return MAIN_REFLOW;
 	}
 
 	LCD_FB_Clear();
@@ -227,10 +190,9 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 static MainMode_t About_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(1, 1);
 
-	// Leave about with any key.
-	if (key.keymask != 0) {
+	// Leave about with any key, no abort
+	if (key.keymask != 0)
 		return MAIN_HOME;
-	}
 
 	LCD_FB_Clear();
 	LCD_BMPDisplay(logobmp, 0, 0);
@@ -243,8 +205,15 @@ static MainMode_t About_Mode(MainMode_t mode) {
 
 static MainMode_t Setup_Mode(MainMode_t mode) {
 	static int selected = 0;
+	static bool prolog = true;
+
+	if (prolog) {
+		Reflow_SetMode(REFLOW_STANDBYFAN);
+		prolog = false;
+	}
 
 	fkey_t key = Keypad_Get(2, 60);
+	// no abort handling
 
 	switch (key.priorized_key) {
 	case KEY_F1:
@@ -262,6 +231,7 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 	case KEY_S:
 		mode = MAIN_HOME;
 		Reflow_SetMode(REFLOW_STANDBY);
+		prolog = true;
 		return mode;
 	}
 
@@ -288,15 +258,31 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 
 static MainMode_t Reflow_Mode(MainMode_t mode) {
 	uint32_t ticks = RTC_Read();
+	static bool prolog = true;
+
+	if (prolog) {
+		LCD_FB_Clear();
+		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName(-1));
+		Reflow_PlotProfile(-1);
+		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+		LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
+		RTC_Zero();
+		Reflow_SetMode(REFLOW_REFLOW);
+		prolog = false;
+	}
+
 	fkey_t key = Keypad_Get(1, 1);
+
 
 	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", Reflow_GetSetpoint());
 	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", Reflow_GetActualTemp());
 	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned int) ticks);
 
 	// abort reflow
-	if (key.priorized_key == KEY_S) {
-		log(LOG_INFO, "Reflow interrupted by keypress");
+	if (key.priorized_key == KEY_S || abort) {
+		log(LOG_INFO, "Reflow interrupted by abort");
+		abort = false;
+		prolog = true;
 		mode = MAIN_HOME;
 		Reflow_SetMode(REFLOW_STANDBY);
 	}
@@ -304,6 +290,7 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	if (Reflow_IsDone()) {
 		log(LOG_INFO, "Reflow done");
 		Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+		prolog = true;
 		mode = MAIN_HOME;
 		Reflow_SetMode(REFLOW_STANDBY);
 	}
@@ -314,6 +301,7 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 	fkey_t key = Keypad_Get(1, 1);
 
+	// no abort
 	switch (key.priorized_key) {
 	case KEY_F1:
 		Reflow_SelectProfileIdx(Reflow_GetProfileIdx() - 1);
@@ -354,6 +342,7 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 	int16_t cursetpoint;
 
 	fkey_t key = Keypad_Get(2, 60);
+	// no abort
 
 	Reflow_SelectEEProfileIdx(Reflow_GetProfileIdx());
 	cursetpoint = Reflow_GetSetpointAtIdx(profile_time_idx);
@@ -392,11 +381,23 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 
 static MainMode_t Bake_Mode(MainMode_t mode) {
 	int timer = Reflow_GetBakeTimer();
-	// can't use GetSetpoint in reflow.c (set by standby mode)
 	static int setpoint = SETPOINT_MIN;
+	static bool prolog = true;
+
+	if (prolog) {
+		RTC_Zero();
+		setpoint = 	Reflow_GetSetpoint();
+		prolog = false;
+	}
 
 	fkey_t key = Keypad_Get(2, 60);
 	int increment = key.acceleration / 2;
+
+	if (abort) {
+		// inject KEY_S
+		key.priorized_key = KEY_S;
+		abort = false;
+	}
 
 	switch (key.priorized_key) {
 	case KEY_F1:
@@ -414,11 +415,13 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 	case KEY_S:
 		Reflow_SetBakeTimer(0);
 		Reflow_SetMode(REFLOW_STANDBY);
+		prolog = true;
 		return MAIN_HOME;
 	}
 
 	setpoint = coerce(setpoint, SETPOINT_MIN, SETPOINT_MAX);
 	Reflow_SetSetpoint(setpoint);
+	// TODO: BAKE_TIMER_MAX is 60h!
 	timer = coerce(timer, 0, 10 * 3600); // fits to display
 	Reflow_SetBakeTimer(timer);
 
@@ -489,12 +492,20 @@ static MainMode_t current_mode = MAIN_HOME;
 // external interface (for the shell) to switch modes
 int Set_Mode(MainMode_t new_mode)
 {
+	// this is used to escape from bake or reflow mode
+	if (new_mode == MAIN_HOME &&
+		(current_mode == MAIN_BAKE || current_mode == MAIN_REFLOW)) {
+		abort = true;
+		return true;
+	}
 	// only switch to new mode if in HOME, avoid strange things ...
-	if (current_mode != MAIN_HOME)
-		return -1;
-
-	current_mode = new_mode;
-	return 0;
+	//  don't allow same mode! shell might want to start reflow which is in progress already
+	if (current_mode == MAIN_HOME) {
+		current_mode = new_mode;
+		// true if switched
+		return true;
+	}
+	return false;
 }
 
 static int32_t Main_Work(void) {
