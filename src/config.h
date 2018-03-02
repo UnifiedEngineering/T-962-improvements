@@ -34,6 +34,15 @@
 #define USE_FET_DRIVER
 
 /*
+ * use this to adjust gain and omit offset compensation settings
+ * in sensor.c and setup.c
+ * This needs a precision operational amplifier (like an OPA2333)
+ * at a rather precise gain of 222.2 on the TC input!
+ * The feedback resistors are 220k + 1.2k and 1.0k with 0.1% tolerance
+ */
+#define USE_PRECISION_OPAMP
+
+/*
 * Normally the control input is the average of the first two TCs.
 * By defining this any TC that has a readout 5C (or more) higher
 * than the TC0 and TC1 average will be used as control input instead.
