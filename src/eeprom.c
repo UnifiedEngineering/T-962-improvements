@@ -25,6 +25,7 @@
 #include "eeprom.h"
 #include "i2c.h"
 #include "log.h"
+#include "config.h"
 
 #define EEADDR (0x50<<1)
 

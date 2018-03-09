@@ -257,7 +257,6 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 }
 
 static MainMode_t Reflow_Mode(MainMode_t mode) {
-	uint32_t ticks = RTC_Read();
 	static bool prolog = true;
 
 	if (prolog) {
@@ -273,10 +272,9 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 
 	fkey_t key = Keypad_Get(1, 1);
 
-
 	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", Reflow_GetSetpoint());
 	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", Reflow_GetActualTemp());
-	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned int) ticks);
+	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned int) RTC_Read());
 
 	// abort reflow
 	if (key.priorized_key == KEY_S || abort) {
