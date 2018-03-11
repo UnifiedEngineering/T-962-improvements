@@ -150,14 +150,34 @@ void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
 				profileidx, idx, value);
 }
 
-// high level interface, below
-//
-void Reflow_ListProfiles(void) {
-	for (int i = 0; i < no_of_profiles; i++) {
-		printf("%d: %s\n", i, Reflow_GetProfileName(i));
+/*!
+ * return the temperature from the profile for a specific time
+ * This returns 0 if the time is not within the time used by the profile
+ * and may be used as indication that the profile is done.
+ * Note: this returns interpolated values, if the end is reached, the last value
+ *   is not interpolated!
+ */
+uint16_t Reflow_GetSetpointAtTime(uint16_t time)
+{
+	// the profile holds temperatures for every 10s
+	uint8_t index = (uint8_t) (time / 10);
+	uint8_t rest = time - index * 10;		// 0 .. 9
+
+	if (index >= NUMPROFILETEMPS)
+		return 0;
+
+	int value = (int) Reflow_GetSetpointAtIdx(index);
+
+	// check as many accesses might be exactly at 10s steps
+	if (rest && index < NUMPROFILETEMPS-1) {
+		int delta = value - Reflow_GetSetpointAtIdx(index + 1);
+		value += value * rest / 10;
 	}
+
+	return (uint16_t) value;
 }
 
+// TODO: out a here --> main.c
 void Reflow_PlotProfile(int highlight) {
 	LCD_BMPDisplay(graphbmp, 0, 0);
 
@@ -177,6 +197,7 @@ void Reflow_PlotProfile(int highlight) {
 	}
 }
 
+// TODO: out a here --> shell.c
 void Reflow_DumpProfile(int profile) {
 	if (profile > no_of_profiles) {
 		printf("\nNo profile with id: %d\n", profile);
@@ -191,4 +212,11 @@ void Reflow_DumpProfile(int profile) {
 	}
 	printf("\n");
 	profileidx = current;
+}
+
+// TODO: out a here --> shell.c
+void Reflow_ListProfiles(void) {
+	for (int i = 0; i < no_of_profiles; i++) {
+		printf("%d: %s\n", i, Reflow_GetProfileName(i));
+	}
 }

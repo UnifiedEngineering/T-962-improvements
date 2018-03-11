@@ -219,10 +219,8 @@ SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
 		return -1;
 	}
 
-	Reflow_SetSetpoint(setpoint);
-	Reflow_SetBakeTimer(bake_timer);
 	printf("\nStart bake at %ddegC, for %ds after setpoint reached\n", setpoint, bake_timer);
-
+	Reflow_ActivateBake(setpoint, bake_timer);
 	return 0;
 }
 

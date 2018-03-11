@@ -182,7 +182,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	LCD_printf(0, 32, INVERT, "F4"); LCD_printf(14, 32, 0, "SELECT PROFILE");
 	LCD_printf(0, 40, INVERT,  "S"); LCD_printf(14, 40, 0, "RUN REFLOW PROFILE");
 	LCD_printf(0, 48, INVERT | CENTERED, Reflow_GetProfileName(-1));
-	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
+	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %3.1f`", Sensor_GetTemp(TC_AVERAGE));
 
 	return mode;
 }
@@ -208,7 +208,8 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 	static bool prolog = true;
 
 	if (prolog) {
-		Reflow_SetMode(REFLOW_STANDBYFAN);
+		// TODO:
+		// Reflow_SetMode(REFLOW_STANDBYFAN);
 		prolog = false;
 	}
 
@@ -230,7 +231,8 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 		break;
 	case KEY_S:
 		mode = MAIN_HOME;
-		Reflow_SetMode(REFLOW_STANDBY);
+		// TODO:
+		// Reflow_SetMode(REFLOW_STANDBY);
 		prolog = true;
 		return mode;
 	}
@@ -265,32 +267,27 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 		Reflow_PlotProfile(-1);
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 		LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
-		RTC_Zero();
-		Reflow_SetMode(REFLOW_REFLOW);
+		Reflow_ActivateReflow();
 		prolog = false;
 	}
 
+	const ReflowInformation_t *i = Reflow_Information();
+	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", (uint16_t) i->setpoint);
+	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", (uint16_t) i->temperature);
+	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", i->time_done);
+
+	// Plot actual temperature on top of desired profile
+	LCD_SetPixel(XAXIS + i->time_done / 5, YAXIS - (uint16_t) i->temperature / 5);
+
 	fkey_t key = Keypad_Get(1, 1);
 
-	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", Reflow_GetSetpoint());
-	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", Reflow_GetActualTemp());
-	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned int) RTC_Read());
-
-	// abort reflow
+	// TODO: need to get out of this screen automatically, otherwise shell command won't work!
+	// abort reflow or get out of reflow screen if done
 	if (key.priorized_key == KEY_S || abort) {
-		log(LOG_INFO, "Reflow interrupted by abort");
+		Reflow_abort();
 		abort = false;
 		prolog = true;
 		mode = MAIN_HOME;
-		Reflow_SetMode(REFLOW_STANDBY);
-	}
-	// reflow done
-	if (Reflow_IsDone()) {
-		log(LOG_INFO, "Reflow done");
-		Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
-		prolog = true;
-		mode = MAIN_HOME;
-		Reflow_SetMode(REFLOW_STANDBY);
 	}
 
 	return mode;
@@ -377,13 +374,15 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 }
 
 static MainMode_t Bake_Mode(MainMode_t mode) {
-	int timer = Reflow_GetBakeTimer();
-	static int setpoint = SETPOINT_MIN;
+	static int timer;
+	static int setpoint;
 	static bool prolog = true;
 
 	if (prolog) {
-		RTC_Zero();
-		setpoint = 	Reflow_GetSetpoint();
+		// might be started by the shell, don't interfere
+		const *ReflowInformation_t *i = Reflow_Information();
+		setpoint = i->setpoint;
+		timer = i->time_to_go;
 		prolog = false;
 	}
 
@@ -410,28 +409,24 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 		timer += increment;
 		break;
 	case KEY_S:
-		Reflow_SetBakeTimer(0);
-		Reflow_SetMode(REFLOW_STANDBY);
+		Reflow_abort();
 		prolog = true;
 		return MAIN_HOME;
 	}
 
 	setpoint = coerce(setpoint, SETPOINT_MIN, SETPOINT_MAX);
-	Reflow_SetSetpoint(setpoint);
 	// TODO: BAKE_TIMER_MAX is 60h!
 	timer = coerce(timer, 0, 10 * 3600); // fits to display
-	Reflow_SetBakeTimer(timer);
 
-	// start and stop depending on timer value, beep if stopped or done
-	if (Reflow_GetMode() == REFLOW_STANDBY) {
-		if (timer > 0) {
-			Reflow_SetMode(REFLOW_BAKE);
-		}
-	} else {
-		if (Reflow_IsDone() || timer == 0) {
-			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
-			Reflow_SetBakeTimer(0);		// make sure it does not restart immediately
-			Reflow_SetMode(REFLOW_STANDBY);
+	const ReflowInformation_t *i = Reflow_Information();
+
+	// start baking when timer is > 0
+	if (timer > 0) {
+		// this can re-adjust the setpoint and the timer, but only in preheat mode
+		if (Reflow_ActivateBake(setpoint, timer) != 0) {
+			// did not work, reset to active values
+			setpoint = i->setpoint;
+			timer = i->time_to_go;
 		}
 	}
 
@@ -450,16 +445,7 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 	LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F4");
 
 	y = 26;
-	if (timer > 0) {
-		int time_left = Reflow_GetTimeLeft();
-		if (Reflow_IsPreheating()) {
-			LCD_printf(0, y, RIGHT_ALIGNED, "PREHEAT");
-		} else if (Reflow_IsDone() || time_left < 0) {
-			LCD_printf(0, y, RIGHT_ALIGNED, "DONE");
-		} else {
-			LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(time_left));
-		}
-	}
+	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go));
 	LCD_printf(0, y, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
 
 	y = 34;
