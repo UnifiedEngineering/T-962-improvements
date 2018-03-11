@@ -15,6 +15,7 @@
 
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * ---------------------------------------------------------------------
  *
  * Test setups and results, see Reflow_Init()
  *
@@ -54,16 +55,15 @@
 #include "buzzer.h"
 
 #define STANDBYTEMP		50		// standby temperature in degree Celsius
-#define PID_CYLCE_MS	250		// PID cycle is 250ms
-#define PID_CYLCES_PER_SECOND (1000 / PID_CYLCE_MS)
+#define PID_CYCLE_MS	250		// PID cycle is 250ms
 
 static PidType PID;
-static ReflowState_t reflow_state = REFLOW_INITIAL;
-static uint16_t numticks = 0;
+static ReflowState_t reflow_state = REFLOW_STANDBY;
 
 // default to no logging at all, needs serial communication (i.e. shell) anyway
 static int reflow_log_level = LOG_NONE;
 static ReflowInformation_t reflow_info;
+static uint32_t loops_since_activation = 0;
 
 // external interface
 
@@ -83,7 +83,7 @@ int Reflow_ActivateBake(int setpoint, int time)
 	if (reflow_state != REFLOW_BAKE_PREHEAT)
 		log(LOG_INFO, "Bake started setpoint: %3u, time: %ds", setpoint, time);
 
-	RTC_Zero();
+	loops_since_activation = 0;
 	reflow_info.setpoint = setpoint;
 	reflow_info.time_to_go = time;
 	reflow_state = REFLOW_BAKE_PREHEAT;
@@ -98,7 +98,7 @@ int Reflow_ActivateReflow(void)
 	if (reflow_state != REFLOW_STANDBY)
 		return -1;
 
-	RTC_Zero();
+	loops_since_activation = 0;
 	log(LOG_INFO, "Reflow started");
 	reflow_state = REFLOW_REFLOW;
 	reflow_info.time_to_go = 0;
@@ -124,12 +124,11 @@ void Reflow_abort(void)
 }
 
 static const char const *mode_string[] = {
-		[REFLOW_INITIAL] = "INITIAL",
-		[REFLOW_STANDBY] = "STANDBY",
-		[REFLOW_REFLOW] = "REFLOW",
-		[REFLOW_BAKE_PREHEAT] = "PREHEAT",
-		[REFLOW_BAKE] = "BAKE",
-		[REFLOW_ABORTING] = "ABORT"
+	[REFLOW_STANDBY] = "STANDBY",
+	[REFLOW_REFLOW] = "REFLOW",
+	[REFLOW_BAKE_PREHEAT] = "PREHEAT",
+	[REFLOW_BAKE] = "BAKE",
+	[REFLOW_ABORTING] = "ABORT"
 };
 
 /*!
@@ -159,18 +158,18 @@ static uint32_t constant_time_interval(void)
 
 	// dynamically init static, might introduce a rare error during normal run
 	if (last_tick == 0)
-		last_tick = this_tick - TICKS_MS(PID_CYLCE_MS);
+		last_tick = this_tick - TICKS_MS(PID_CYCLE_MS);
 
 	uint32_t tick_delta = this_tick - last_tick;
 	// tick_delta should be approximately one PID cycle, error if larger than 2!
-	if (tick_delta > 2 * TICKS_MS(PID_CYLCE_MS)) {
-		log(LOG_ERROR, "Reflow can't keep up with desired PID_CYLCE_MS!");
+	if (tick_delta > 2 * TICKS_MS(PID_CYCLE_MS)) {
+		log(LOG_ERROR, "Reflow can't keep up with desired PID_CYCLE_MS!");
 		return 0;
 	}
 
 	// constant interval
-	last_tick += TICKS_MS(PID_CYLCE_MS);
-	return 2 * TICKS_MS(PID_CYLCE_MS) - tick_delta;
+	last_tick += TICKS_MS(PID_CYCLE_MS);
+	return 2 * TICKS_MS(PID_CYCLE_MS) - tick_delta;
 }
 
 
@@ -231,13 +230,13 @@ static void log_reflow(bool header, heater_fan_t hf)
 		if (header)
 			printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %5.1f, %5.1f,  %3u, %3u,  %5.1f, %s",
-		       (float) numticks / PID_CYLCES_PER_SECOND,
-		       Sensor_GetTemp(TC_LEFT), Sensor_GetTemp(TC_RIGHT),
-		       Sensor_GetTemp(TC_EXTRA1), Sensor_GetTemp(TC_EXTRA2),
-		       reflow_info.setpoint, reflow_info.temperature,
-		       hf.heater, hf.fan,
-		       Sensor_GetTemp(TC_COLD_JUNCTION),
-			   Reflow_ModeString());
+				(float) loops_since_activation * ((float) PID_CYCLE_MS / 1000.0),
+				Sensor_GetTemp(TC_LEFT), Sensor_GetTemp(TC_RIGHT),
+				Sensor_GetTemp(TC_EXTRA1), Sensor_GetTemp(TC_EXTRA2),
+				reflow_info.setpoint, reflow_info.temperature,
+				hf.heater, hf.fan,
+				Sensor_GetTemp(TC_COLD_JUNCTION),
+				Reflow_ModeString());
 	}
 
 }
@@ -255,7 +254,11 @@ static void control_heater_fan(bool force_heater_off)
 	log_reflow(false, hf);
 }
 
-
+// get this in seconds (no floats)
+static inline uint32_t seconds_since_start(void)
+{
+	return loops_since_activation * PID_CYCLE_MS / 1000;
+}
 
 /*!
  * reflow worker, this implements the PID controller state machine
@@ -268,19 +271,14 @@ static void control_heater_fan(bool force_heater_off)
  */
 static int32_t Reflow_Work(void)
 {
-	uint16_t thetime;		// TODO
-	heater_fan_t hf = { 0, 0 };
 	uint16_t value, value_in10s;
 
 	// get temperature
 	Sensor_DoConversion();
 	reflow_info.temperature = Sensor_GetTemp(TC_AVERAGE);
+	loops_since_activation++;
 
 	switch(reflow_state) {
-	case REFLOW_INITIAL:
-		// simply off
-		set_heater_fan(hf);
-		break;
 	case REFLOW_STANDBY:
 		// in standby check temperature and cool to STANDBYTEMP, never heat
 		reflow_info.setpoint = (float) STANDBYTEMP;
@@ -288,15 +286,15 @@ static int32_t Reflow_Work(void)
 		break;
 	case REFLOW_REFLOW:
 		// get setpoint from profile and look-ahead value
-		value = Reflow_GetSetpointAtTime(thetime);
-		value_in10s = Reflow_GetSetpointAtTime(thetime + 10);
+		value = Reflow_GetSetpointAtTime(seconds_since_start());
+		value_in10s = Reflow_GetSetpointAtTime(seconds_since_start() + 10);
 
 		if (value && value_in10s) {
 			// use look-ahead if heating (it works better)
 			if (value_in10s > value)
 				value = value_in10s;
 			reflow_info.setpoint = (float) value;
-			reflow_info.time_done = RTC_Read();
+			reflow_info.time_done = seconds_since_start();
 			control_heater_fan(false);
 		} else {
 			log(LOG_INFO, "Reflow done");
@@ -304,18 +302,20 @@ static int32_t Reflow_Work(void)
 		}
 		break;
 	case REFLOW_BAKE_PREHEAT:
-		control_heater_fan(false);
-
-		if (reflow_info.setpoint < reflow_info.temperature)
+		if (reflow_info.setpoint < reflow_info.temperature) {
+			loops_since_activation = 0;
 			reflow_state = REFLOW_BAKE;
+		}
+		reflow_info.time_done = seconds_since_start();
+		control_heater_fan(false);
 		break;
 	case REFLOW_BAKE:
-		control_heater_fan(false);
-		// TODO count down
-		if (reflow_info.time_to_go == 0) {
+		reflow_info.time_done = seconds_since_start();
+		if (reflow_info.time_to_go >= reflow_info.time_done) {
 			log(LOG_INFO, "Bake done");
 			reflow_state = REFLOW_ABORTING;
 		}
+		control_heater_fan(false);
 		break;
 	case REFLOW_ABORTING:
 		// TODO: reset some values here?
@@ -329,11 +329,13 @@ static int32_t Reflow_Work(void)
 
 void Reflow_Init(void)
 {
+	reflow_state = REFLOW_STANDBY;
+
 	Reflow_InitNV();
 	Sensor_InitNV();
 
 	PID_init(&PID, 0, 0, 0, PID_Direction_Direct); // Can't supply tuning to PID_Init when not using the default timebase
-	PID_SetSampleTime(&PID, PID_CYLCE_MS);
+	PID_SetSampleTime(&PID, PID_CYCLE_MS);
 	PID_SetTunings(&PID, 20, 0.016, 62.5); // Adjusted values to compensate for the incorrect timebase earlier
 	PID.mySetpoint = (float) SETPOINT_MIN;
 	PID_SetOutputLimits(&PID, 0, 255 + 248);

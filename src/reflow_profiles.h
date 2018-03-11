@@ -30,7 +30,7 @@ void Reflow_ListProfiles(void);
 const char* Reflow_GetProfileName(int idx);
 void Reflow_SetProfileName(int idx, const char*);
 uint16_t Reflow_GetSetpointAtIdx(uint8_t idx);
-uint16_t Reflow_GetSetpointAtTime(uint16_t time);
+uint16_t Reflow_GetSetpointAtTime(uint32_t time);
 void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value);
 void Reflow_DumpProfile(int profile);
 

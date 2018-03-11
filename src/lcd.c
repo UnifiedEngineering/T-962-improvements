@@ -50,8 +50,9 @@ typedef struct __attribute__ ((packed)) {
 	uint32_t aColors[2]; // Palette data, first color is used if pixel bit is 0, second if pixel bit is 1
 } BMhdr_t;
 
-#define LCD_ALIGN_CENTER(x) (LCD_CENTER - (x * 3))
-#define LCD_ALIGN_RIGHT(x) (127 - (x * 6))
+// font is 6 pixels, this results in 128 / 6 = 21 characters and 2 pixels unused
+#define LCD_ALIGN_RIGHT(x) (FB_WIDTH - 2 - (x) * 6)			// leave the 2 pixels unused
+#define LCD_ALIGN_CENTER(x) (LCD_ALIGN_RIGHT(x) / 2)
 
 static void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	// First of all, make lowercase into uppercase

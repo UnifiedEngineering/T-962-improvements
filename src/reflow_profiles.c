@@ -157,24 +157,16 @@ void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
  * Note: this returns interpolated values, if the end is reached, the last value
  *   is not interpolated!
  */
-uint16_t Reflow_GetSetpointAtTime(uint16_t time)
+uint16_t Reflow_GetSetpointAtTime(uint32_t time)
 {
 	// the profile holds temperatures for every 10s
-	uint8_t index = (uint8_t) (time / 10);
-	uint8_t rest = time - index * 10;		// 0 .. 9
-
-	if (index >= NUMPROFILETEMPS)
-		return 0;
-
+	uint8_t index = (uint8_t) (time / 10);	// up to 2550s ~ 42min
+	uint8_t rest = (uint8_t) (time % 10);	// 0 .. 9
+	// safe for large indices!
 	int value = (int) Reflow_GetSetpointAtIdx(index);
+	int delta = Reflow_GetSetpointAtIdx(index + 1) - value;
 
-	// check as many accesses might be exactly at 10s steps
-	if (rest && index < NUMPROFILETEMPS-1) {
-		int delta = value - Reflow_GetSetpointAtIdx(index + 1);
-		value += value * rest / 10;
-	}
-
-	return (uint16_t) value;
+	return (uint16_t) (value + (delta * rest) / 10);
 }
 
 // TODO: out a here --> main.c

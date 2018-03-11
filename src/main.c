@@ -380,7 +380,7 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 
 	if (prolog) {
 		// might be started by the shell, don't interfere
-		const *ReflowInformation_t *i = Reflow_Information();
+		const ReflowInformation_t *i = Reflow_Information();
 		setpoint = i->setpoint;
 		timer = i->time_to_go;
 		prolog = false;
@@ -445,7 +445,7 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 	LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F4");
 
 	y = 26;
-	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go));
+	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go - i->time_done));
 	LCD_printf(0, y, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
 
 	y = 34;
