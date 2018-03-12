@@ -79,8 +79,6 @@ static char *time_string(int seconds)
 #define Y_AXIS	57
 extern uint8_t graphbmp[];
 
-
-// plot a profile
 void plot_profile(int highlight)
 {
 	uint16_t x, y;
@@ -411,7 +409,6 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
  */
 static void render_bake_screen(uint16_t setpoint, uint32_t timer) {
 	const ReflowInformation_t *i = Reflow_Information();
-	int y;
 
 	// update display
 	LCD_FB_Clear();
@@ -419,38 +416,31 @@ static void render_bake_screen(uint16_t setpoint, uint32_t timer) {
 
 	if (setpoint == 0) {
 		LCD_printf(0, 10, CENTERED, "SETPOINT %d`", (uint16_t) i->setpoint);
-		LCD_printf(0, 18, CENTERED, "TIMER %s", time_string(i->time_done));
+		LCD_printf(0, 18, CENTERED, "TIMER %s", time_string(i->time_to_go - i->time_done));
 	} else {
-		y = 10;
-		LCD_printf(0, y, INVERT, "F1");
-		LCD_printf(0, y, CENTERED, "- SETPOINT %d` +", setpoint);
-		LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F2");
+		LCD_printf(0, 10, INVERT, "F1");
+		LCD_printf(0, 10, CENTERED, "- SETPOINT %d` +", setpoint);
+		LCD_printf(0, 10, RIGHT_ALIGNED | INVERT, "F2");
 
-		y = 18;
-		LCD_printf(0, y, INVERT, "F3");
-		LCD_printf(0, y, CENTERED, "- TIMER %s +", time_string(timer));
-		LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F4");
+		LCD_printf(0, 18, INVERT, "F3");
+		LCD_printf(0, 18, CENTERED, "- TIMER %s +", time_string(timer));
+		LCD_printf(0, 18, RIGHT_ALIGNED | INVERT, "F4");
 	}
 
-	y = 26;
-	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go - i->time_done));
-	LCD_printf(0, y, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
+	LCD_printf(0, 26, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
 
-	y = 34;
-	LCD_printf(0, y, 0, "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
-	LCD_printf(LCD_CENTER, y, 0, "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
+	LCD_printf(0, 34, 0, "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
+	LCD_printf(LCD_CENTER, 34, 0, "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
 
-	y = 42;
 	if (Sensor_IsValid(TC_EXTRA1)) {
-		LCD_printf(0, y, 0, " X1 %3.1f`", Sensor_GetTemp(TC_EXTRA1));
+		LCD_printf(0, 42, 0, " X1 %3.1f`", Sensor_GetTemp(TC_EXTRA1));
 	}
 	if (Sensor_IsValid(TC_EXTRA2)) {
-		LCD_printf(LCD_CENTER, y, 0, " X2 %3.1f`", Sensor_GetTemp(TC_EXTRA2));
+		LCD_printf(LCD_CENTER, 42, 0, " X2 %3.1f`", Sensor_GetTemp(TC_EXTRA2));
 	}
 
-	y = 50;
 	if (Sensor_IsValid(TC_COLD_JUNCTION)) {
-		LCD_printf(0, y, 0, "COLDJUNCTION %3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
+		LCD_printf(0, 50, 0, "COLDJUNCTION %3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
 	}
 
 	LCD_BMPDisplay(stopbmp, 127 - 17, 0);
@@ -502,7 +492,7 @@ static MainMode_t Bake_Setup_Mode(MainMode_t mode) {
 	timer = coerce(timer, 0, 10 * 3600); // fits to display
 
 	// start baking when timer != 0 (time to go is reset in standby)
-	if (timer != i->time_to_go) {
+	if (timer != 0) {
 		// this can re-adjust the setpoint and the timer, but only in preheat mode
 		if (Reflow_ActivateBake(setpoint, timer) != 0) {
 			// did not work, we are baking!

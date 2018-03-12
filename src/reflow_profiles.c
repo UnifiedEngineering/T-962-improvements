@@ -160,11 +160,14 @@ uint16_t Reflow_GetSetpointAtTime(uint32_t time)
 	// the profile holds temperatures for every 10s
 	uint8_t index = (uint8_t) (time / 10);	// up to 2550s ~ 42min
 	uint8_t rest = (uint8_t) (time % 10);	// 0 .. 9
-	// safe for large indices!
-	int value = (int) Reflow_GetSetpointAtIdx(index);
-	int delta = Reflow_GetSetpointAtIdx(index + 1) - value;
 
-	return (uint16_t) (value + (delta * rest) / 10);
+	// safe for large indices!
+	int value1 = (int) Reflow_GetSetpointAtIdx(index);
+	int value2 = (int) Reflow_GetSetpointAtIdx(index + 1);
+
+	if (value2 == 0)
+		return (uint16_t) value1;
+	return (uint16_t) (value1 + ((value2 - value1) * rest) / 10);
 }
 
 // TODO: out a here --> shell.c

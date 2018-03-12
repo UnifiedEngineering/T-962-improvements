@@ -226,7 +226,8 @@ static void set_heater_fan(heater_fan_t hf)
  */
 static void log_reflow(bool header, heater_fan_t hf)
 {
-	if (reflow_log_level >= LOG_VERBOSE || (reflow_log_level >= LOG_INFO && reflow_state != REFLOW_STANDBY)) {
+	if (reflow_log_level >= LOG_VERBOSE ||
+		(reflow_log_level >= LOG_INFO && reflow_state != REFLOW_STANDBY && reflow_state != REFLOW_COOLING)) {
 		if (header)
 			printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %5.1f, %5.1f,  %3u, %3u,  %5.1f, %s",
