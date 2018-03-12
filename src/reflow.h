@@ -6,7 +6,7 @@ typedef enum {
 	REFLOW_BAKE_PREHEAT,
 	REFLOW_BAKE,
 	REFLOW_REFLOW,
-	REFLOW_ABORTING
+	REFLOW_COOLING
 } ReflowState_t;
 
 typedef struct {

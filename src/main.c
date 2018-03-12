@@ -214,7 +214,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	LCD_printf(0, 32, INVERT, "F4"); LCD_printf(14, 32, 0, "SELECT PROFILE");
 	LCD_printf(0, 40, INVERT,  "S"); LCD_printf(14, 40, 0, "RUN REFLOW PROFILE");
 	LCD_printf(0, 48, INVERT | CENTERED, Reflow_GetProfileName(-1));
-	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %3.1f`", Sensor_GetTemp(TC_AVERAGE));
+	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %3u`", (uint16_t) Sensor_GetTemp(TC_AVERAGE));
 
 	return mode;
 }

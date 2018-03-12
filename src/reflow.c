@@ -54,7 +54,7 @@
 #include "reflow.h"
 #include "buzzer.h"
 
-#define STANDBYTEMP		50		// standby temperature in degree Celsius
+#define STANDBYTEMP		45		// standby temperature in degree Celsius
 #define PID_CYCLE_MS	250		// PID cycle is 250ms
 
 static PidType PID;
@@ -115,7 +115,7 @@ void Reflow_abort(void)
 	case REFLOW_REFLOW:
 	case REFLOW_BAKE_PREHEAT:
 	case REFLOW_BAKE:
-		reflow_state = REFLOW_ABORTING;
+		reflow_state = REFLOW_COOLING;
 		log(LOG_INFO, "Reflow/Bake aborted");
 		break;
 	default:
@@ -128,7 +128,7 @@ static const char const *mode_string[] = {
 	[REFLOW_REFLOW] = "REFLOW",
 	[REFLOW_BAKE_PREHEAT] = "PREHEAT",
 	[REFLOW_BAKE] = "BAKE",
-	[REFLOW_ABORTING] = "ABORT"
+	[REFLOW_COOLING] = "COOLING"
 };
 
 /*!
@@ -273,6 +273,7 @@ static inline uint32_t seconds_since_start(void)
 static int32_t Reflow_Work(void)
 {
 	uint16_t value, value_in10s;
+	static const heater_fan_t all_off = { 0, 0 };
 
 	// get temperature
 	Sensor_DoConversion();
@@ -281,9 +282,9 @@ static int32_t Reflow_Work(void)
 
 	switch(reflow_state) {
 	case REFLOW_STANDBY:
-		// in standby check temperature and cool to STANDBYTEMP, never heat
-		reflow_info.setpoint = (float) STANDBYTEMP;
-		control_heater_fan(reflow_info.setpoint, true);
+		// turn off all
+		set_heater_fan(all_off);
+		log_reflow(false, all_off);
 		break;
 	case REFLOW_REFLOW:
 		// get setpoint from profile and look-ahead value
@@ -300,7 +301,8 @@ static int32_t Reflow_Work(void)
 			control_heater_fan(value, false);
 		} else {
 			log(LOG_INFO, "Reflow done");
-			reflow_state = REFLOW_ABORTING;
+			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+			reflow_state = REFLOW_COOLING;
 		}
 		break;
 	case REFLOW_BAKE_PREHEAT:
@@ -315,15 +317,20 @@ static int32_t Reflow_Work(void)
 		reflow_info.time_done = seconds_since_start();
 		if (reflow_info.time_to_go < reflow_info.time_done) {
 			log(LOG_INFO, "Bake done");
-			reflow_state = REFLOW_ABORTING;
+			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+			reflow_state = REFLOW_COOLING;
 		}
 		control_heater_fan(reflow_info.setpoint, false);
 		break;
-	case REFLOW_ABORTING:
-		// TODO: reset some values here?
-		Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
-		reflow_info.time_to_go = 0;
-		reflow_state = REFLOW_STANDBY;
+	case REFLOW_COOLING:
+		// cool down to STANDBYTEMP, go full speed
+		reflow_info.setpoint = (float) STANDBYTEMP;
+		control_heater_fan(0, true);
+
+		if (reflow_info.temperature < (float) STANDBYTEMP) {
+			reflow_info.time_to_go = 0;
+			reflow_state = REFLOW_STANDBY;
+		}
 		break;
 	}
 
