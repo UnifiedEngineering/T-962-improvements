@@ -308,12 +308,12 @@ static int32_t Reflow_Work(void)
 			loops_since_activation = 0;
 			reflow_state = REFLOW_BAKE;
 		}
-		reflow_info.time_done = seconds_since_start();
+		reflow_info.time_done = 0;
 		control_heater_fan(reflow_info.setpoint, false);
 		break;
 	case REFLOW_BAKE:
 		reflow_info.time_done = seconds_since_start();
-		if (reflow_info.time_to_go >= reflow_info.time_done) {
+		if (reflow_info.time_to_go < reflow_info.time_done) {
 			log(LOG_INFO, "Bake done");
 			reflow_state = REFLOW_ABORTING;
 		}

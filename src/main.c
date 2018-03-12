@@ -61,6 +61,9 @@ static char *time_string(int seconds)
 {
 	static char buffer[9]; // like "99:59:59" or "59:59" or "H 101"
 
+	if (seconds < 0)
+		return "-:--:--";
+
 	if (seconds < 3600)
 		sprintf(buffer, "%d:%02d", seconds / 60, seconds % 60);
 	else if (seconds < 3600 * 100)
@@ -195,7 +198,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	case KEY_F2:
 		return MAIN_SETUP;
 	case KEY_F3:
-		return MAIN_BAKE;
+		return MAIN_BAKE_SETUP;
 	case KEY_F4:
 		return MAIN_SELECT_PROFILE;
 	case KEY_S:
@@ -402,14 +405,65 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 	return mode;
 }
 
-static MainMode_t Bake_Mode(MainMode_t mode) {
+/*
+ * render the bake screen for BAKE_SETUP and BAKE
+ *  if setpoint is 0, don't show edit keys and use Reflow_Information()
+ */
+static void render_bake_screen(uint16_t setpoint, uint32_t timer) {
+	const ReflowInformation_t *i = Reflow_Information();
+	int y;
+
+	// update display
+	LCD_FB_Clear();
+	LCD_printf(0, 0, CENTERED, "BAKE MODE");
+
+	if (setpoint == 0) {
+		LCD_printf(0, 10, CENTERED, "SETPOINT %d`", (uint16_t) i->setpoint);
+		LCD_printf(0, 18, CENTERED, "TIMER %s", time_string(i->time_done));
+	} else {
+		y = 10;
+		LCD_printf(0, y, INVERT, "F1");
+		LCD_printf(0, y, CENTERED, "- SETPOINT %d` +", setpoint);
+		LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F2");
+
+		y = 18;
+		LCD_printf(0, y, INVERT, "F3");
+		LCD_printf(0, y, CENTERED, "- TIMER %s +", time_string(timer));
+		LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F4");
+	}
+
+	y = 26;
+	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go - i->time_done));
+	LCD_printf(0, y, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
+
+	y = 34;
+	LCD_printf(0, y, 0, "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
+	LCD_printf(LCD_CENTER, y, 0, "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
+
+	y = 42;
+	if (Sensor_IsValid(TC_EXTRA1)) {
+		LCD_printf(0, y, 0, " X1 %3.1f`", Sensor_GetTemp(TC_EXTRA1));
+	}
+	if (Sensor_IsValid(TC_EXTRA2)) {
+		LCD_printf(LCD_CENTER, y, 0, " X2 %3.1f`", Sensor_GetTemp(TC_EXTRA2));
+	}
+
+	y = 50;
+	if (Sensor_IsValid(TC_COLD_JUNCTION)) {
+		LCD_printf(0, y, 0, "COLDJUNCTION %3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
+	}
+
+	LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+}
+
+static MainMode_t Bake_Setup_Mode(MainMode_t mode) {
 	static int timer;
 	static int setpoint;
 	static bool prolog = true;
+	const ReflowInformation_t *i = Reflow_Information();
 
 	if (prolog) {
 		// might be started by the shell, don't interfere
-		const ReflowInformation_t *i = Reflow_Information();
 		setpoint = i->setpoint;
 		timer = i->time_to_go;
 		prolog = false;
@@ -447,55 +501,29 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 	// TODO: BAKE_TIMER_MAX is 60h!
 	timer = coerce(timer, 0, 10 * 3600); // fits to display
 
-	const ReflowInformation_t *i = Reflow_Information();
-
 	// start baking when timer != 0 (time to go is reset in standby)
 	if (timer != i->time_to_go) {
 		// this can re-adjust the setpoint and the timer, but only in preheat mode
 		if (Reflow_ActivateBake(setpoint, timer) != 0) {
-			// did not work, reset to active values
-			setpoint = i->setpoint;
-			timer = i->time_to_go;
+			// did not work, we are baking!
+			prolog = true;
+			return MAIN_BAKE;
 		}
 	}
 
-	// update display
-	LCD_FB_Clear();
-	LCD_printf(0, 0, CENTERED, "BAKE MODE");
+	render_bake_screen(setpoint, timer);
+	return mode;
+}
 
-	int y = 10;
-	LCD_printf(0, y, INVERT, "F1");
-	LCD_printf(0, y, CENTERED, "- SETPOINT %d` +", setpoint);
-	LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F2");
+static MainMode_t Bake_Mode(MainMode_t mode) {
+	fkey_t key = Keypad_Get(2, 60);
 
-	y = 18;
-	LCD_printf(0, y, INVERT, "F3");
-	LCD_printf(0, y, CENTERED, "- TIMER %s +", time_string(timer));
-	LCD_printf(0, y, RIGHT_ALIGNED | INVERT, "F4");
-
-	y = 26;
-	LCD_printf(0, y, RIGHT_ALIGNED, "%s", time_string(i->time_to_go - i->time_done));
-	LCD_printf(0, y, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
-
-	y = 34;
-	LCD_printf(0, y, 0, "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
-	LCD_printf(LCD_CENTER, y, 0, "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
-
-	y = 42;
-	if (Sensor_IsValid(TC_EXTRA1)) {
-		LCD_printf(0, y, 0, " X1 %3.1f`", Sensor_GetTemp(TC_EXTRA1));
-	}
-	if (Sensor_IsValid(TC_EXTRA2)) {
-		LCD_printf(LCD_CENTER, y, 0, " X2 %3.1f`", Sensor_GetTemp(TC_EXTRA2));
+	if (key.priorized_key == KEY_S || abort) {
+		Reflow_abort();
+		return MAIN_HOME;
 	}
 
-	y = 50;
-	if (Sensor_IsValid(TC_COLD_JUNCTION)) {
-		LCD_printf(0, y, 0, "COLDJUNCTION %3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
-	}
-
-	LCD_BMPDisplay(stopbmp, 127 - 17, 0);
-
+	render_bake_screen(0, 0);
 	return mode;
 }
 
@@ -506,7 +534,7 @@ int Set_Mode(MainMode_t new_mode)
 {
 	// this is used to escape from bake or reflow mode
 	if (new_mode == MAIN_HOME &&
-		(current_mode == MAIN_BAKE || current_mode == MAIN_REFLOW)) {
+		(current_mode == MAIN_BAKE || current_mode == MAIN_BAKE_SETUP || current_mode == MAIN_REFLOW)) {
 		abort = true;
 		return true;
 	}
@@ -534,6 +562,9 @@ static int32_t Main_Work(void) {
 		break;
 	case MAIN_SETUP:
 		new_mode = Setup_Mode(current_mode);
+		break;
+	case MAIN_BAKE_SETUP:
+		new_mode = Bake_Setup_Mode(current_mode);
 		break;
 	case MAIN_BAKE:
 		new_mode = Bake_Mode(current_mode);
