@@ -128,9 +128,12 @@ SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
 	    // keep argv intact
 		strcpy(buffer, argv[2]);
 
+		// TODO: magic 48! do zero-terminate better
 		p = strtok(buffer, ",");
-		for (int idx=0; idx < 48 && p; idx++) {
+		for (int idx=0; idx < 48-1 && p; idx++) {
 			Reflow_SetSetpointAtIdx(idx, (uint16_t) atoi(p));
+			// make sure it is zero terminated!
+			Reflow_SetSetpointAtIdx(idx+1, 0);
 			p = strtok(NULL, ",");
 		}
 	}

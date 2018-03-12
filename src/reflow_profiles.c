@@ -11,8 +11,6 @@
 #include "reflow_profiles.h"
 #include "config.h"
 
-extern uint8_t graphbmp[];
-
 // Amtech 4300 63Sn/37Pb leaded profile
 static const profile am4300profile = {
 	"4300 63SN/37PB", {
@@ -167,26 +165,6 @@ uint16_t Reflow_GetSetpointAtTime(uint32_t time)
 	int delta = Reflow_GetSetpointAtIdx(index + 1) - value;
 
 	return (uint16_t) (value + (delta * rest) / 10);
-}
-
-// TODO: out a here --> main.c
-void Reflow_PlotProfile(int highlight) {
-	LCD_BMPDisplay(graphbmp, 0, 0);
-
-	// No need to plot first value as it is obscured by Y-axis
-	for(int x = 1; x < NUMPROFILETEMPS; x++) {
-		int realx = (x << 1) + XAXIS;
-		int y = Reflow_GetSetpointAtIdx(x) / 5;
-		y = YAXIS - y;
-		LCD_SetPixel(realx, y);
-
-		if (highlight == x) {
-			LCD_SetPixel(realx - 1, y - 1);
-			LCD_SetPixel(realx + 1, y + 1);
-			LCD_SetPixel(realx - 1, y + 1);
-			LCD_SetPixel(realx + 1, y - 1);
-		}
-	}
 }
 
 // TODO: out a here --> shell.c

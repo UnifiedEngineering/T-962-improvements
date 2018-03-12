@@ -243,11 +243,12 @@ static void log_reflow(bool header, heater_fan_t hf)
 
 /*
  * control the heater and fan using the PID, log without header
- *   .. it takes the temperature and setpoint values from the global information
+ *   .. it takes the temperature from the global information, but uses
+ *   a local setpoint argument (as it might be a look-ahead value.
  */
-static void control_heater_fan(bool force_heater_off)
+static void control_heater_fan(float setpoint, bool force_heater_off)
 {
-	heater_fan_t hf = get_PID_response(reflow_info.temperature, reflow_info.setpoint);
+	heater_fan_t hf = get_PID_response(reflow_info.temperature, setpoint);
 	if (force_heater_off)
 		hf.heater = 0;
 	set_heater_fan(hf);
@@ -282,20 +283,21 @@ static int32_t Reflow_Work(void)
 	case REFLOW_STANDBY:
 		// in standby check temperature and cool to STANDBYTEMP, never heat
 		reflow_info.setpoint = (float) STANDBYTEMP;
-		control_heater_fan(true);
+		control_heater_fan(reflow_info.setpoint, true);
 		break;
 	case REFLOW_REFLOW:
 		// get setpoint from profile and look-ahead value
 		value = Reflow_GetSetpointAtTime(seconds_since_start());
 		value_in10s = Reflow_GetSetpointAtTime(seconds_since_start() + 10);
+		// reported value is the current setpoint, steering might be different
+		reflow_info.setpoint = (float) value;
 
 		if (value && value_in10s) {
 			// use look-ahead if heating (it works better)
 			if (value_in10s > value)
 				value = value_in10s;
-			reflow_info.setpoint = (float) value;
 			reflow_info.time_done = seconds_since_start();
-			control_heater_fan(false);
+			control_heater_fan(value, false);
 		} else {
 			log(LOG_INFO, "Reflow done");
 			reflow_state = REFLOW_ABORTING;
@@ -307,7 +309,7 @@ static int32_t Reflow_Work(void)
 			reflow_state = REFLOW_BAKE;
 		}
 		reflow_info.time_done = seconds_since_start();
-		control_heater_fan(false);
+		control_heater_fan(reflow_info.setpoint, false);
 		break;
 	case REFLOW_BAKE:
 		reflow_info.time_done = seconds_since_start();
@@ -315,11 +317,12 @@ static int32_t Reflow_Work(void)
 			log(LOG_INFO, "Bake done");
 			reflow_state = REFLOW_ABORTING;
 		}
-		control_heater_fan(false);
+		control_heater_fan(reflow_info.setpoint, false);
 		break;
 	case REFLOW_ABORTING:
 		// TODO: reset some values here?
 		Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+		reflow_info.time_to_go = 0;
 		reflow_state = REFLOW_STANDBY;
 		break;
 	}

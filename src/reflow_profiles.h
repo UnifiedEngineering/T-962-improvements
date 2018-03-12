@@ -6,9 +6,6 @@
 // Number of temperature settings in a reflow profile
 #define NUMPROFILETEMPS (48)
 
-#define YAXIS (57)
-#define XAXIS (12)
-
 typedef struct {
 	const char* name;
 	const uint16_t temperatures[NUMPROFILETEMPS];
@@ -20,7 +17,6 @@ typedef struct {
 } ramprofile;
 
 void Reflow_InitNV(void);
-void Reflow_PlotProfile(int highlight);
 
 int Reflow_GetProfileIdx(void);
 int Reflow_SelectProfileIdx(int idx);

@@ -72,6 +72,35 @@ static char *time_string(int seconds)
 	return buffer;
 }
 
+#define X_AXIS	12
+#define Y_AXIS	57
+extern uint8_t graphbmp[];
+
+
+// plot a profile
+void plot_profile(int highlight)
+{
+	uint16_t x, y;
+	LCD_BMPDisplay(graphbmp, 0, 0);
+
+	// No need to plot first value as it is obscured by Y-axis
+	for(uint8_t i = 1; ; i++) {
+		x = (i << 1) + X_AXIS;
+		y = Reflow_GetSetpointAtIdx(i) / 5;
+		if (y == 0)
+			break;
+		y = Y_AXIS - y;
+
+		LCD_SetPixel(x, y);
+		if (highlight == i) {
+			LCD_SetPixel(x - 1, y - 1);
+			LCD_SetPixel(x + 1, y + 1);
+			LCD_SetPixel(x - 1, y + 1);
+			LCD_SetPixel(x + 1, y - 1);
+		}
+	}
+}
+
 static int32_t Main_Work(void);
 
 extern int32_t Shell_Work(void);
@@ -264,7 +293,7 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	if (prolog) {
 		LCD_FB_Clear();
 		log(LOG_INFO, "Starting reflow with profile: %s", Reflow_GetProfileName(-1));
-		Reflow_PlotProfile(-1);
+		plot_profile(-1);
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 		LCD_printf(13, 0, 0, Reflow_GetProfileName(-1));
 		Reflow_ActivateReflow();
@@ -277,7 +306,7 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", i->time_done);
 
 	// Plot actual temperature on top of desired profile
-	LCD_SetPixel(XAXIS + i->time_done / 5, YAXIS - (uint16_t) i->temperature / 5);
+	LCD_SetPixel(X_AXIS + i->time_done / 5, Y_AXIS - (uint16_t) i->temperature / 5);
 
 	fkey_t key = Keypad_Get(1, 1);
 
@@ -314,7 +343,7 @@ static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 	}
 
 	LCD_FB_Clear();
-	Reflow_PlotProfile(-1);
+	plot_profile(-1);
 	LCD_BMPDisplay(selectbmp, 127 - 17, 0);
 	 // Display edit button
 	if (Reflow_IdxIsInEEPROM(-1)) {
@@ -366,7 +395,7 @@ static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
 	profile_time_idx = coerce(profile_time_idx, 0, 47);
 
 	LCD_FB_Clear();
-	Reflow_PlotProfile(profile_time_idx);
+	plot_profile(profile_time_idx);
 	LCD_BMPDisplay(editbmp, 127 - 17, 0);
 	LCD_printf(13, 0, 0, "%02u0s %03u`", profile_time_idx, cursetpoint);
 
@@ -420,8 +449,8 @@ static MainMode_t Bake_Mode(MainMode_t mode) {
 
 	const ReflowInformation_t *i = Reflow_Information();
 
-	// start baking when timer is > 0
-	if (timer > 0) {
+	// start baking when timer != 0 (time to go is reset in standby)
+	if (timer != i->time_to_go) {
 		// this can re-adjust the setpoint and the timer, but only in preheat mode
 		if (Reflow_ActivateBake(setpoint, timer) != 0) {
 			// did not work, reset to active values
