@@ -47,6 +47,7 @@
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
+extern uint8_t coolbmp[];
 extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
 extern uint8_t f3editbmp[];
@@ -288,6 +289,10 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 	return mode;
 }
 
+/*
+ * Reflow will leave this mode only after cooling, so it can be
+ * restarted immediately, just as bake mode!
+ */
 static MainMode_t Reflow_Mode(MainMode_t mode) {
 	static bool prolog = true;
 
@@ -311,13 +316,16 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 
 	fkey_t key = Keypad_Get(1, 1);
 
-	// TODO: need to get out of this screen automatically, otherwise shell command won't work!
-	// abort reflow or get out of reflow screen if done
 	if (key.priorized_key == KEY_S || abort) {
-		Reflow_abort();
+		Reflow_Abort();
 		abort = false;
 		prolog = true;
-		mode = MAIN_HOME;
+		return MAIN_COOLING;
+	}
+
+	if (Reflow_IsStandby()) {
+		prolog = true;
+		return MAIN_HOME;
 	}
 
 	return mode;
@@ -446,6 +454,10 @@ static void render_bake_screen(uint16_t setpoint, uint32_t timer) {
 	LCD_BMPDisplay(stopbmp, 127 - 17, 0);
 }
 
+/*
+ * Bake modes will leave only after cooling, so it can be
+ * restarted immediately, just as reflow mode!
+ */
 static MainMode_t Bake_Setup_Mode(MainMode_t mode) {
 	static int timer;
 	static int setpoint;
@@ -482,9 +494,9 @@ static MainMode_t Bake_Setup_Mode(MainMode_t mode) {
 		timer += increment;
 		break;
 	case KEY_S:
-		Reflow_abort();
+		Reflow_Abort();
 		prolog = true;
-		return MAIN_HOME;
+		return MAIN_COOLING;
 	}
 
 	setpoint = coerce(setpoint, SETPOINT_MIN, SETPOINT_MAX);
@@ -506,16 +518,42 @@ static MainMode_t Bake_Setup_Mode(MainMode_t mode) {
 }
 
 static MainMode_t Bake_Mode(MainMode_t mode) {
-	fkey_t key = Keypad_Get(2, 60);
+	fkey_t key = Keypad_Get(1, 1);
 
 	if (key.priorized_key == KEY_S || abort) {
-		Reflow_abort();
+		abort = false;
+		Reflow_Abort();
+		return MAIN_COOLING;
+	}
+
+	if (Reflow_IsStandby()) {
 		return MAIN_HOME;
 	}
 
 	render_bake_screen(0, 0);
 	return mode;
 }
+
+static MainMode_t Cooling_Mode(MainMode_t mode) {
+	fkey_t key = Keypad_Get(1, 1);
+
+	// beep on any key press, this is still cooling!
+	if (key.keymask != 0) {
+		Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+	}
+
+	if (Reflow_IsStandby()) {
+		mode = MAIN_HOME;
+	}
+
+	LCD_FB_Clear();
+	LCD_printf(0, 26, RIGHT_ALIGNED, "COOL");
+	LCD_printf(0, 34, RIGHT_ALIGNED, "%3.1f`", Sensor_GetTemp(TC_AVERAGE));
+	LCD_BMPDisplay(coolbmp, 0, 0);
+
+	return mode;
+}
+
 
 static MainMode_t current_mode = MAIN_HOME;
 
@@ -567,6 +605,9 @@ static int32_t Main_Work(void) {
 		break;
 	case MAIN_REFLOW:
 		new_mode = Reflow_Mode(current_mode);
+		break;
+	case MAIN_COOLING:
+		new_mode = Cooling_Mode(current_mode);
 		break;
 	}
 

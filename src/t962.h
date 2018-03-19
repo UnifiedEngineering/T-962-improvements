@@ -34,7 +34,8 @@ typedef enum eMainMode {
 	MAIN_BAKE,
 	MAIN_SELECT_PROFILE,
 	MAIN_EDIT_PROFILE,
-	MAIN_REFLOW
+	MAIN_REFLOW,
+	MAIN_COOLING
 } MainMode_t;
 
 int Set_Mode(MainMode_t);

@@ -129,6 +129,7 @@ void LCD_printf(uint8_t x, uint8_t y, uint8_t flags, const char *format, ...) {
 /*
  * At the moment this is a very basic BMP file reader with the following limitations:
  * The bitmap must be 1-bit, uncompressed with a BITMAPINFOHEADER.
+ * NOTE: this will OR-in the bitmap content, i.e. only 1s survive!
  */
 uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset) {
 	BMhdr_t* bmhdr;

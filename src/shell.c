@@ -217,10 +217,6 @@ SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
 	return 0;
 }
 
-/* BUG:
- * bake mode does not work it selects always 50 degrees.
- *  From the keyboard this works, but the timer does not count down!!
- */
 SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
 {
 	if (argc < 2) {

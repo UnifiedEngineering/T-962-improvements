@@ -1,6 +1,8 @@
 #ifndef REFLOW_H_
 #define REFLOW_H_
 
+#include <stdbool.h>
+
 typedef enum {
 	REFLOW_STANDBY,
 	REFLOW_BAKE_PREHEAT,
@@ -29,6 +31,7 @@ void Reflow_SetLogLevel(int);
 const ReflowInformation_t *Reflow_Information(void);
 int Reflow_ActivateBake(int, int);
 int Reflow_ActivateReflow(void);
-void Reflow_abort(void);
+bool Reflow_IsStandby(void);
+void Reflow_Abort(void);
 
 #endif /* REFLOW_H_ */

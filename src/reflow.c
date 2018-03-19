@@ -40,7 +40,6 @@
 // #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
-#include <stdbool.h>
 
 #include "t962.h"
 #include "log.h"
@@ -109,7 +108,7 @@ int Reflow_ActivateReflow(void)
 /*!
  * stops running reflow or bake mode (if started)
  */
-void Reflow_abort(void)
+void Reflow_Abort(void)
 {
 	switch (reflow_state) {
 	case REFLOW_REFLOW:
@@ -138,6 +137,21 @@ static const char const *mode_string[] = {
 const char *Reflow_ModeString(void)
 {
 	return mode_string[reflow_state];
+}
+
+bool Reflow_IsStandby(void)
+{
+	return reflow_state == REFLOW_STANDBY;
+}
+
+void Reflow_SetLogLevel(int lvl)
+{
+	reflow_log_level = lvl;
+}
+
+const ReflowInformation_t *Reflow_Information(void)
+{
+	return &reflow_info;
 }
 
 //// local helpers
@@ -357,14 +371,4 @@ void Reflow_Init(void)
 	// Start work
 	Sched_SetWorkfunc(REFLOW_WORK, Reflow_Work);
 	Sched_SetState(REFLOW_WORK, 2, 0);
-}
-
-void Reflow_SetLogLevel(int lvl)
-{
-	reflow_log_level = lvl;
-}
-
-const ReflowInformation_t *Reflow_Information(void)
-{
-	return &reflow_info;
 }
