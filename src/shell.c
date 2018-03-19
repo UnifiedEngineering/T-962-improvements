@@ -46,11 +46,15 @@ SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 
 SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
 {
+	int current = Reflow_GetProfileIdx();
+
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
 	printf("\n");
-	Reflow_ListProfiles();
+	for (int i = 0; i < Reflow_NoOfProfiles(); i++) {
+		printf("%c %d: %s\n", i == current ? '*' : ' ', i, Reflow_GetProfileName(i));
+	}
 
 	return 0;
 }
@@ -81,12 +85,27 @@ SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
 	}
 
 	if (strcmp(argv[1], "profile") == 0) {
-		int no = Reflow_GetProfileIdx();
+		int current = Reflow_GetProfileIdx();
+		int no = current;
+
 		if (argc > 2) {
 			no = atoi(argv[2]);
+			if (no > Reflow_NoOfProfiles()) {
+				printf("\nNo profile with id: %d\n", no);
+				return -1;
+			}
 		}
+
+		// need to switch profiles GetSetpointAtIdx() only works for current
+		Reflow_SelectProfileIdx(no);
 		printf("\nProfile (%d) '%s'\n", no, Reflow_GetProfileName(no));
-		Reflow_DumpProfile(no);
+		for (int i = 0; i < NUMPROFILETEMPS; i++) {
+			printf("%d,", Reflow_GetSetpointAtIdx(i));
+		}
+		printf("\n");
+		Reflow_SelectProfileIdx(current);
+
+
 	} else if (strcmp(argv[1], "eeprom") == 0) {
 		EEPROM_Dump();
 	} else {
@@ -128,9 +147,9 @@ SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
 	    // keep argv intact
 		strcpy(buffer, argv[2]);
 
-		// TODO: magic 48! do zero-terminate better
+		// TODO: do zero-terminate better
 		p = strtok(buffer, ",");
-		for (int idx=0; idx < 48-1 && p; idx++) {
+		for (int idx=0; idx < NUMPROFILETEMPS-1 && p; idx++) {
 			Reflow_SetSetpointAtIdx(idx, (uint16_t) atoi(p));
 			// make sure it is zero terminated!
 			Reflow_SetSetpointAtIdx(idx+1, 0);

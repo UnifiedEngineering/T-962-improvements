@@ -11,6 +11,12 @@
 #include "reflow_profiles.h"
 #include "config.h"
 
+/*
+ * Reflow profiles may only hold up to NUMPROFILETEMPS (48) entries and
+ * must be zero-terminated, i.e. only 47 entries may be used.
+ * Each entry corresponds to 10s and temperatures are interpolated in-between.
+ */
+
 // Amtech 4300 63Sn/37Pb leaded profile
 static const profile am4300profile = {
 	"4300 63SN/37PB", {
@@ -80,6 +86,11 @@ static int no_of_profiles = ARRAY_SIZE(rom_profiles);
 void Reflow_InitNV(void) {
 	profileidx = NV_GetConfig(REFLOW_PROFILE);
 	no_of_profiles = ARRAY_SIZE(rom_profiles) + NV_NoOfProfiles();
+}
+
+// both rom and eeprom profiles
+int Reflow_NoOfProfiles(void) {
+	return no_of_profiles;
 }
 
 int Reflow_GetProfileIdx(void) {
@@ -168,28 +179,4 @@ uint16_t Reflow_GetSetpointAtTime(uint32_t time)
 	if (value2 == 0)
 		return (uint16_t) value1;
 	return (uint16_t) (value1 + ((value2 - value1) * rest) / 10);
-}
-
-// TODO: out a here --> shell.c
-void Reflow_DumpProfile(int profile) {
-	if (profile > no_of_profiles) {
-		printf("\nNo profile with id: %d\n", profile);
-		return;
-	}
-
-	int current = profileidx;
-	profileidx = profile;
-
-	for (int i = 0; i < NUMPROFILETEMPS; i++) {
-		printf("%d,", Reflow_GetSetpointAtIdx(i));
-	}
-	printf("\n");
-	profileidx = current;
-}
-
-// TODO: out a here --> shell.c
-void Reflow_ListProfiles(void) {
-	for (int i = 0; i < no_of_profiles; i++) {
-		printf("%d: %s\n", i, Reflow_GetProfileName(i));
-	}
 }
