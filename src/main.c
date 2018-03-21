@@ -236,13 +236,8 @@ static MainMode_t About_Mode(MainMode_t mode) {
 
 static MainMode_t Setup_Mode(MainMode_t mode) {
 	static int selected = 0;
-	static bool prolog = true;
 
-	if (prolog) {
-		// TODO:
-		// Reflow_SetMode(REFLOW_STANDBYFAN);
-		prolog = false;
-	}
+	Set_Fan(NV_GetConfig(REFLOW_MIN_FAN_SPEED));
 
 	fkey_t key = Keypad_Get(2, 60);
 	// no abort handling
@@ -262,9 +257,7 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 		break;
 	case KEY_S:
 		mode = MAIN_HOME;
-		// TODO:
-		// Reflow_SetMode(REFLOW_STANDBY);
-		prolog = true;
+		Set_Fan(0);
 		return mode;
 	}
 
