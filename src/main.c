@@ -300,9 +300,9 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	}
 
 	const ReflowInformation_t *i = Reflow_Information();
-	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", (uint16_t) i->setpoint);
-	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", (uint16_t) i->temperature);
-	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", i->time_done);
+	LCD_printf(110,  7, 0, "SET"); LCD_printf(110, 13, 0, "%03u", (unsigned) i->setpoint);
+	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", (unsigned) i->temperature);
+	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned) i->time_done);
 
 	// Plot actual temperature on top of desired profile
 	LCD_SetPixel(X_AXIS + i->time_done / 5, Y_AXIS - (uint16_t) i->temperature / 5);

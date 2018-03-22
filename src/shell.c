@@ -280,6 +280,9 @@ SCLI_CMD_T commands[] = {
 		SCLI_CMD_LIST_END
 };
 
+// from serial.c, cutting corners here
+extern int _write(int, char *, int len);
+
 // being cooperative no critical zone management necessary
 static uint32_t critical_enter(void) { return 1; }
 static void critical_exit(uint32_t reg) { (void) reg; }

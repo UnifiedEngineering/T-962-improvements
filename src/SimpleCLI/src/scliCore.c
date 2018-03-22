@@ -621,7 +621,7 @@ void scliCore_ExecuteCommand(SCLI_CMD_INPUT_T *InputBuffer)
    */
   if(ret < 0)
   {
-    printf("\r\n %s%s returned %d%s\r\n",scliText_ColRedBold, Cmd->CmdName, ret, scliText_ColDef);
+    printf("\r\n %s%s returned %d%s\r\n",scliText_ColRedBold, Cmd->CmdName, (int) ret, scliText_ColDef);
   }
 
   /*
