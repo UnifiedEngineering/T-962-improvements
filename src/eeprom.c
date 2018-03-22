@@ -40,7 +40,7 @@ void EEPROM_Dump(void) {
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
 	printf("\nEEPROM contents:");
-	for (int i = 0; i < sizeof(dumpbuf); i++) {
+	for (unsigned i = 0; i < sizeof(dumpbuf); i++) {
 		if ((i & 0x0f) == 0){
 			printf("\n0x%04x:", i);
 		}

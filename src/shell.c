@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "t962.h"
 #include "serial.h"
 #include "sched.h"
 #include "log.h"
@@ -14,6 +15,7 @@
 #include "nvstorage.h"
 #include "setup.h"
 #include "reflow.h"
+#include "config.h"
 
 #include "SimpleCLI/inc/scliCore.h"
 
@@ -32,6 +34,7 @@ SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 {
 	char buf[40];
 
+	UNUSED(argv);
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
@@ -48,6 +51,7 @@ SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
 {
 	int current = Reflow_GetProfileIdx();
 
+	UNUSED(argv);
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
@@ -63,6 +67,7 @@ SCLI_CMD_RET cmd_settings(uint8_t argc, char *argv[])
 {
 	char buf[40];
 
+	UNUSED(argv);
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
@@ -204,6 +209,7 @@ SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 
 SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
 {
+	UNUSED(argv);
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 
@@ -244,6 +250,8 @@ SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
 
 SCLI_CMD_RET cmd_abort(uint8_t argc, char *argv[])
 {
+	UNUSED(argv);
+
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
 

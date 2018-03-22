@@ -2,7 +2,9 @@
 #define T962_H_
 
 //////////// some helpers
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+// using attribute unused is strange with something like 'char *argv[]'
+#define UNUSED(a) ((void)(a))
 
 // trap value within [min, max]
 static inline int coerce(int value, int min, int max)

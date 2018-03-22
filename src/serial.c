@@ -20,6 +20,8 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+
+#include "t962.h"
 #include "vic.h"
 #include "circbuffer.h"
 #include "serial.h"
@@ -96,6 +98,7 @@ int uart_readline(char* buffer, int max_len) {
 // Override __sys_write so we actually can do printf
 int __sys_write(int hnd, char *buf, int len) {
 	int foo = len;
+	UNUSED(hnd);
 	while(foo--) uart_putc(*buf++);
 	return (len);
 }

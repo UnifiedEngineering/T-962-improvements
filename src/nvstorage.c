@@ -151,5 +151,5 @@ int32_t NV_Work(void) {
 		log(LOG_VERBOSE, "Flushing NV configuration to EEProm");
 		EEPROM_Write(offsetof(NV_t, config), myNV.config, NVITEM_NUM_ITEMS);
 	}
-	return nvupdatepending ? (TICKS_SECS(2)) : -1;
+	return nvupdatepending ? (int32_t) (TICKS_SECS(2)) : -1;
 }

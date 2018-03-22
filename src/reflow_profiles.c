@@ -100,14 +100,14 @@ int Reflow_GetProfileIdx(void) {
 bool Reflow_IdxIsInEEPROM(int idx) {
 	if (idx == -1)
 		idx = profileidx;
-	if (idx < ARRAY_SIZE(rom_profiles) || idx > no_of_profiles)
+	if (idx < (int) ARRAY_SIZE(rom_profiles) || idx > no_of_profiles)
 		return false;
 	return true;
 }
 
 int Reflow_SelectProfileIdx(int idx) {
 	// TODO: probably this should not wrap here but in the interface!
-	profileidx = wrap(idx, 0, no_of_profiles-1);
+	profileidx = (uint8_t) wrap(idx, 0, no_of_profiles-1);
 	NV_SetConfig(REFLOW_PROFILE, profileidx);
 	return profileidx;
 }

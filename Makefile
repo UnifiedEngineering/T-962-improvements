@@ -56,13 +56,13 @@ $(BUILD_DIR)tag:
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wunused -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 $(BUILD_DIR)%.o: $(CLI_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wunused -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 

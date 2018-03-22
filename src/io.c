@@ -143,7 +143,7 @@ int IO_Partinfo(char* buf, int n, char* format) {
 	command[0] = IAP_READ_PART;
 	iap_entry((void *)command, (void *)result);
 	const char* partstrptr = NULL;
-	for (int i = 0; i < NUM_PARTS; i++) {
+	for (unsigned i = 0; i < NUM_PARTS; i++) {
 		if (result[1] == partmap[i].id) {
 			partstrptr = partmap[i].name;
 			break;

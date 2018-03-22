@@ -328,7 +328,7 @@ uint32_t OneWire_Init(void) {
 	log(LOG_INFO, "Scanning 1-wire bus...");
 
 	tempidx = -1; // Assume we don't find a temperature sensor
-	for (int i = 0; i < sizeof(tcidmapping); i++) {
+	for (unsigned i = 0; i < sizeof(tcidmapping); i++) {
 		tcidmapping[i] = -1; // Assume we don't find any thermocouple interfaces
 	}
 
@@ -423,7 +423,7 @@ int OneWire_IsTCPresent(uint8_t tcid) {
 float OneWire_GetTCReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
 	if (tcid < sizeof(tcidmapping)) {
-		uint8_t idx = tcidmapping[tcid];
+		int8_t idx = tcidmapping[tcid];
 		if (idx >=0) { // Is this ID present?
 			if (devreadout[idx] & 0x01) { // Fault detected
 				retval = 999.0f; // Invalid
@@ -440,7 +440,7 @@ float OneWire_GetTCReading(uint8_t tcid) {
 float OneWire_GetTCColdReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
 	if (tcid < sizeof(tcidmapping)) {
-		uint8_t idx = tcidmapping[tcid];
+		int8_t idx = tcidmapping[tcid];
 		if (idx >=0) { // Is this ID present?
 			if (extrareadout[idx] & 0x07) { // Any fault detected
 				retval = 999.0f; // Invalid
