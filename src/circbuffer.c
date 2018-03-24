@@ -59,6 +59,26 @@ int circ_buf_has_char(tcirc_buf *cbuf) {
 	return (head != cbuf->tail);
 }
 
+void circ_buf_flush(tcirc_buf * cbuf) {
+	cbuf->tail = cbuf->head;
+}
+
+char circ_buf_peek(tcirc_buf * cbuf, int offset) {
+	unsigned peekTail = cbuf->tail + offset;
+	if (peekTail >= CIRCBUFSIZE) {
+		peekTail -= CIRCBUFSIZE;
+	}
+	return cbuf->buf[peekTail];
+}
+
+char* circ_buf_getAddr(tcirc_buf * cbuf, int offset) {
+	unsigned addrTail = cbuf->tail + offset;
+	if (addrTail >= CIRCBUFSIZE) {
+		addrTail -= CIRCBUFSIZE;
+	}
+	return &cbuf->buf[addrTail];
+}
+
 unsigned int circ_buf_count(tcirc_buf *cbuf) {
 	int count;
 

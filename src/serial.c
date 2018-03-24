@@ -23,6 +23,7 @@
 #include "vic.h"
 #include "circbuffer.h"
 #include "serial.h"
+#include "advancedcmd.h"
 
 #ifdef __NEWLIB__
 #define __sys_write _write
@@ -77,6 +78,18 @@ int uart_isrxready(void){
 	return circ_buf_has_char(&rxbuf);
 }
 
+unsigned uart_available() {
+	return circ_buf_count(&rxbuf);
+}
+
+void uart_rxflush() {
+	circ_buf_flush(&rxbuf);
+}
+
+uint8_t uart_chkAdvCmd(advancedSerialCMD* advCmd) {
+	return chkAdvCmd(&rxbuf, advCmd);
+}
+
 int uart_readline(char* buffer, int max_len) {
 	int i = 0;
 	while (uart_isrxready()) {
@@ -114,8 +127,8 @@ static void __attribute__ ((interrupt ("IRQ"))) Serial_IRQHandler( void ) {
 		}
 	}
 
-	// RDA Interrupt
-	if (intsrc == 0b00000100) {
+	//pull data out of FIFO until empty
+	while (U0IIR & 0b00000100) {
 		//Don't block, as we are inside an interrupt!
 		add_to_circ_buf(&rxbuf, U0RBR, 0);
 	}

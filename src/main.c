@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "serial.h"
+#include "advancedcmd.h"
 #include "lcd.h"
 #include "io.h"
 #include "sched.h"
@@ -65,6 +66,10 @@ static char* help_text = \
 " about                   Show about + debug information\n" \
 " bake <setpoint>         Enter Bake mode with setpoint\n" \
 " bake <setpoint> <time>  Enter Bake mode with setpoint for <time> seconds\n" \
+" set OpMode <mode>       Set Operational Mode (0-AMBIENT, 1-MAXTEMPOVERRIDE, 2-SPLIT)\n" \
+" set OpThresh <thresh>   Set MAXTEMPOVERRIDE or SPLIT mode threshold in C (0-255)\n" \
+" get OpMode              Get Operational Mode\n" \
+" get OpThresh            Get MAXTEMPOVERRIDE or SPLIT mode threshold in C\n" \
 " help                    Display help text\n" \
 " list profiles           List available reflow profiles\n" \
 " list settings           List machine settings\n" \
@@ -130,6 +135,8 @@ int main(void) {
 	SPI_TC_Init();
 	Reflow_Init();
 	SystemFan_Init();
+	printf("\nCurrent Operational Mode: "); Sensor_printOpMode(); printf("\n");
+	printf("Current Operational Mode Threshold: %u C\n", Sensor_getOpModeThreshold());
 
 	Sched_SetWorkfunc(MAIN_WORK, Main_Work);
 	Sched_SetState(MAIN_WORK, 1, TICKS_SECS(2)); // Enable in 2 seconds
@@ -183,8 +190,44 @@ static int32_t Main_Work(void) {
 	char* cmd_bake = "bake %d %d";
 	char* cmd_dump_profile = "dump profile %d";
 	char* cmd_setting = "setting %d %f";
-
-	if (uart_isrxready()) {
+	char* cmd_setOpMode = "set OpMode %d";
+	char* cmd_setOpModeThresh = "set OpThresh %d";
+	
+	advancedSerialCMD advCmd = { 0 };
+	
+	if (uart_chkAdvCmd(&advCmd)) {
+		switch (advCmd.cmd) {
+			case SetEEProfileCmd:
+			{
+				EEProfileCMD EEcmd;
+				memcpy(&EEcmd, &advCmd.data, sizeof(advCmd.data));
+			
+				if (EEcmd.profileNum == 1 || EEcmd.profileNum == 2) {
+					printf("\nSetting EE profile %d:\n ", advCmd.data[0]);
+					Reflow_SelectEEProfileIdx(EEcmd.profileNum);
+					for (unsigned char i = 0; i < NUMPROFILETEMPS; ++i) {
+						Reflow_SetSetpointAtIdx(i, EEcmd.tempData[i]);
+					}
+					Reflow_SaveEEProfile();
+					if (EEcmd.profileNum == 1) Reflow_DumpProfile(5); //CUSTOM#1
+					else Reflow_DumpProfile(6); //CUSTOM#2
+				}
+				else {
+					printf("\nOnly EEPROM profile 1 and 2 are supported for this command.\n");
+				}
+				//reset advCmd
+				//memset(&advCmd, 0, sizeof(advCmd));
+				break;
+			}
+			//Add more advanced commands here
+			//case ...
+			default: {
+				printf("\nUnknown Advanced Command entered.\n");
+				//memset(&advCmd, 0, sizeof(advCmd));
+				uart_rxflush();
+			}
+		}
+	} else if (uart_available() > 3) {
 		int len = uart_readline(serial_cmd, 255);
 
 		if (len > 0) {
@@ -237,6 +280,33 @@ static int32_t Main_Work(void) {
 				printf("\nActual measured values:\n");
 				Sensor_ListAll();
 				printf("\n");
+
+			} else if (strcmp(serial_cmd, "get OpMode") == 0) {
+				printf("\nCurrent Operational Mode: "); Sensor_printOpMode(); printf("\n");
+
+			} else if (strcmp(serial_cmd, "get OpThresh") == 0) {
+				printf("\nCurrent Operational Mode Threshold: %u C\n", Sensor_getOpModeThreshold());
+
+			} else if (sscanf(serial_cmd, cmd_setOpMode, &param) > 0) {
+				// set operational mode
+				if (param > 2 || param < 0) {
+					printf("\nOnly options are 0-2. See Help.\n");
+
+				}
+				else {
+					Sensor_setOpMode((OperationMode_t)param);
+					printf("\nOperational Mode Set: "); Sensor_printOpMode(); printf("\n");
+				}
+
+			} else if (sscanf(serial_cmd, cmd_setOpModeThresh, &param) > 0) {
+				// set operational mode threshold
+				if (param > 255 || param < 0) {
+					printf("\nOnly options are 0-255\n");
+				}
+				else {
+					Sensor_setOpModeThreshold((uint8_t)param);
+					printf("\nOperational Mode Threshold Set: %d C\n", param);
+				}
 
 			} else if (sscanf(serial_cmd, cmd_select_profile, &param) > 0) {
 				// select profile

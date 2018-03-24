@@ -20,6 +20,9 @@
 */
 //#define MAXTEMPOVERRIDE
 
+// Operational Mode
+static OperationMode_t opMode = AMBIENT;
+static uint8_t opModeTempThresh = 5;
 // Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
 static float adcgainadj[2];
  // Offset adjust, this will definitely have to be calibrated per device
@@ -32,6 +35,32 @@ static uint8_t cjsensorpresent = 0;
 // The feedback temperature
 static float avgtemp;
 static float coldjunction;
+
+OperationMode_t Sensor_getOpMode() {
+	return opMode;
+}
+
+void Sensor_printOpMode() {
+	const char* modes[] = { "AMBIENT", "MAXTEMPOVERRIDE", "SPLIT" };
+	//printf("\nCurrent Operational Mode: %s\n", modes[(uint8_t)Sensor_getOpMode()]);
+	printf("%s", modes[(uint8_t)Sensor_getOpMode()]);
+}
+
+void Sensor_setOpMode(OperationMode_t newmode) {
+	opMode = newmode;
+	NV_SetConfig(OP_MODE, (uint8_t)newmode);
+}
+
+uint8_t Sensor_getOpModeThreshold()
+{
+	return opModeTempThresh;
+}
+
+void Sensor_setOpModeThreshold(uint8_t threshold)
+{
+	opModeTempThresh = threshold;
+	NV_SetConfig(MODE_THRESH, threshold);
+}
 
 void Sensor_ValidateNV(void) {
 	int temp;
@@ -63,6 +92,12 @@ void Sensor_ValidateNV(void) {
 		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
 	}
 	adcoffsetadj[1] = ((float)(temp - 100)) * 0.25f;
+
+	temp = NV_GetConfig(OP_MODE);
+	opMode = (OperationMode_t)temp;
+
+	temp = NV_GetConfig(MODE_THRESH);
+	opModeTempThresh = temp;
 }
 
 
@@ -85,7 +120,8 @@ void Sensor_DoConversion(void) {
 				temperature[i] = tctemp[i];
 				tempvalid |= (1 << i);
 			}
-		} else {
+		}
+		else {
 			tcpresent[i] = SPI_IsTCPresent(i);
 			if (tcpresent[i]) {
 				tctemp[i] = SPI_GetTCReading(i);
@@ -107,7 +143,8 @@ void Sensor_DoConversion(void) {
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
 		cjsensorpresent = 1;
-	} else if (tcpresent[2] && tcpresent[3]) {
+	}
+	else if (tcpresent[2] && tcpresent[3]) {
 		avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
 		temperature[0] = tctemp[2];
 		temperature[1] = tctemp[3];
@@ -115,13 +152,15 @@ void Sensor_DoConversion(void) {
 		tempvalid &= ~0x0C;
 		coldjunction = (tccj[2] + tccj[3]) / 2.0f;
 		cjsensorpresent = 1;
-	} else {
+	}
+	else {
 		// If the external TC interface is not present we fall back to the
 		// built-in ADC, with or without compensation
 		coldjunction = OneWire_GetTempSensorReading();
 		if (coldjunction < 127.0f) {
 			cjsensorpresent = 1;
-		} else {
+		}
+		else {
 			coldjunction = 25.0f; // Assume 25C ambient if not found
 		}
 		temp[0] = ADC_Read(1);
@@ -144,19 +183,41 @@ void Sensor_DoConversion(void) {
 		avgtemp = (temperature[0] + temperature[1]) / 2.0f;
 	}
 
-#ifdef MAXTEMPOVERRIDE
-	// If one of the temperature sensors reports higher than 5C above
-	// the average, use that as control input
-	float newtemp = avgtemp;
-	for (int i=0; i < 4; i++) {
-		if (tcpresent[i] && temperature[i] > (avgtemp + 5.0f) && temperature[i] > newtemp) {
-			newtemp = temperature[i];
+	// if the mode is not AMBIENT, we override avgtemp based on mode
+	switch (opMode) {
+		case MAXTEMPOVERRIDE: {
+			// If one of the temperature sensors reports higher than 5C above
+			// the average, use that as control input
+			float newtemp = avgtemp;
+			for (int i = 0; i < 4; i++) {
+				if (tcpresent[i] && temperature[i] > (avgtemp + (float)opModeTempThresh) && temperature[i] > newtemp) {
+					newtemp = temperature[i];
+				}
+			}
+			if (avgtemp != newtemp) {
+				avgtemp = newtemp;
+			}
+			break;
+		}
+		case SPLIT: {
+			//Override avgtemp to board temp if > splitTempThresh
+			if (avgtemp > opModeTempThresh) {
+				if (tcpresent[2] && tcpresent[3]) {
+					avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
+				}
+				else if (tcpresent[2]) {
+					avgtemp = tctemp[2];
+				}
+				else if (tcpresent[3]) {
+					avgtemp = tctemp[3];
+				}
+			}
+			break;
+		}
+		case AMBIENT: {
+			//default
 		}
 	}
-	if (avgtemp != newtemp) {
-		avgtemp = newtemp;
-	}
-#endif
 }
 
 uint8_t Sensor_ColdjunctionPresent(void) {
