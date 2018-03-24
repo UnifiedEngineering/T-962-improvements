@@ -143,8 +143,7 @@ void Sensor_DoConversion(void) {
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
 		cjsensorpresent = 1;
-	}
-	else if (tcpresent[2] && tcpresent[3]) {
+	} else if (tcpresent[2] && tcpresent[3]) {
 		avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
 		temperature[0] = tctemp[2];
 		temperature[1] = tctemp[3];
@@ -152,15 +151,13 @@ void Sensor_DoConversion(void) {
 		tempvalid &= ~0x0C;
 		coldjunction = (tccj[2] + tccj[3]) / 2.0f;
 		cjsensorpresent = 1;
-	}
-	else {
+	} else {
 		// If the external TC interface is not present we fall back to the
 		// built-in ADC, with or without compensation
 		coldjunction = OneWire_GetTempSensorReading();
 		if (coldjunction < 127.0f) {
 			cjsensorpresent = 1;
-		}
-		else {
+		} else {
 			coldjunction = 25.0f; // Assume 25C ambient if not found
 		}
 		temp[0] = ADC_Read(1);
@@ -183,10 +180,10 @@ void Sensor_DoConversion(void) {
 		avgtemp = (temperature[0] + temperature[1]) / 2.0f;
 	}
 
-	// if the mode is not AMBIENT, we override avgtemp based on mode
+	// if the mode is not AMBIENT, we override avgtemp based on OpMode
 	switch (opMode) {
 		case MAXTEMPOVERRIDE: {
-			// If one of the temperature sensors reports higher than 5C above
+			// If one of the temperature sensors reports higher than opModeTempThresh above
 			// the average, use that as control input
 			float newtemp = avgtemp;
 			for (int i = 0; i < 4; i++) {
@@ -200,7 +197,7 @@ void Sensor_DoConversion(void) {
 			break;
 		}
 		case SPLIT: {
-			//Override avgtemp to board temp if > splitTempThresh
+			//Override avgtemp to board temp if > opModeTempThresh
 			if (avgtemp > opModeTempThresh) {
 				if (tcpresent[2] && tcpresent[3]) {
 					avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;

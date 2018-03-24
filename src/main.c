@@ -292,8 +292,7 @@ static int32_t Main_Work(void) {
 				if (param > 2 || param < 0) {
 					printf("\nOnly options are 0-2. See Help.\n");
 
-				}
-				else {
+				} else {
 					Sensor_setOpMode((OperationMode_t)param);
 					printf("\nOperational Mode Set: "); Sensor_printOpMode(); printf("\n");
 				}
@@ -302,8 +301,7 @@ static int32_t Main_Work(void) {
 				// set operational mode threshold
 				if (param > 255 || param < 0) {
 					printf("\nOnly options are 0-255\n");
-				}
-				else {
+				} else {
 					Sensor_setOpModeThreshold((uint8_t)param);
 					printf("\nOperational Mode Threshold Set: %d C\n", param);
 				}

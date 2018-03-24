@@ -127,7 +127,7 @@ static void __attribute__ ((interrupt ("IRQ"))) Serial_IRQHandler( void ) {
 		}
 	}
 
-	//pull data out of FIFO until empty
+	//pull data out of FIFO until empty (16 bytes MAX)
 	while (U0IIR & 0b00000100) {
 		//Don't block, as we are inside an interrupt!
 		add_to_circ_buf(&rxbuf, U0RBR, 0);
