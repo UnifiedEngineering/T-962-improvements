@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "sched.h"
@@ -98,10 +97,4 @@ int32_t Sched_Do(uint32_t fastforward) {
 	// Unless a (wake-up) interrupt calls Sched_SetState, this is how
 	// long it's OK to sleep until next task is due
 	return (int32_t) shortestwait;
-}
-
-void BusyWait( uint32_t numticks ) {
-	T0IR = 0x01; // Reset interrupt
-	T0MR0 = 1 + T0TC + numticks; // It's perfectly fine if this wraps
-	while (!(T0IR & 0x01)); // Wait for match
 }

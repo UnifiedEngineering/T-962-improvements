@@ -39,6 +39,7 @@ OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) \
 		$(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
+C_FLAGS := -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi
 
 all: axf
 
@@ -56,27 +57,26 @@ $(BUILD_DIR)tag:
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	$(CC) $(C_FLAGS) -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 $(BUILD_DIR)%.o: $(CLI_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	$(CC) $(C_FLAGS) -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
+	$(CC) $(C_FLAGS) -c -x assembler-with-cpp -I $(BUILD_DIR) -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
-
 
 axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU Linker'
-	$(CC) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections -flto -Os -mcpu=arm7tdmi --specs=nano.specs -u _printf_float -u _scanf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
+	$(CC) $(C_FLAGS) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections --specs=nano.specs -u _printf_float -u _scanf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $(COLOR_GREEN)$@$(COLOR_END)'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build
