@@ -39,7 +39,8 @@ OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) \
 		$(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
-C_FLAGS := -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -Isrc -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi
+C_FLAGS := -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -std=gnu99 -Isrc -fmessage-length=0 -fno-builtin \
+	-ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi
 
 all: axf
 
