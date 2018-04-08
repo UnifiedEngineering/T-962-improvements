@@ -292,7 +292,7 @@ static int32_t Reflow_Work(void)
 
 	// get temperature
 	Sensor_DoConversion();
-	reflow_info.temperature = Sensor_GetTemp(TC_AVERAGE);
+	reflow_info.temperature = Sensor_GetTemp(TC_CONTROL);
 	loops_since_activation++;
 
 	switch(reflow_state) {

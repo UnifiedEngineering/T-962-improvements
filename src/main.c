@@ -213,7 +213,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	LCD_printf(0, 32, INVERT, "F4"); LCD_printf(14, 32, 0, "SELECT PROFILE");
 	LCD_printf(0, 40, INVERT,  "S"); LCD_printf(14, 40, 0, "RUN REFLOW PROFILE");
 	LCD_printf(0, 48, INVERT | CENTERED, Reflow_GetProfileName(-1));
-	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %3u`", (uint16_t) Sensor_GetTemp(TC_AVERAGE));
+	LCD_printf(0, 58, CENTERED, "OVEN TEMPERATURE %3u`", (uint16_t) Sensor_GetTemp(TC_CONTROL));
 
 	return mode;
 }
@@ -428,7 +428,7 @@ static void render_bake_screen(uint16_t setpoint, uint32_t timer) {
 		LCD_printf(0, 18, RIGHT_ALIGNED | INVERT, "F4");
 	}
 
-	LCD_printf(0, 26, 0, "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
+	LCD_printf(0, 26, 0, "CTL %3.1f`", Sensor_GetTemp(TC_CONTROL));
 
 	LCD_printf(0, 34, 0, "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
 	LCD_printf(LCD_CENTER, 34, 0, "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
@@ -541,7 +541,7 @@ static MainMode_t Cooling_Mode(MainMode_t mode) {
 
 	LCD_FB_Clear();
 	LCD_printf(0, 26, RIGHT_ALIGNED, "COOL");
-	LCD_printf(0, 34, RIGHT_ALIGNED, "%3.1f`", Sensor_GetTemp(TC_AVERAGE));
+	LCD_printf(0, 34, RIGHT_ALIGNED, "%3.1f`", Sensor_GetTemp(TC_CONTROL));
 	LCD_BMPDisplay(coolbmp, 0, 0);
 
 	return mode;

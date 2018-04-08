@@ -3,7 +3,7 @@
 
 typedef enum {
 	TC_COLD_JUNCTION=0,
-	TC_AVERAGE,
+	TC_CONTROL,
 	TC_LEFT,
 	TC_RIGHT,
 	TC_EXTRA1,

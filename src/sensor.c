@@ -21,7 +21,7 @@ static uint8_t tempvalid = 0;
 static uint8_t cjsensorpresent = 0;
 
 // The feedback temperature
-static float avgtemp;
+static float ctltemp;
 static float coldjunction;
 
 // preset locals from EEPROM
@@ -67,14 +67,14 @@ void Sensor_DoConversion(void) {
 	// Assume no CJ sensor
 	cjsensorpresent = 0;
 	if (tcpresent[0] && tcpresent[1]) {
-		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
+		ctltemp = (tctemp[0] + tctemp[1]) / 2.0f;
 		temperature[0] = tctemp[0];
 		temperature[1] = tctemp[1];
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
 		cjsensorpresent = 1;
 	} else if (tcpresent[2] && tcpresent[3]) {
-		avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
+		ctltemp = (tctemp[2] + tctemp[3]) / 2.0f;
 		temperature[0] = tctemp[2];
 		temperature[1] = tctemp[3];
 		tempvalid |= 0x03;
@@ -107,20 +107,20 @@ void Sensor_DoConversion(void) {
 
 		tempvalid |= 0x03;
 
-		avgtemp = (temperature[0] + temperature[1]) / 2.0f;
+		ctltemp = (temperature[0] + temperature[1]) / 2.0f;
 	}
 
 #ifdef MAXTEMPOVERRIDE
 	// If one of the temperature sensors reports higher than 5C above
 	// the average, use that as control input
-	float newtemp = avgtemp;
+	float newtemp = ctltemp;
 	for (int i=0; i < 4; i++) {
-		if (tcpresent[i] && temperature[i] > (avgtemp + 5.0f) && temperature[i] > newtemp) {
+		if (tcpresent[i] && temperature[i] > (ctltemp + 5.0f) && temperature[i] > newtemp) {
 			newtemp = temperature[i];
 		}
 	}
-	if (avgtemp != newtemp) {
-		avgtemp = newtemp;
+	if (ctltemp != newtemp) {
+		ctltemp = newtemp;
 	}
 #endif
 }
@@ -132,8 +132,8 @@ uint8_t Sensor_ColdjunctionPresent(void) {
 float Sensor_GetTemp(TempSensor_t sensor) {
 	if (sensor == TC_COLD_JUNCTION) {
 		return coldjunction;
-	} else if(sensor == TC_AVERAGE) {
-		return avgtemp;
+	} else if(sensor == TC_CONTROL) {
+		return ctltemp;
 	} else if(sensor < TC_NUM_ITEMS) {
 		return temperature[sensor - TC_LEFT];
 	} else {
@@ -144,7 +144,7 @@ float Sensor_GetTemp(TempSensor_t sensor) {
 uint8_t Sensor_IsValid(TempSensor_t sensor) {
 	if (sensor == TC_COLD_JUNCTION) {
 		return cjsensorpresent;
-	} else if(sensor == TC_AVERAGE) {
+	} else if(sensor == TC_CONTROL) {
 		return 1;
 	} else if(sensor >= TC_NUM_ITEMS) {
 		return 0;
