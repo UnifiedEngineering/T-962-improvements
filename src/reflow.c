@@ -64,6 +64,15 @@ static int reflow_log_level = LOG_NONE;
 static ReflowInformation_t reflow_info;
 static uint32_t loops_since_activation = 0;
 
+// packed into 32bit, should fit nicely
+typedef struct {
+	uint16_t heater;
+	uint16_t fan;
+} heater_fan_t;
+
+// consts
+static const heater_fan_t all_off = { 0, 0 };
+
 // external interface
 
 /*!
@@ -186,13 +195,6 @@ static uint32_t constant_time_interval(void)
 	return 2 * TICKS_MS(PID_CYCLE_MS) - tick_delta;
 }
 
-
-// packed into 32bit, should fit nicely
-typedef struct {
-	uint16_t heater;
-	uint16_t fan;
-} heater_fan_t;
-
 /*
  *  get response from PID controller, calculate fan and heater value
  *  from the output, coerce fan values.
@@ -288,7 +290,6 @@ static inline uint32_t seconds_since_start(void)
 static int32_t Reflow_Work(void)
 {
 	uint16_t value, value_in10s;
-	static const heater_fan_t all_off = { 0, 0 };
 
 	// get temperature
 	Sensor_DoConversion();
@@ -297,8 +298,6 @@ static int32_t Reflow_Work(void)
 
 	switch(reflow_state) {
 	case REFLOW_STANDBY:
-		// turn off all
-		set_heater_fan(all_off);
 		log_reflow(false, all_off);
 		break;
 	case REFLOW_REFLOW:
@@ -343,6 +342,7 @@ static int32_t Reflow_Work(void)
 		control_heater_fan(0, true);
 
 		if (reflow_info.temperature < (float) STANDBYTEMP) {
+			set_heater_fan(all_off);
 			reflow_info.time_to_go = 0;
 			reflow_state = REFLOW_STANDBY;
 		}
@@ -356,6 +356,7 @@ void Reflow_Init(void)
 {
 	reflow_state = REFLOW_STANDBY;
 
+	set_heater_fan(all_off);
 	Reflow_InitNV();
 	Sensor_InitNV();
 

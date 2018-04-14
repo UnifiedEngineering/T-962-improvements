@@ -27,12 +27,6 @@
 #include "config.h"
 
 void Set_Heater(uint8_t enable) {
-	if (enable < 0xff) {
-		PINSEL0 |= (2<<18); // Make sure PWM6 function is enabled
-	} else { // Fully on is dealt with separately to avoid output glitch
-		PINSEL0 &= ~(2<<18); // Disable PWM6 function on pin
-		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
-	}
 #ifdef USE_FET_DRIVER
 	PWMMR6 = enable;
 #else
@@ -44,12 +38,6 @@ void Set_Heater(uint8_t enable) {
 #ifdef USE_SECONDARY_HEATER
 // This is always ON with a high level, i.e. uses a kind of FET driver
 void Set_Secondary_Heater(uint8_t enable) {
-	if (enable < 0xff) {
-		PINSEL0 |= (2<<14); // Make sure PWM2 function is enabled
-	} else { // Fully on is dealt with separately to avoid output glitch
-		PINSEL0 &= ~(2<<14); // Disable PWM2 function on pin
-		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
-	}
 	PWMMR2 = enable;
 	PWMLER |= (1<<2);
 }
@@ -59,12 +47,6 @@ void Set_Secondary_Heater(uint8_t enable) {}
 #endif
 
 void Set_Fan(uint8_t enable) {
-	if (enable < 0xff) {
-		PINSEL0 |= (2<<16); // Make sure PWM4 function is enabled
-	} else { // Fully on is dealt with separately to avoid output glitch
-		PINSEL0 &= ~(2<<16); // Disable PWM4 function on pin
-		enable = 0xfe; // Not fully on according to PWM hardware but we force GPIO low anyway
-	}
 #ifdef USE_FET_DRIVER
 	PWMMR4 = enable;
 #else
@@ -236,12 +218,17 @@ void IO_Init(void) {
 
 	PWMPR = PCLKFREQ / (256 * 5); // Let's have the PWM perform 5 cycles per second with 8 bits of precision (way overkill)
 	PWMMCR = (1<<1); // Reset TC on mr0 overflow (period time)
-	PWMMR0 = 0xff; // Period time
+	PWMMR0 = 0xfe;   // Period time to 254, so 255 will never be reached, i.e. pin is fully turned on
 	PWMLER = (1<<0); // Enable latch on mr0 (Do I really need to do this?)
 	// Enable PWM4 and 6 and possibly PWM2
 	PWMPCR = (1<<12) | (1<<14)
 #ifdef USE_SECONDARY_HEATER
 		| (1 << 10)
+#endif
+		;
+	PINSEL0 |= (2<<18) | (2<<16)
+#ifdef USE_SECONDARY_HEATER
+		| (1 << 14)
 #endif
 		;
 	PWMTCR = (1<<3) | (1<<0); // Enable timer in PWM mode
