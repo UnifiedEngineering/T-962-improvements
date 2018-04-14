@@ -30,7 +30,20 @@
 #define WHITE		"\x1b[0m"
 #define WHITE_BOLD	"\x1b[01;30m"
 
-SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
+static void list_sensors(void)
+{
+	char* names[] = { "Left", "Right", "Extra 1", "Extra 2", "Cold junction" };
+	TempSensor_t sensors[] = { TC_LEFT, TC_RIGHT, TC_EXTRA1, TC_EXTRA2, TC_COLD_JUNCTION };
+
+	for (unsigned i = 0; i < ARRAY_SIZE(sensors); i++)
+		if (Sensor_IsValid(sensors[i]))
+			printf("\n%13s: %4.1fdegC", names[i], Sensor_GetTemp(sensors[i]));
+
+	if (!Sensor_IsValid(TC_COLD_JUNCTION))
+		printf("\nNo cold-junction sensor on PCB");
+}
+
+static SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 {
 	char buf[40];
 
@@ -42,12 +55,12 @@ SCLI_CMD_RET cmd_info(uint8_t argc, char *argv[])
 	IO_Partinfo(buf, sizeof(buf), "Part number: %s rev %c\n");
 	printf(buf);
 	printf("\nSensor values:");
-	Sensor_ListAll();
+	list_sensors();
 
 	return 0;
 }
 
-SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
 {
 	int current = Reflow_GetProfileIdx();
 
@@ -63,7 +76,7 @@ SCLI_CMD_RET cmd_profiles(uint8_t argc, char *argv[])
 	return 0;
 }
 
-SCLI_CMD_RET cmd_settings(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_settings(uint8_t argc, char *argv[])
 {
 	char buf[40];
 
@@ -81,7 +94,7 @@ SCLI_CMD_RET cmd_settings(uint8_t argc, char *argv[])
 	return 0;
 }
 
-SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
 {
 	if (argc < 2) {
 		// no \n shell reports error aswell
@@ -123,7 +136,7 @@ SCLI_CMD_RET cmd_dump(uint8_t argc, char *argv[])
 
 // use it like:
 // save my_profile 50,50,50,50,55,70,85,90,95,100,102,105,107,110,112,115,117,120,122,127,135,140,145,150,160,170,175,170,160,150,140,130,120
-SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
 {
 	int idx;
 	char *name;
@@ -165,7 +178,7 @@ SCLI_CMD_RET cmd_save(uint8_t argc, char *argv[])
 	return Reflow_SaveEEProfile();
 }
 
-SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 {
 	int value;
 
@@ -207,7 +220,7 @@ SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 	return 0;
 }
 
-SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
 {
 	UNUSED(argv);
 	if (argc > 1)
@@ -223,7 +236,7 @@ SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
 	return 0;
 }
 
-SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
 {
 	if (argc < 2) {
 		printf(RED "\n need setpoint value" WHITE);
@@ -248,7 +261,7 @@ SCLI_CMD_RET cmd_bake(uint8_t argc, char *argv[])
 	return 0;
 }
 
-SCLI_CMD_RET cmd_abort(uint8_t argc, char *argv[])
+static SCLI_CMD_RET cmd_abort(uint8_t argc, char *argv[])
 {
 	UNUSED(argv);
 

@@ -2,12 +2,12 @@
 #define SENSORS_H_
 
 typedef enum {
-	TC_COLD_JUNCTION=0,
-	TC_CONTROL,
 	TC_LEFT,
 	TC_RIGHT,
 	TC_EXTRA1,
 	TC_EXTRA2,
+	TC_COLD_JUNCTION,
+	TC_CONTROL,
 	TC_NUM_ITEMS
 } TempSensor_t;
 
@@ -15,11 +15,8 @@ typedef enum {
 void Sensor_InitNV(void);
 void Sensor_DoConversion(void);
 
-uint8_t Sensor_ColdjunctionPresent(void);
-
 float Sensor_GetTemp(TempSensor_t sensor);
 uint8_t Sensor_IsValid(TempSensor_t sensor);
-
-void Sensor_ListAll(void);
+void Sensor_SetWeight(float w);
 
 #endif /* SENSORS_H_ */

@@ -258,6 +258,7 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 	case KEY_S:
 		mode = MAIN_HOME;
 		Set_Fan(0);
+		Sensor_InitNV();	// update calibration values!
 		return mode;
 	}
 

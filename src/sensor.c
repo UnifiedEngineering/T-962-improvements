@@ -11,160 +11,189 @@
 #include "sensor.h"
 #include "config.h"
 
-// Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
-static float adcgainadj[2];
- // Offset adjust, this will definitely have to be calibrated per device
-static float adcoffsetadj[2];
+/*
+ * Gain adjust, this may have to be calibrated per device if factory trimmer adjustments are off
+ * Offset adjust, this will definitely have to be calibrated per device
+ */
+static struct { float offset; float gain; } adjust[2];
+static float temperature[TC_NUM_ITEMS];
+static float control_weight = 0.5;
 
-static float temperature[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-static uint8_t tempvalid = 0;
-static uint8_t cjsensorpresent = 0;
+// values used in config.h
+#define TC_NONE			0
+#define TC_INTERNAL		1
+#define TC_ONE_WIRE		2
+#define TC_SPI_BRIDGE	3
 
-// The feedback temperature
-static float ctltemp;
-static float coldjunction;
+#define LR_AVERAGE			0
+#define MAX_TEMP_OVERRIDE	1
+#define LR_WEIGHTED_AVERAGE	2
 
-// preset locals from EEPROM
-void Sensor_InitNV(void) {
-	adcgainadj[0] = ((float) NV_GetConfig(TC_LEFT_GAIN)) * 0.01f;
-	adcgainadj[1] = ((float) NV_GetConfig(TC_RIGHT_GAIN)) * 0.01f;
-	adcoffsetadj[0] = ((float)(NV_GetConfig(TC_LEFT_OFFSET) - 100)) * 0.25f;
-	adcoffsetadj[1] = ((float)(NV_GetConfig(TC_RIGHT_OFFSET) - 100)) * 0.25f;
+#ifndef CONTROL_TEMPERATURE
+#define CONTROL_TEMPERATURE LR_AVERAGE
+#endif
+
+/* function pointers to select the correct functions for a sensor */
+typedef float (*getTemperature)(uint8_t);
+/* the onewire and spi functions deliver 1 if present, 0 if not */
+typedef int (*isPresent)(uint8_t);
+
+typedef struct {
+	isPresent present;
+	getTemperature T;
+	getTemperature CJT;
+} accessor_t;
+
+#define UNAVAILABLE_TEMPERATURE		0.0f
+
+float none_T(uint8_t channel) { UNUSED(channel); return UNAVAILABLE_TEMPERATURE; }
+float none_CJT(uint8_t channel) { UNUSED(channel); return UNAVAILABLE_TEMPERATURE; }
+int none_present(uint8_t channel) { UNUSED(channel); return 0; }
+
+float internal_T(uint8_t channel)
+{
+	switch (channel) {
+	case TC_LEFT:
+		return ADC_Read(1) / 16.0f * adjust[0].gain + adjust[0].offset;
+	case TC_RIGHT:
+		return ADC_Read(2) / 16.0f * adjust[1].gain + adjust[1].offset;
+	}
+	return UNAVAILABLE_TEMPERATURE;
 }
 
-void Sensor_DoConversion(void) {
-	uint16_t temp[2];
-	/*
-	* These are the temperature readings we get from the thermocouple interfaces
-	* Right now it is assumed that if they are indeed present the first two
-	* channels will be used as feedback
-	*/
-	float tctemp[4], tccj[4];
-	uint8_t tcpresent[4];
-	tempvalid = 0; // Assume no valid readings;
-	for (int i = 0; i < 4; i++) { // Get 4 TC channels
-		tcpresent[i] = OneWire_IsTCPresent(i);
-		if (tcpresent[i]) {
-			tctemp[i] = OneWire_GetTCReading(i);
-			tccj[i] = OneWire_GetTCColdReading(i);
-			if (i > 1) {
-				temperature[i] = tctemp[i];
-				tempvalid |= (1 << i);
-			}
-		} else {
-			tcpresent[i] = SPI_IsTCPresent(i);
-			if (tcpresent[i]) {
-				tctemp[i] = SPI_GetTCReading(i);
-				tccj[i] = SPI_GetTCColdReading(i);
-				if (i > 1) {
-					temperature[i] = tctemp[i];
-					tempvalid |= (1 << i);
-				}
-			}
+/* the internal interface is the DS18B20 if available, 25C otherwise */
+float internal_CJT(uint8_t channel)
+{
+	UNUSED(channel);
+	float cjt = OneWire_GetTempSensorReading();
+
+	return cjt < 127.0f ? cjt : 25.0f;
+}
+
+int internal_present(uint8_t channel)
+{
+	switch (channel) {
+	case TC_LEFT:
+	case TC_RIGHT:
+		return 1;
+	case TC_COLD_JUNCTION:
+		return OneWire_GetTempSensorReading() < 127.0f ? 1 : 0;
+	}
+
+	return 0;
+}
+
+/* access functions for ADC and buses */
+static const accessor_t accessors[] = {
+	[TC_NONE]		= { .present = none_present, .T = none_T, .CJT = none_CJT },
+	[TC_INTERNAL]	= { .present = internal_present, .T = internal_T, .CJT = internal_CJT },
+	[TC_ONE_WIRE]	= { .present = OneWire_IsTCPresent, .T = OneWire_GetTCReading, .CJT = OneWire_GetTCColdReading },
+	[TC_SPI_BRIDGE] = { .present = SPI_IsTCPresent, .T = SPI_GetTCReading, .CJT = SPI_GetTCColdReading },
+};
+
+/*
+ * first value is the interface, second value the channel
+ * Note: not initialized values will be zero!
+ */
+static const uint8_t TC_if[][2] = {
+	[TC_LEFT] = { TC_LEFT_IF },
+	[TC_RIGHT] = { TC_RIGHT_IF },
+	[TC_EXTRA1] = { TC_EXTRA1_IF },
+	[TC_EXTRA2] = { TC_EXTRA2_IF },
+	[TC_COLD_JUNCTION] = { COLD_JUNCTION_IF },
+};
+
+/* helper to access interface and channel */
+static inline float get_T(TempSensor_t sensor)
+{
+	uint8_t _if = TC_if[sensor][0];
+	uint8_t ch = TC_if[sensor][1];
+
+	return accessors[_if].T(ch) + accessors[_if].CJT(ch);
+}
+
+/*
+ * calculate the oven control temperature, depending on the configuration,
+ * default is average of TC_LEFT and TC_RIGHT
+ */
+static float control_T(void)
+{
+#if CONTROL_TEMPERATURE == LR_AVERAGE
+	return (temperature[TC_LEFT] + temperature[TC_RIGHT]) / 2;
+
+#elif CONTROL_TEMPERATURE == MAX_TEMP_OVERRIDE
+	float T_avglr = (temperature[TC_LEFT] + temperature[TC_RIGHT]) / 2;
+	float T_avg = 0.0f;
+	float T_max = 0.0f;
+	int count = 0;
+
+	// calculate max and average of present TCs
+	for (unsigned i=0; i<4; i++)
+		if (Sensor_IsValid(i)) {
+			float T = get_T(i);
+
+			count++;
+			if (T > T_max)
+				T_max = T;
+			T_avg += T;
 		}
-	}
+	T_avg /= count;
 
-	// Assume no CJ sensor
-	cjsensorpresent = 0;
-	if (tcpresent[0] && tcpresent[1]) {
-		ctltemp = (tctemp[0] + tctemp[1]) / 2.0f;
-		temperature[0] = tctemp[0];
-		temperature[1] = tctemp[1];
-		tempvalid |= 0x03;
-		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
-		cjsensorpresent = 1;
-	} else if (tcpresent[2] && tcpresent[3]) {
-		ctltemp = (tctemp[2] + tctemp[3]) / 2.0f;
-		temperature[0] = tctemp[2];
-		temperature[1] = tctemp[3];
-		tempvalid |= 0x03;
-		tempvalid &= ~0x0C;
-		coldjunction = (tccj[2] + tccj[3]) / 2.0f;
-		cjsensorpresent = 1;
-	} else {
-		// If the external TC interface is not present we fall back to the
-		// built-in ADC, with or without compensation
-		coldjunction = OneWire_GetTempSensorReading();
-		if (coldjunction < 127.0f) {
-			cjsensorpresent = 1;
-		} else {
-			coldjunction = 25.0f; // Assume 25C ambient if not found
-		}
-		temp[0] = ADC_Read(1);
-		temp[1] = ADC_Read(2);
+	return T_max > T_avg + 5.0f ? T_avglr : T_avg;
 
-		// ADC oversamples to supply 4 additional bits of resolution
-		temperature[0] = ((float)temp[0]) / 16.0f;
-		temperature[1] = ((float)temp[1]) / 16.0f;
+#elif CONTROL_TEMPERATURE == LR_WEIGHTED_AVERAGE
+	// this assumes the heavier weight is placed on the right TC!
+	return temperature[TC_RIGHT] * control_weight + temperature[TC_LEFT] * (1.0f - control_weight);
 
-		// Gain adjust
-		temperature[0] *= adcgainadj[0];
-		temperature[1] *= adcgainadj[1];
-
-		// Offset adjust
-		temperature[0] += coldjunction + adcoffsetadj[0];
-		temperature[1] += coldjunction + adcoffsetadj[1];
-
-		tempvalid |= 0x03;
-
-		ctltemp = (temperature[0] + temperature[1]) / 2.0f;
-	}
-
-#ifdef MAXTEMPOVERRIDE
-	// If one of the temperature sensors reports higher than 5C above
-	// the average, use that as control input
-	float newtemp = ctltemp;
-	for (int i=0; i < 4; i++) {
-		if (tcpresent[i] && temperature[i] > (ctltemp + 5.0f) && temperature[i] > newtemp) {
-			newtemp = temperature[i];
-		}
-	}
-	if (ctltemp != newtemp) {
-		ctltemp = newtemp;
-	}
+#else
+	#error "CONTROL_TEMPERATURE is not configured correctly"
 #endif
 }
 
-uint8_t Sensor_ColdjunctionPresent(void) {
-	return cjsensorpresent;
+/*
+ * preset locals from EEPROM, which is initialized to 100 each
+ * if EEPROM was not formatted.
+ */
+void Sensor_InitNV(void)
+{
+	adjust[0].gain = ((float) NV_GetConfig(TC_LEFT_GAIN)) * 0.01f;
+	adjust[1].gain = ((float) NV_GetConfig(TC_RIGHT_GAIN)) * 0.01f;
+	adjust[0].offset = ((float)(NV_GetConfig(TC_LEFT_OFFSET) - 100)) * 0.25f;
+	adjust[1].offset = ((float)(NV_GetConfig(TC_RIGHT_OFFSET) - 100)) * 0.25f;
 }
 
-float Sensor_GetTemp(TempSensor_t sensor) {
-	if (sensor == TC_COLD_JUNCTION) {
-		return coldjunction;
-	} else if(sensor == TC_CONTROL) {
-		return ctltemp;
-	} else if(sensor < TC_NUM_ITEMS) {
-		return temperature[sensor - TC_LEFT];
-	} else {
-		return 0.0f;
-	}
+/*
+ * set the control weight to a value <= 1.0f, it will only be used if
+ * CONTROL_TEMPERATURE is configured to be LR_WEIGHTED_AVERAGE
+ */
+void Sensor_SetWeight(float w)
+{
+	control_weight = w;
 }
 
-uint8_t Sensor_IsValid(TempSensor_t sensor) {
-	if (sensor == TC_COLD_JUNCTION) {
-		return cjsensorpresent;
-	} else if(sensor == TC_CONTROL) {
+void Sensor_DoConversion(void)
+{
+	temperature[TC_LEFT] = get_T(TC_LEFT);
+	temperature[TC_RIGHT] = get_T(TC_RIGHT);
+	temperature[TC_EXTRA1] = get_T(TC_EXTRA1);
+	temperature[TC_EXTRA2] = get_T(TC_EXTRA2);
+	// this does not average as the original code did, but takes first channel info
+	temperature[TC_COLD_JUNCTION] = accessors[COLD_JUNCTION_IF].CJT(0);
+	// relies on above!
+	temperature[TC_CONTROL] = control_T();
+}
+
+float Sensor_GetTemp(TempSensor_t sensor)
+{
+	// not safe for NUM_ITEMS, but who cares
+	return temperature[sensor];
+}
+
+uint8_t Sensor_IsValid(TempSensor_t sensor)
+{
+	if (sensor == TC_CONTROL)		// control has no interface!
 		return 1;
-	} else if(sensor >= TC_NUM_ITEMS) {
-		return 0;
-	}
-	return (tempvalid & (1 << (sensor - TC_LEFT))) ? 1 : 0;
-}
+	const uint8_t *_if = TC_if[sensor];
 
-/* this is not logging, but shell output! */
-void Sensor_ListAll(void) {
-	int count = 5;
-	char* names[] = {"Left", "Right", "Extra 1", "Extra 2", "Cold junction"};
-	TempSensor_t sensors[] = {TC_LEFT, TC_RIGHT, TC_EXTRA1, TC_EXTRA2, TC_COLD_JUNCTION};
-	char* format = "\n%13s: %4.1fdegC";
-
-	for (int i = 0; i < count; i++) {
-		if (Sensor_IsValid(sensors[i])) {
-			printf(format, names[i], Sensor_GetTemp(sensors[i]));
-		}
-	}
-	if (!Sensor_IsValid(TC_COLD_JUNCTION)) {
-		printf("\nNo cold-junction sensor on PCB");
-	}
+	return accessors[_if[0]].present(_if[1]);
 }
