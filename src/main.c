@@ -201,7 +201,7 @@ static MainMode_t Home_Mode(MainMode_t mode) {
 	case KEY_F4:
 		return MAIN_SELECT_PROFILE;
 	case KEY_S:
-		return MAIN_REFLOW;
+		return MAIN_REFLOW_SETUP;
 	}
 
 	LCD_FB_Clear();
@@ -284,6 +284,59 @@ static MainMode_t Setup_Mode(MainMode_t mode) {
 }
 
 /*
+ * Reflow setup is necessary for LR_WEIGHTED_AVERAGE only. The weight
+ * is not stored in NV memory on purpose, this should be selected each
+ * time as it fully depends on the PCB to be soldered.
+ */
+static MainMode_t Reflow_Setup_Mode(MainMode_t mode) {
+#if CONTROL_TEMPERATURE == LR_WEIGHTED_AVERAGE
+	static int weight = 0;		// 0 .. 100 means 0% .. 100% weight
+
+	fkey_t key = Keypad_Get(2, 60);
+	// no abort
+
+	// only one key is processed in one run!
+	switch(key.priorized_key) {
+	case KEY_F1:
+		weight -= key.acceleration / 2;
+		weight = coerce(weight, 0, 100);
+		break;
+	case KEY_F2:
+		weight += key.acceleration / 2;
+		weight = coerce(weight, 0, 100);
+		break;
+	case KEY_F3:
+		// currently ignored
+		break;
+	case KEY_F4:
+		mode = MAIN_REFLOW;
+		Sensor_SetWeight(weight / 100.0f);
+		break;
+	case KEY_S:
+		mode = MAIN_HOME;
+		break;
+	}
+
+	LCD_FB_Clear();
+	LCD_printf(0, 0, CENTERED, "REFLOW MODE");
+	LCD_printf(0, 8, CENTERED, Reflow_GetProfileName(-1));
+
+	LCD_printf(0, 18, INVERT, "F1");
+	LCD_printf(0, 18, CENTERED, "- WEIGHT %d%% +", weight);
+	LCD_printf(0, 18, RIGHT_ALIGNED | INVERT, "F2");
+
+	LCD_printf(0, 26, CENTERED, "START REFLOW");
+	LCD_printf(0, 26, RIGHT_ALIGNED | INVERT, "F4");
+
+	LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+#else
+	// simply skip this screen
+	mode = MAIN_REFLOW;
+#endif
+
+	return mode;
+}
+/*
  * Reflow will leave this mode only after cooling, so it can be
  * restarted immediately, just as bake mode!
  */
@@ -358,15 +411,15 @@ static MainMode_t Select_Profile_Mode(MainMode_t mode) {
 }
 
 // TODO: allow 0 as value here?
-static int16_t update_setpoint(uint8_t idx, int16_t sp) {
+static int16_t update_setpoint(int idx, int sp) {
 	sp = coerce(sp, 0, SETPOINT_MAX);
-	Reflow_SetSetpointAtIdx(idx, sp);
+	Reflow_SetSetpointAtIdx((uint8_t) idx, (int16_t) sp);
 	return sp;
 }
 
 static MainMode_t Edit_Profile_Mode(MainMode_t mode) {
-	static uint8_t profile_time_idx = 0;
-	int16_t cursetpoint;
+	static int profile_time_idx = 0;
+	int cursetpoint;
 
 	fkey_t key = Keypad_Get(2, 60);
 	// no abort
@@ -596,6 +649,9 @@ static int32_t Main_Work(void) {
 		break;
 	case MAIN_EDIT_PROFILE:
 		new_mode = Edit_Profile_Mode(current_mode);
+		break;
+	case MAIN_REFLOW_SETUP:
+		new_mode = Reflow_Setup_Mode(current_mode);
 		break;
 	case MAIN_REFLOW:
 		new_mode = Reflow_Mode(current_mode);
