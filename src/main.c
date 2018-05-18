@@ -310,7 +310,7 @@ static MainMode_t Reflow_Setup_Mode(MainMode_t mode) {
 		break;
 	case KEY_F4:
 		mode = MAIN_REFLOW;
-		Sensor_SetWeight(weight / 100.0f);
+		Sensor_SetWeight(weight); // in percent
 		break;
 	case KEY_S:
 		mode = MAIN_HOME;

@@ -76,7 +76,7 @@
  *     thermal capacity of the PCB to be soldered. This weight is
  *     used to create a weighted average of the left and right thermocouple.
  *     This is ONLY useful if the TCs are patched to carry such loads, i.e.
- *     a 5c Euro coin on the right thermo-couple and light-weight PCB on the right.
+ *     a 5c Euro coin on the right thermo-couple and 0.2mm copper foil on the left.
  */
 #define CONTROL_TEMPERATURE		LR_WEIGHTED_AVERAGE
 

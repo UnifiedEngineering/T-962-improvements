@@ -222,9 +222,19 @@ static SCLI_CMD_RET cmd_set(uint8_t argc, char *argv[])
 
 static SCLI_CMD_RET cmd_reflow(uint8_t argc, char *argv[])
 {
+#if CONTROL_TEMPERATURE == LR_WEIGHTED_AVERAGE
+	if (argc > 2)
+		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+	if (argc < 2) {
+		printf(RED "\n... weight in %% must be given\n" WHITE);
+		return -1;
+	}
+	Sensor_SetWeight(coerce(atoi(argv[1]), 0, 100));
+#else
 	UNUSED(argv);
 	if (argc > 1)
 		printf(YELLOW "\n... ignoring arguments\n" WHITE);
+#endif
 
 	printf("\n");
 	if (!Set_Mode(MAIN_REFLOW)) {

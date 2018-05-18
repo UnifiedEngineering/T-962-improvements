@@ -17,7 +17,8 @@
  */
 static struct { float offset; float gain; } adjust[2];
 static float temperature[TC_NUM_ITEMS];
-static float control_weight = 0.5;
+/* the smallest weight creates the lowest radiation output */
+static float control_weight = 0.0f;
 
 // values used in config.h
 #define TC_NONE			0
@@ -163,12 +164,12 @@ void Sensor_InitNV(void)
 }
 
 /*
- * set the control weight to a value <= 1.0f, it will only be used if
+ * set the control weight to a percent value 0..100, it will only be used if
  * CONTROL_TEMPERATURE is configured to be LR_WEIGHTED_AVERAGE
  */
-void Sensor_SetWeight(float w)
+void Sensor_SetWeight(int w)
 {
-	control_weight = w;
+	control_weight = w / 100.0f;
 }
 
 void Sensor_DoConversion(void)
