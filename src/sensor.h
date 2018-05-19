@@ -18,5 +18,6 @@ void Sensor_DoConversion(void);
 float Sensor_GetTemp(TempSensor_t sensor);
 uint8_t Sensor_IsValid(TempSensor_t sensor);
 void Sensor_SetWeight(int w);
+void Sensor_TweakWhileCooling(void);
 
 #endif /* SENSORS_H_ */

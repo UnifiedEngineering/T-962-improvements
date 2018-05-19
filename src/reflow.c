@@ -72,8 +72,7 @@ typedef struct {
 
 // consts
 static const heater_fan_t all_off = { 0, 0 };
-
-// external interface
+static const heater_fan_t cool_down = {0, 255};
 
 /*!
  * allow external world to enter bake mode
@@ -243,7 +242,7 @@ static void set_heater_fan(heater_fan_t hf)
 static void log_reflow(bool header, heater_fan_t hf)
 {
 	if (reflow_log_level >= LOG_VERBOSE ||
-		(reflow_log_level >= LOG_INFO && reflow_state != REFLOW_STANDBY && reflow_state != REFLOW_COOLING)) {
+		(reflow_log_level >= LOG_INFO && reflow_state != REFLOW_STANDBY)) {
 		if (header)
 			printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
 		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %5.1f, %5.1f,  %3u, %3u,  %5.1f, %s",
@@ -311,11 +310,12 @@ static int32_t Reflow_Work(void)
 			// use look-ahead if heating (it works better)
 			if (value_in10s > value)
 				value = value_in10s;
-			reflow_info.time_done = seconds_since_start();
 			control_heater_fan(value, false);
 		} else {
 			log(LOG_INFO, "Reflow done");
-			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+			// cooling takes much longer due to the capacity of the oven drawer
+			// this only has an impact if LR_WEIGHTED_AVERAGE is selected!
+			Sensor_TweakWhileCooling();
 			reflow_state = REFLOW_COOLING;
 		}
 		break;
@@ -328,7 +328,6 @@ static int32_t Reflow_Work(void)
 		control_heater_fan(reflow_info.setpoint, false);
 		break;
 	case REFLOW_BAKE:
-		reflow_info.time_done = seconds_since_start();
 		if (reflow_info.time_to_go < reflow_info.time_done) {
 			log(LOG_INFO, "Bake done");
 			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
@@ -339,15 +338,20 @@ static int32_t Reflow_Work(void)
 	case REFLOW_COOLING:
 		// cool down to STANDBYTEMP, go full speed
 		reflow_info.setpoint = (float) STANDBYTEMP;
-		control_heater_fan(0, true);
+		set_heater_fan(cool_down);
+		log_reflow(false, cool_down);
 
 		if (reflow_info.temperature < (float) STANDBYTEMP) {
+			Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			set_heater_fan(all_off);
 			reflow_info.time_to_go = 0;
 			reflow_state = REFLOW_STANDBY;
 		}
 		break;
 	}
+
+	// do it here, since might have been reset above
+	reflow_info.time_done = seconds_since_start();
 
 	return constant_time_interval();
 }

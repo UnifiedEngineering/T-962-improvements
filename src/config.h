@@ -91,11 +91,6 @@
 #define RAMPTEST_PROFILE
 
 /*
- * include a PID controller profile into the standard profiles (see reflow_profiles.c)
- */
-#define PIDTEST_PROFILE
-
-/*
  * don't use the font width information in bit 7 of the font, simply always use
  * a width of 6 pixels (see lcd.c)
  */

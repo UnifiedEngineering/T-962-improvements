@@ -7,7 +7,7 @@
 #include "onewire.h"
 #include "max31855.h"
 #include "nvstorage.h"
-
+#include "rtc.h"
 #include "sensor.h"
 #include "config.h"
 
@@ -19,6 +19,15 @@ static struct { float offset; float gain; } adjust[2];
 static float temperature[TC_NUM_ITEMS];
 /* the smallest weight creates the lowest radiation output */
 static float control_weight = 0.0f;
+/*
+ * only used with LR_WEIGHTED_AVERAGE, but left in to save a few ifdefs
+ *  offsets the difference of the left and right thermocouple when cooling
+ *  .. see Sensor_TweakWhileCooling()
+ */
+static float tweak_temperature = 0.0f;
+static uint32_t tweak_time;
+// decay time to heavy thermocouple in seconds
+#define TWEAK_DECAY_TIME	180
 
 // values used in config.h
 #define TC_NONE			0
@@ -113,6 +122,21 @@ static inline float get_T(TempSensor_t sensor)
 	return accessors[_if].T(ch) + accessors[_if].CJT(ch);
 }
 
+// removed if not used anyway
+static inline float tweak_offset(void)
+{
+	uint32_t ct = RTC_Read();
+	float d;
+
+	if (ct > tweak_time)
+		return 0.0f;
+
+	// currently a quadratic decay, starts off more slowly as TC is more exposed to the fan
+	// NOTE: this only fits in the center of the drawer, to the left cooling performance is a
+	//  lot higher! The straightener is still not good enough!
+	d = 1.0f - (float) (tweak_time - ct) / TWEAK_DECAY_TIME;	// from 0 .. 1
+	return tweak_temperature * (1.0f - d*d);
+}
 /*
  * calculate the oven control temperature, depending on the configuration,
  * default is average of TC_LEFT and TC_RIGHT
@@ -144,7 +168,7 @@ static float control_T(void)
 
 #elif CONTROL_TEMPERATURE == LR_WEIGHTED_AVERAGE
 	// this assumes the heavier weight is placed on the right TC!
-	return temperature[TC_RIGHT] * control_weight + temperature[TC_LEFT] * (1.0f - control_weight);
+	return temperature[TC_RIGHT] * control_weight + temperature[TC_LEFT] * (1.0f - control_weight) + tweak_offset();
 
 #else
 	#error "CONTROL_TEMPERATURE is not configured correctly"
@@ -171,6 +195,22 @@ void Sensor_SetWeight(int w)
 {
 	control_weight = w / 100.0f;
 }
+
+/*
+ * set tweak flag (influences only LR_WEIGHTED_AVERAGE)
+ *   - switch weight to 100%
+ *   - low pass filter the difference between the current control temperature
+ *     and the right thermocouple (heavy)
+ * this is to generate something that is likely to be the PCB temperature while
+ * cooling.
+ */
+void Sensor_TweakWhileCooling(void)
+{
+	control_weight = 1.0f;
+	tweak_temperature = temperature[TC_CONTROL] - temperature[TC_RIGHT];
+	tweak_time = RTC_Read() + TWEAK_DECAY_TIME;
+}
+
 
 void Sensor_DoConversion(void)
 {

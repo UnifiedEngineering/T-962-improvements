@@ -358,8 +358,9 @@ static MainMode_t Reflow_Mode(MainMode_t mode) {
 	LCD_printf(110, 20, 0, "ACT"); LCD_printf(110, 26, 0, "%03u", (unsigned) i->temperature);
 	LCD_printf(110, 33, 0, "RUN"); LCD_printf(110, 39, 0, "%03u", (unsigned) i->time_done);
 
-	// Plot actual temperature on top of desired profile
-	LCD_SetPixel(X_AXIS + i->time_done / 5, Y_AXIS - (uint16_t) i->temperature / 5);
+	// Plot actual temperature on top of desired profile, time keeps running in cooling state
+	LCD_SetPixel(coerce(X_AXIS + i->time_done / 5, X_AXIS, 108),
+			     Y_AXIS - (uint16_t) i->temperature / 5);
 
 	fkey_t key = Keypad_Get(1, 1);
 
