@@ -58,12 +58,11 @@ This is very much a quick hack to get only the basic functionality needed up and
 Happy hacking!
 
 # Acknowledgements
-This project is using the C PID Library - Version 1.0.1, GPLv3
- * modified my Matthew Blythe <mblythester@gmail.com> mjblythe.com/hacks
- * originally by Brett Beauregard <br3ttb@gmail.com> brettbeauregard.com
+This project is using the [C PID Library - Version 1.0.1, GPLv3]
 
 [wiki]: https://github.com/UnifiedEngineering/T-962-improvements/wiki
 [Travis-CI]: https://travis-ci.org/UnifiedEngineering/T-962-improvements
 [Flashing firmware]: https://github.com/UnifiedEngineering/T-962-improvements/wiki/Flashing-the-LPC21xx-controller
 [DS18B20]: http://datasheets.maximintegrated.com/en/ds/DS18B20.pdf
 [hackaday post]: http://hackaday.com/2014/11/27/improving-the-t-962-reflow-oven/
+[C PID Library - Version 1.0.1, GPLv3]:https://github.com/mblythe86/C-PID-Library
