@@ -57,23 +57,26 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	uint8_t yoffset = Y & 0x7;
 	Y >>= 3;
 
-#ifndef MINIMALISTIC
+//#ifndef MINIMALISTIC
 	uint8_t width = (theChar & 0x80) ? 7 : 6;
-#else
-	uint8_t width=6;
-#endif
+//#else
+//	uint8_t width=6;
+//#endif
 	for (uint8_t x = 0; x < width; x++) {
 		uint16_t temp=smallfont[fontoffset++];
-#ifndef MINIMALISTIC
-		if (theChar & 0x80) { temp ^= 0x7f; }
-#endif
+//#ifndef MINIMALISTIC
+		if (theChar & 0x80) {
+			temp ^= 0x7f;
+		}
+//#endif
 		temp = temp << yoffset; // Shift pixel data to the correct lines
 		uint16_t old = (FB[Y][X] | (FB[Y + 1][X] << 8));
-#ifndef MINIMALISTIC
+//#ifndef MINIMALISTIC
 		old &= ~(0x7f << yoffset); //Clean out old data
-#endif
+//#endif
 		temp |= old; // Merge old data in FB with new char
-		if (X >= (FB_WIDTH)) return; // make sure we don't overshoot
+		if (X >= (FB_WIDTH))
+			return; // make sure we don't overshoot
 		if (Y < ((FB_HEIGHT / 8) - 0)) {
 			FB[Y][X] = temp & 0xff;
 		}
