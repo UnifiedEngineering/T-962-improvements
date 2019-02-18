@@ -4,7 +4,7 @@ This project is a fork of the original Unified Engineering firmware for the T-96
 
 ![Photo of boot splash screen](http://www.smashcat.org/av/T-962-2.jpg)
 
-![Photo of new display mode](http://www.smashcat.org/av/display-mode-2.jpg)
+![Photo of new display mode](http://www.smashcat.org/av/display-mode-2-2.jpg)
 
 Original project is here: [https://github.com/UnifiedEngineering/T-962-improvements] {Unified Engineering repo)
 
