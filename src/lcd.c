@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
+#include "bigNums.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
@@ -191,6 +192,14 @@ void LCD_SetPixel(uint8_t x, uint8_t y) {
 	FB[y >> 3][x] |= 1 << (y & 0x07);
 }
 
+void LCD_ClearPixel(uint8_t x, uint8_t y) {
+	if (x >= FB_WIDTH || y >= FB_HEIGHT) {
+		// No random memory overwrites thank you
+		return;
+	}
+	FB[y >> 3][x] &= ~(1 << (y & 0x07));
+}
+
 void LCD_SetBacklight(uint8_t backlight) {
 	if (backlight) {
 		FIO0SET = (1 << 11);
@@ -348,5 +357,45 @@ void LCD_FB_Update() {
 			LCD_WriteData(FB[page][i], 0);
 			LCD_WriteData(FB[page][i + 64], 1);
 		}
+	}
+}
+
+// Draws 9 x 16 or 16 x 16 graphics
+void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat){
+	// Big characters are 9 16bit words in size
+	int16_t n=9,yPos=(y>>3),yShift=(y & 0x07);
+	uint16_t c;
+	uint16_t *p=font9x16+(num*9);;
+
+	if((theFormat&FONT16X16)>0){
+		p=font16x16+(num*16);
+		n=16;
+	}
+
+	while(n-->0){
+		if(x>-1 && x<FB_WIDTH){
+			c=*p;
+			if((theFormat&INVERT)>0)
+				c^=0xFFFF;
+			if(yPos>-1 && yPos<(FB_HEIGHT/8)){
+				FB[yPos][x]|=(c<<yShift)&0xff;	// LSB is at top, to shift left to move pixels down
+			}
+			if(yPos+1>-1 && yPos+1<(FB_HEIGHT/8)){
+				FB[yPos+1][x]|=(c>>8-yShift);	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
+			}
+			if(yShift>0 && (yPos+2>-1 && yPos+2<(FB_HEIGHT/8))){
+				FB[yPos+2][x]|=(c>>(16-yShift));
+			}
+		}
+		++p;
+		++x;
+	}
+}
+
+void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y,uint8_t theFormat){
+	while(numDigits>0){
+		--numDigits;
+		LCD_DrawSprite(num%10,x+(numDigits*10),y,theFormat);
+		num/=10;
 	}
 }

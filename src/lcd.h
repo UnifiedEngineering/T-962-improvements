@@ -12,6 +12,9 @@
 #define FB_WIDTH (128)
 
 #define FONT6X6 (0)
+#define FONT9X16 (1)
+#define FONT16X16 (2)
+
 #define INVERT (0x80)
 
 #define LCD_CENTER (64)
@@ -23,9 +26,12 @@ void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, ui
 void LCD_MultiLineH(uint8_t startx, uint8_t endx, uint64_t ymask);
 uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset);
 void LCD_SetPixel(uint8_t x, uint8_t y);
+void LCD_ClearPixel(uint8_t x, uint8_t y);
 void LCD_SetBacklight(uint8_t backlight);
 void LCD_Init(void);
 void LCD_FB_Clear(void);
 void LCD_FB_Update(void);
+void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat);
+void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y, uint8_t theFormat);
 
 #endif /* LCD_H_ */

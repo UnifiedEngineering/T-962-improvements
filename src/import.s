@@ -40,3 +40,10 @@ f3editbmp:
 	.incbin "../src/images/f3edit-18x16.bmp"
 f3editbmpsize:
 	.word .-f3editbmp
+
+	.global graph2bmp
+	.global graph2bmpsize
+graph2bmp:
+	.incbin "../src/images/graph-2-128x64.bmp"
+graph2bmpsize:
+	.word .-graph2bmp

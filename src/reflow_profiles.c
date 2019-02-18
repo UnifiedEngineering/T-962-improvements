@@ -210,18 +210,19 @@ void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
 void Reflow_PlotProfile(int highlight) {
 	LCD_BMPDisplay(graphbmp, 0, 0);
 
-	// No need to plot first value as it is obscured by Y-axis
-	for(int x = 1; x < NUMPROFILETEMPS; x++) {
+	for(int x = 0; x < NUMPROFILETEMPS; x++) {
 		int realx = (x << 1) + XAXIS;
 		int y = profiles[profileidx]->temperatures[x] / 5;
 		y = YAXIS - y;
 		LCD_SetPixel(realx, y);
 
 		if (highlight == x) {
-			LCD_SetPixel(realx - 1, y - 1);
-			LCD_SetPixel(realx + 1, y + 1);
-			LCD_SetPixel(realx - 1, y + 1);
-			LCD_SetPixel(realx + 1, y - 1);
+			for(uint8_t xPos=XAXIS;xPos<109;xPos++){
+				LCD_SetPixel(xPos, y);
+			}
+			for(uint8_t yPos=7;yPos<YAXIS;yPos++){
+				LCD_SetPixel(realx, yPos);
+			}
 		}
 	}
 }
