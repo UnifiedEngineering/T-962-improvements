@@ -360,18 +360,21 @@ void LCD_FB_Update() {
 	}
 }
 
-// Draws 9 x 16 or 16 x 16 graphics
+// Draws 9 x 16 or 16 x 16 graphics - can draw partially on-screen sprites
 void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat){
 	// Big characters are 9 16bit words in size
 	int16_t n=9,yPos=(y>>3),yShift=(y & 0x07);
 	uint16_t c;
-	uint16_t *p=font9x16+(num*9);;
+	const uint16_t *p=sprite9x16+(num*9);;
 
-	if((theFormat&FONT16X16)>0){
-		p=font16x16+(num*16);
+	if((theFormat&SPRITE16X16)>0){
+		p=sprite16x16+(num*16);
 		n=16;
 	}
+	uint8_t flipHoriz=( (theFormat & FLIP_HORIZONTAL) !=0);
 
+	if(flipHoriz)
+		x+=(n-1);
 	while(n-->0){
 		if(x>-1 && x<FB_WIDTH){
 			c=*p;
@@ -381,14 +384,17 @@ void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat){
 				FB[yPos][x]|=(c<<yShift)&0xff;	// LSB is at top, to shift left to move pixels down
 			}
 			if(yPos+1>-1 && yPos+1<(FB_HEIGHT/8)){
-				FB[yPos+1][x]|=(c>>8-yShift);	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
+				FB[yPos+1][x]|=(c>>(8-yShift));	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
 			}
 			if(yShift>0 && (yPos+2>-1 && yPos+2<(FB_HEIGHT/8))){
 				FB[yPos+2][x]|=(c>>(16-yShift));
 			}
 		}
 		++p;
-		++x;
+		if(flipHoriz)
+			--x;
+		else
+			++x;
 	}
 }
 
@@ -397,5 +403,17 @@ void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y,uint8_t 
 		--numDigits;
 		LCD_DrawSprite(num%10,x+(numDigits*10),y,theFormat);
 		num/=10;
+	}
+}
+
+void LCD_ScrollDisplay(void){
+	uint8_t x,y;
+	for(y=0;y<(FB_HEIGHT>>3)-1;y++){
+		for(x=0;x<FB_WIDTH;x++){
+			FB[y][x]=(FB[y][x]>>1)|(FB[y+1][x]<<7);
+		}
+	}
+	for(x=0;x<FB_WIDTH;x++){
+		FB[y][x]>>=1;
 	}
 }

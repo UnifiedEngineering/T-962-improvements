@@ -8,16 +8,18 @@
 #ifndef LCD_H_
 #define LCD_H_
 
-#define FB_HEIGHT (64)
-#define FB_WIDTH (128)
+#define FB_HEIGHT 		(64)
+#define FB_WIDTH 		(128)
 
-#define FONT6X6 (0)
-#define FONT9X16 (1)
-#define FONT16X16 (2)
+#define FONT6X6 		(0)
+#define SPRITE9X16 		(1)
+#define SPRITE16X16 	(2)
 
-#define INVERT (0x80)
+#define FLIP_HORIZONTAL (0x10)
+#define INVERT 			(0x80)
 
-#define LCD_CENTER (64)
+#define LCD_CENTER 		(64)
+
 #define LCD_ALIGN_CENTER(x) (LCD_CENTER - (x * 3))
 #define LCD_ALIGN_RIGHT(x) (127 - (x * 6))
 
@@ -33,5 +35,6 @@ void LCD_FB_Clear(void);
 void LCD_FB_Update(void);
 void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat);
 void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y, uint8_t theFormat);
+void LCD_ScrollDisplay(void);
 
 #endif /* LCD_H_ */

@@ -77,6 +77,23 @@ static char* help_text = \
 " values                  Dump currently measured values\n" \
 "\n";
 
+#define TOTAL_SPRITES	5
+
+typedef struct {
+
+	int16_t x;
+	int16_t y;
+	int16_t speed;
+	int16_t dir;
+	int16_t changeCnt;
+	int16_t animFrame;
+	int16_t	startFrame;
+	int16_t	totalFrames;
+	int16_t baseFrame;
+	int16_t state;
+
+} spriteStruct;
+
 static int32_t Main_Work(void);
 
 int main(void) {
@@ -157,6 +174,7 @@ typedef enum eMainMode {
 	MAIN_SELECT_PROFILE,
 	MAIN_EDIT_PROFILE,
 	MAIN_REFLOW,
+	MAIN_SCREENSAVER,
 	MAIN_INIT
 } MainMode_t;
 
@@ -166,7 +184,10 @@ static uint16_t animTicker=0,animCnt=0;
 static int16_t animIX=0,animIY=0;
 static uint8_t blinkCnt=0,blinkOn=0;
 static int8_t reflowDisplay=0;
+static uint8_t screensaverEnabled=1;
+static uint16_t	screensaverTimeout=600,screensaverCnt=0;	// 60 seconds timeout
 
+static spriteStruct sprite[TOTAL_SPRITES];
 
 void showHeader(char *s){
 	LCD_disp_str((uint8_t*)" ", 1, 0, 0, FONT6X6);
@@ -194,6 +215,7 @@ void showBar(uint16_t v,uint8_t y){
 
 static int32_t Main_Work(void) {
 	static MainMode_t mode = MAIN_HOME;
+//	static MainMode_t mode = MAIN_SCREENSAVER;
 	static MainMode_t prevMode = MAIN_INIT;
 	static uint16_t setpoint = 0;
 	static uint8_t modeChange=0;
@@ -523,28 +545,28 @@ static int32_t Main_Work(void) {
 			showBar(52-v,45);
 
 			if(blinkOn==1 && diff>5){
-				LCD_DrawSprite(10,63,3,FONT9X16);
-				LCD_DrawSprite(10,73,3,FONT9X16);
-				LCD_DrawSprite(10,83,3,FONT9X16);
-				LCD_DrawSprite(10,96,3,FONT9X16);
+				LCD_DrawSprite(10,63,3,SPRITE9X16);
+				LCD_DrawSprite(10,73,3,SPRITE9X16);
+				LCD_DrawSprite(10,83,3,SPRITE9X16);
+				LCD_DrawSprite(10,96,3,SPRITE9X16);
 			}else{
-				LCD_drawBigNum(Reflow_GetSetpoint(),3, 63,3,FONT9X16|INVERT);
-				LCD_DrawSprite(0,96,3,FONT9X16|INVERT);
+				LCD_drawBigNum(Reflow_GetSetpoint(),3, 63,3,SPRITE9X16|INVERT);
+				LCD_DrawSprite(0,96,3,SPRITE9X16|INVERT);
 			}
 
 			uint16_t t=(Sensor_GetTemp(TC_AVERAGE)*10);
 			if(blinkOn==1 && diff<-5){
-				LCD_DrawSprite(10,63,24,FONT9X16);
-				LCD_DrawSprite(10,73,24,FONT9X16);
-				LCD_DrawSprite(10,83,24,FONT9X16);
-				LCD_DrawSprite(10,96,24,FONT9X16);
+				LCD_DrawSprite(10,63,24,SPRITE9X16);
+				LCD_DrawSprite(10,73,24,SPRITE9X16);
+				LCD_DrawSprite(10,83,24,SPRITE9X16);
+				LCD_DrawSprite(10,96,24,SPRITE9X16);
 			}else{
-				LCD_drawBigNum(t/10,3, 63,24,FONT9X16|INVERT);
-				LCD_DrawSprite((int8_t)(t%10),96,24,FONT9X16|INVERT);
+				LCD_drawBigNum(t/10,3, 63,24,SPRITE9X16|INVERT);
+				LCD_DrawSprite((int8_t)(t%10),96,24,SPRITE9X16|INVERT);
 			}
 
-			LCD_drawBigNum((animIY-ticks)/60,2, 63,45,FONT9X16|INVERT);
-			LCD_drawBigNum((animIY-ticks)%60,2, 86,45,FONT9X16|INVERT);
+			LCD_drawBigNum((animIY-ticks)/60,2, 63,45,SPRITE9X16|INVERT);
+			LCD_drawBigNum((animIY-ticks)%60,2, 86,45,SPRITE9X16|INVERT);
 
 		}
 
@@ -808,11 +830,152 @@ static int32_t Main_Work(void) {
 
 
 
+	// Edit profile
+	} else if (mode == MAIN_SCREENSAVER) {
+		uint8_t n=0;
+		if(modeChange){
+			int16_t initA[5][7]={
+				{-15,24, 2, 0, 3, 3, 0},
+				{42,-15, 3, 1, 1, 2, 6},
+				{84,-15, 3, 1, 2, 2, 6},
+				{62,63,  1, 1, 1, 2, 6},
+				{102,63, 1, 1, 2, 2, 6},
+			};
+			for(n=0;n<TOTAL_SPRITES;n++){
+				// dirs: 0=left,1=up,2=right,3=down
+				sprite[n].x=			initA[n][0];
+				sprite[n].y=			initA[n][1];
+				sprite[n].dir=			initA[n][2];
+				sprite[n].changeCnt=	(rand()%60)+20;
+				sprite[n].animFrame=	initA[n][3];
+				sprite[n].speed=		initA[n][4];
+				sprite[n].startFrame=	initA[n][3];
+				sprite[n].totalFrames=	initA[n][5];
+				sprite[n].baseFrame=	initA[n][6];
+				sprite[n].state=		0;	// 0=normal, 1=eaten
+			}
+		}
 
+		if(animIY==0){
+			if(++animIX==32){
+				animIY=1;
+			}else{
+				LCD_ScrollDisplay();
+				LCD_ScrollDisplay();
+			}
+			retval = TICKS_MS(50);
+		}else{
+			LCD_FB_Clear();
+
+			++animIX;
+
+			for(n=0;n<TOTAL_SPRITES;n++){
+
+				uint8_t animFrame=sprite[n].animFrame;
+				uint8_t spriteHorizFlip=0;
+
+				if(sprite[n].state==0){
+					if(animIX&1){
+						if(++sprite[n].animFrame==sprite[n].totalFrames+sprite[n].startFrame){
+							sprite[n].animFrame=sprite[n].startFrame;
+						}
+					}
+
+					switch(sprite[n].dir){
+
+					case 0:	// left
+						sprite[n].x-=sprite[n].speed;
+						if(sprite[n].x<-15)
+							sprite[n].x+=128+16;
+						spriteHorizFlip=FLIP_HORIZONTAL;
+						break;
+
+					case 1: // up
+						sprite[n].y-=sprite[n].speed;
+						if(sprite[n].y<-15)
+							sprite[n].y+=64+16;
+						if(animFrame>0)
+							animFrame+=2;
+						break;
+
+					case 2:	// right
+						sprite[n].x+=sprite[n].speed;
+						if(sprite[n].x>127)
+							sprite[n].x-=128+16;
+						break;
+
+					case 3:	// down
+						sprite[n].y+=sprite[n].speed;
+						if(sprite[n].y>63)
+							sprite[n].y-=64+16;
+						if(animFrame>0)
+							animFrame+=4;
+						break;
+					}
+
+					if(--sprite[n].changeCnt<=0){
+						sprite[n].changeCnt=(rand()%(60/sprite[n].speed))+20;
+						if((rand()%2)==0){
+							--sprite[n].dir;
+						}else{
+							++sprite[n].dir;
+						}
+						if(sprite[n].dir<0)
+							sprite[n].dir=3;
+						else if(sprite[n].dir>3)
+							sprite[n].dir=0;
+					}
+
+					// Check for collision between ghost and pacman - pacman eats ghosts :)
+					if(n>0 && sprite[n].state==0){
+						if(!(sprite[n].x<sprite[0].x-10 || sprite[n].x>sprite[0].x+10 || sprite[n].y<sprite[0].y-10 || sprite[n].y>sprite[0].y+10)){
+							sprite[n].state=1;
+						}
+					}
+				}else{
+					animFrame=7;
+					if(--sprite[n].y<-10){
+						sprite[n].state=0;
+						switch(rand()%4){
+						case 0:
+							sprite[n].x=rand()%112;
+							sprite[n].y=-15;
+							sprite[n].dir=3;
+							break;
+						case 1:
+							sprite[n].x=rand()%112;
+							sprite[n].y=63;
+							sprite[n].dir=1;
+							break;
+						case 2:
+							sprite[n].y=rand()%48;
+							sprite[n].x=-15;
+							sprite[n].dir=2;
+							break;
+						case 3:
+							sprite[n].y=rand()%48;
+							sprite[n].x=127;
+							sprite[n].dir=0;
+							break;
+						}
+					}
+				}
+
+				LCD_DrawSprite(animFrame+sprite[n].baseFrame,sprite[n].x,sprite[n].y,SPRITE16X16|spriteHorizFlip);
+			}
+
+			retval = TICKS_MS(50);
+
+			if (keyspressed & KEY_S) {
+				retval=0;
+				mode=MAIN_HOME;
+			}
+		}
 	// Main menu
 	} else {
 		if(modeChange){
 			LCD_FB_Clear();
+			screensaverCnt=0;
 			LCD_disp_str((uint8_t*)"F1", 2, 0,     (8 * 1)+1, FONT6X6 | INVERT);
 			LCD_disp_str((uint8_t*)"ABOUT", 5, 14, (8 * 1)+1, FONT6X6);
 			LCD_disp_str((uint8_t*)"F2", 2, 0,     (8 * 2)+1, FONT6X6 | INVERT);
@@ -831,7 +994,6 @@ static int32_t Main_Work(void) {
 		}
 
 		showHeader("MAIN MENU");
-
 
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), (8 * 6)+1, FONT6X6 | INVERT);
@@ -878,6 +1040,10 @@ static int32_t Main_Work(void) {
 			Reflow_Init();
 			Reflow_SetMode(REFLOW_REFLOW);
 			retval = 0; // Force immediate refresh
+		}
+
+		if(screensaverEnabled && ++screensaverCnt>=screensaverTimeout){
+			mode=MAIN_SCREENSAVER;
 		}
 	}
 
