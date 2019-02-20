@@ -18,6 +18,7 @@
  */
 
 #include "LPC214x.h"
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,6 +42,7 @@
 #include "max31855.h"
 #include "systemfan.h"
 #include "setup.h"
+#include "ui_extras.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
@@ -77,22 +79,6 @@ static char* help_text = \
 " values                  Dump currently measured values\n" \
 "\n";
 
-#define TOTAL_SPRITES	5
-
-typedef struct {
-
-	int16_t x;
-	int16_t y;
-	int16_t speed;
-	int16_t dir;
-	int16_t changeCnt;
-	int16_t animFrame;
-	int16_t	startFrame;
-	int16_t	totalFrames;
-	int16_t baseFrame;
-	int16_t state;
-
-} spriteStruct;
 
 static int32_t Main_Work(void);
 
@@ -178,44 +164,15 @@ typedef enum eMainMode {
 	MAIN_INIT
 } MainMode_t;
 
-static char buf[22];
+static char buf[25];
 static int len;
-static uint16_t animTicker=0,animCnt=0;
+static uint16_t animCnt=0;
 static int16_t animIX=0,animIY=0;
 static uint8_t blinkCnt=0,blinkOn=0;
-static int8_t reflowDisplay=0;
-static uint8_t screensaverEnabled=1;
-static uint16_t	screensaverTimeout=600,screensaverCnt=0;	// 60 seconds timeout
 
-static spriteStruct sprite[TOTAL_SPRITES];
-
-void showHeader(char *s){
-	LCD_disp_str((uint8_t*)" ", 1, 0, 0, FONT6X6);
-	LCD_disp_str((uint8_t*)"<<<<<<<<", 8, 5-animTicker, 0, FONT6X6);
-
-	LCD_disp_str((uint8_t*)" ", 1, (20*6)+2, 0, FONT6X6);
-	LCD_disp_str((uint8_t*)">>>>>>>>", 8, (12*6)+2+animTicker, 0, FONT6X6);
-
-	len = snprintf(buf, sizeof(buf),s);
-	LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 6 * 0, FONT6X6);
-
-}
-
-void showBar(uint16_t v,uint8_t y){
-	if(v>52)
-		v=52;
-	v=52-v;
-	uint8_t n,i;
-	for(n=0;n<6;n++){
-		for(i=0;i<v;i++){
-			LCD_ClearPixel(i+7-n,y+n);
-		}
-	}
-}
 
 static int32_t Main_Work(void) {
 	static MainMode_t mode = MAIN_HOME;
-//	static MainMode_t mode = MAIN_SCREENSAVER;
 	static MainMode_t prevMode = MAIN_INIT;
 	static uint16_t setpoint = 0;
 	static uint8_t modeChange=0;
@@ -358,17 +315,14 @@ static int32_t Main_Work(void) {
 		blinkCnt=0;
 	}
 
-	if(++animTicker==6){
-		animTicker=0;
-	}
-
 
 
 
 	// main menu state machine
 	// setup/calibration
 	if (mode == MAIN_SETUP) {
-		static uint8_t selected = 0;
+		static int8_t selected = 0;
+		static int8_t scrollPos = 0;
 		int y = 0;
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
@@ -408,7 +362,32 @@ static int32_t Main_Work(void) {
 
 		y += 11;
 
-		for (int i = 0; i < Setup_getNumItems() ; i++) {
+		int8_t maxItems=6;
+		int8_t numItems=Setup_getNumItems();
+		int8_t endItem=scrollPos+maxItems;
+
+		if(scrollPos>selected){
+			scrollPos=selected;
+			endItem=scrollPos+maxItems;
+		}else if(selected>=endItem){
+			endItem=selected+1;
+			scrollPos=endItem-maxItems;
+		}
+
+		if(scrollPos<0){
+			scrollPos=0;
+			endItem=maxItems;
+		}
+
+		if(endItem>numItems){
+			endItem=numItems;
+		}
+
+		if(endItem-scrollPos>maxItems){
+			endItem=scrollPos+maxItems;
+		}
+
+		for (int i = scrollPos; i < endItem ; i++) {
 			len = Setup_snprintFormattedValue(buf, sizeof(buf), i);
 			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected == i) ? INVERT : 0);
 			y += 7;
@@ -441,14 +420,14 @@ static int32_t Main_Work(void) {
 			for(n=0;n<8;n++){
 				for(i=0;i<5;i++){
 					if( (i>1) || (n>0 && i>0) || (n>1 && i==0) )
-						LCD_disp_str(" ", 1, (128-8*6)+(n*6), 26+(i*7), FONT6X6|INVERT);
+						LCD_disp_str((uint8_t*)" ", 1, (128-8*6)+(n*6), 26+(i*7), FONT6X6|INVERT);
 				}
 			}
 
 			for(n=0;n<22;n++){
-				LCD_disp_str(" ", 1, n*6, 2, FONT6X6);
-				LCD_disp_str(" ", 1, n*6, 64-10, FONT6X6);
-				LCD_disp_str(" ", 1, n*6, 64-7, FONT6X6);
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 2, FONT6X6);
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 64-10, FONT6X6);
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 64-7, FONT6X6);
 			}
 
 			for(n=0;n<128;n++){
@@ -482,93 +461,8 @@ static int32_t Main_Work(void) {
 
 	// Reflow active!
 	} else if (mode == MAIN_REFLOW) {
-		uint32_t ticks = RTC_Read();
-
+		displayReflowScreen(keyspressed,modeChange);
 		retval = TICKS_MS(100);
-
-		if (keyspressed & KEY_F1) {
-			--reflowDisplay;
-		}
-		if (keyspressed & KEY_F2) {
-			++reflowDisplay;
-		}
-
-		if(reflowDisplay>1){
-			reflowDisplay=0;
-		}else if(reflowDisplay<0){
-			reflowDisplay=1;
-		}
-
-		if(modeChange){
-			uint8_t n;
-			for(n=0;n<NUMPROFILETEMPS-1;n++){
-				if(Reflow_GetSetpointAtIdx(n)==0 && Reflow_GetSetpointAtIdx(n+1)==0){
-					animIY=n-1;
-					break;
-				}
-			}
-			if(animIY<=0){
-				animIY=n;
-			}
-			animIY*=10;
-		}
-
-		int16_t diff=Reflow_GetSetpoint()-Reflow_GetActualTemp();
-
-		if(reflowDisplay==0){
-			Reflow_PlotDots();
-
-			LCD_BMPDisplay(stopbmp, 127 - 17, 0);
-
-
-			len = snprintf(buf, sizeof(buf), "SET %03u", Reflow_GetSetpoint());
-			LCD_disp_str((uint8_t*)buf, len, 15, 0, (diff>5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
-
-			len = snprintf(buf, sizeof(buf), "ACTUAL %03u", Reflow_GetActualTemp());
-
-			LCD_disp_str((uint8_t*)buf, len, 68, 0, (diff<-5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
-
-			len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
-			LCD_disp_str((uint8_t*)"RUN", 3, 110, 31, FONT6X6);
-			LCD_disp_str((uint8_t*)buf, len, 110, 37, FONT6X6);
-		}else if(reflowDisplay==1){
-			LCD_FB_Clear();
-			LCD_BMPDisplay(graph2bmp, 0, 0);
-
-			uint16_t v=(((13000*4)/200)*Reflow_GetSetpoint())/1000;	// use Sensor_GetTemp() for float
-			showBar(v,3);
-
-			v=(((13000*4)/200)*Reflow_GetActualTemp())/1000;
-			showBar(v,24);
-
-			v=((52000/animIY)*(unsigned int)ticks)/1000;
-			showBar(52-v,45);
-
-			if(blinkOn==1 && diff>5){
-				LCD_DrawSprite(10,63,3,SPRITE9X16);
-				LCD_DrawSprite(10,73,3,SPRITE9X16);
-				LCD_DrawSprite(10,83,3,SPRITE9X16);
-				LCD_DrawSprite(10,96,3,SPRITE9X16);
-			}else{
-				LCD_drawBigNum(Reflow_GetSetpoint(),3, 63,3,SPRITE9X16|INVERT);
-				LCD_DrawSprite(0,96,3,SPRITE9X16|INVERT);
-			}
-
-			uint16_t t=(Sensor_GetTemp(TC_AVERAGE)*10);
-			if(blinkOn==1 && diff<-5){
-				LCD_DrawSprite(10,63,24,SPRITE9X16);
-				LCD_DrawSprite(10,73,24,SPRITE9X16);
-				LCD_DrawSprite(10,83,24,SPRITE9X16);
-				LCD_DrawSprite(10,96,24,SPRITE9X16);
-			}else{
-				LCD_drawBigNum(t/10,3, 63,24,SPRITE9X16|INVERT);
-				LCD_DrawSprite((int8_t)(t%10),96,24,SPRITE9X16|INVERT);
-			}
-
-			LCD_drawBigNum((animIY-ticks)/60,2, 63,45,SPRITE9X16|INVERT);
-			LCD_drawBigNum((animIY-ticks)%60,2, 86,45,SPRITE9X16|INVERT);
-
-		}
 
 		// Abort reflow
 		if (Reflow_IsDone() || keyspressed & KEY_S) {
@@ -832,150 +726,32 @@ static int32_t Main_Work(void) {
 
 	// Edit profile
 	} else if (mode == MAIN_SCREENSAVER) {
-		uint8_t n=0;
-		if(modeChange){
-			int16_t initA[5][7]={
-				{-15,24, 2, 0, 3, 3, 0},
-				{42,-15, 3, 1, 1, 2, 6},
-				{84,-15, 3, 1, 2, 2, 6},
-				{62,63,  1, 1, 1, 2, 6},
-				{102,63, 1, 1, 2, 2, 6},
-			};
-			for(n=0;n<TOTAL_SPRITES;n++){
-				// dirs: 0=left,1=up,2=right,3=down
-				sprite[n].x=			initA[n][0];
-				sprite[n].y=			initA[n][1];
-				sprite[n].dir=			initA[n][2];
-				sprite[n].changeCnt=	(rand()%60)+20;
-				sprite[n].animFrame=	initA[n][3];
-				sprite[n].speed=		initA[n][4];
-				sprite[n].startFrame=	initA[n][3];
-				sprite[n].totalFrames=	initA[n][5];
-				sprite[n].baseFrame=	initA[n][6];
-				sprite[n].state=		0;	// 0=normal, 1=eaten
-			}
-		}
 
 		if(animIY==0){
+			if(modeChange){
+				initSprites();
+			}
 			if(++animIX==32){
 				animIY=1;
 			}else{
 				LCD_ScrollDisplay();
 				LCD_ScrollDisplay();
 			}
-			retval = TICKS_MS(50);
 		}else{
-			LCD_FB_Clear();
-
-			++animIX;
-
-			for(n=0;n<TOTAL_SPRITES;n++){
-
-				uint8_t animFrame=sprite[n].animFrame;
-				uint8_t spriteHorizFlip=0;
-
-				if(sprite[n].state==0){
-					if(animIX&1){
-						if(++sprite[n].animFrame==sprite[n].totalFrames+sprite[n].startFrame){
-							sprite[n].animFrame=sprite[n].startFrame;
-						}
-					}
-
-					switch(sprite[n].dir){
-
-					case 0:	// left
-						sprite[n].x-=sprite[n].speed;
-						if(sprite[n].x<-15)
-							sprite[n].x+=128+16;
-						spriteHorizFlip=FLIP_HORIZONTAL;
-						break;
-
-					case 1: // up
-						sprite[n].y-=sprite[n].speed;
-						if(sprite[n].y<-15)
-							sprite[n].y+=64+16;
-						if(animFrame>0)
-							animFrame+=2;
-						break;
-
-					case 2:	// right
-						sprite[n].x+=sprite[n].speed;
-						if(sprite[n].x>127)
-							sprite[n].x-=128+16;
-						break;
-
-					case 3:	// down
-						sprite[n].y+=sprite[n].speed;
-						if(sprite[n].y>63)
-							sprite[n].y-=64+16;
-						if(animFrame>0)
-							animFrame+=4;
-						break;
-					}
-
-					if(--sprite[n].changeCnt<=0){
-						sprite[n].changeCnt=(rand()%(60/sprite[n].speed))+20;
-						if((rand()%2)==0){
-							--sprite[n].dir;
-						}else{
-							++sprite[n].dir;
-						}
-						if(sprite[n].dir<0)
-							sprite[n].dir=3;
-						else if(sprite[n].dir>3)
-							sprite[n].dir=0;
-					}
-
-					// Check for collision between ghost and pacman - pacman eats ghosts :)
-					if(n>0 && sprite[n].state==0){
-						if(!(sprite[n].x<sprite[0].x-10 || sprite[n].x>sprite[0].x+10 || sprite[n].y<sprite[0].y-10 || sprite[n].y>sprite[0].y+10)){
-							sprite[n].state=1;
-						}
-					}
-				}else{
-					animFrame=7;
-					if(--sprite[n].y<-10){
-						sprite[n].state=0;
-						switch(rand()%4){
-						case 0:
-							sprite[n].x=rand()%112;
-							sprite[n].y=-15;
-							sprite[n].dir=3;
-							break;
-						case 1:
-							sprite[n].x=rand()%112;
-							sprite[n].y=63;
-							sprite[n].dir=1;
-							break;
-						case 2:
-							sprite[n].y=rand()%48;
-							sprite[n].x=-15;
-							sprite[n].dir=2;
-							break;
-						case 3:
-							sprite[n].y=rand()%48;
-							sprite[n].x=127;
-							sprite[n].dir=0;
-							break;
-						}
-					}
-				}
-
-				LCD_DrawSprite(animFrame+sprite[n].baseFrame,sprite[n].x,sprite[n].y,SPRITE16X16|spriteHorizFlip);
-			}
-
-			retval = TICKS_MS(50);
+			drawSprites();
 
 			if (keyspressed & KEY_S) {
 				retval=0;
 				mode=MAIN_HOME;
 			}
 		}
+		retval = TICKS_MS(50);	// approx 20fps - LCD panel on oven can't really update any quicker without looking terrible...
+
 	// Main menu
 	} else {
 		if(modeChange){
 			LCD_FB_Clear();
-			screensaverCnt=0;
+			initScreensaverTimeout();
 			LCD_disp_str((uint8_t*)"F1", 2, 0,     (8 * 1)+1, FONT6X6 | INVERT);
 			LCD_disp_str((uint8_t*)"ABOUT", 5, 14, (8 * 1)+1, FONT6X6);
 			LCD_disp_str((uint8_t*)"F2", 2, 0,     (8 * 2)+1, FONT6X6 | INVERT);
@@ -1042,7 +818,7 @@ static int32_t Main_Work(void) {
 			retval = 0; // Force immediate refresh
 		}
 
-		if(screensaverEnabled && ++screensaverCnt>=screensaverTimeout){
+		if(timeForScreensaver()){
 			mode=MAIN_SCREENSAVER;
 		}
 	}

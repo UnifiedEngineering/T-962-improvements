@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
-#include "bigNums.h"
+#include "spriteDefs.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
@@ -381,13 +381,13 @@ void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat){
 			if((theFormat&INVERT)>0)
 				c^=0xFFFF;
 			if(yPos>-1 && yPos<(FB_HEIGHT/8)){
-				FB[yPos][x]|=(c<<yShift)&0xff;	// LSB is at top, to shift left to move pixels down
+				FB[yPos][x]^=(c<<yShift)&0xff;	// LSB is at top, to shift left to move pixels down
 			}
 			if(yPos+1>-1 && yPos+1<(FB_HEIGHT/8)){
-				FB[yPos+1][x]|=(c>>(8-yShift));	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
+				FB[yPos+1][x]^=(c>>(8-yShift));	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
 			}
 			if(yShift>0 && (yPos+2>-1 && yPos+2<(FB_HEIGHT/8))){
-				FB[yPos+2][x]|=(c>>(16-yShift));
+				FB[yPos+2][x]^=(c>>(16-yShift));
 			}
 		}
 		++p;

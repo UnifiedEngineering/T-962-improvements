@@ -24,12 +24,13 @@
 #include "setup.h"
 
 static setupMenuStruct setupmenu[] = {
-	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
-	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
-	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
-	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
-	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
-	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f, 		"Min fan speed     OFF","Min fan speed     MAX"},
+	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f, 		"Cycle done beep   OFF","Cycle done beep   MAX"},
+	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 		10, 190, 0, 0.01f,		"Left TC gain     0.10","Left TC gain     1.90"},
+	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 		 0, 200, -100, 0.25f,	"Left TC offset  -9.50","Left TC offset   9.50"},
+	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 		10, 190, 0, 0.01f,		"Right TC gain    0.10","Right TC gain    1.90"},
+	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 	 0, 200, -100, 0.25f,	"Right TC offset -9.50","Right TC offset  9.50"},
+	{"Screensaver mins %4.0f", SCREENSAVER_ACTIVE, 	 0, 60, 0, 1.0f,		"Screensaver       OFF","Screensaver    1 HOUR"},
 };
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
@@ -60,19 +61,17 @@ void Setup_setRealValue(int item, float value) {
 
 void Setup_increaseValue(int item, int amount) {
 	int curval = _getRawValue(item) + amount;
-
 	int maxval = setupmenu[item].maxval;
-	if (curval > maxval) curval = maxval;
-
+	if(curval > maxval)
+		curval = maxval;
 	Setup_setValue(item, curval);
 }
 
 void Setup_decreaseValue(int item, int amount) {
 	int curval = _getRawValue(item) - amount;
-
 	int minval = setupmenu[item].minval;
-	if (curval < minval) curval = minval;
-
+	if(curval < minval)
+		curval = minval;
 	Setup_setValue(item, curval);
 }
 
@@ -81,5 +80,15 @@ void Setup_printFormattedValue(int item) {
 }
 
 int Setup_snprintFormattedValue(char* buf, int n, int item) {
+	int curval = _getRawValue(item);
+	int minval = setupmenu[item].minval;
+	int maxval = setupmenu[item].maxval;
+	if(curval==minval){
+		return snprintf(buf, n, "%s", setupmenu[item].minStr);
+	}
+	if(curval==maxval){
+		return snprintf(buf, n, "%s", setupmenu[item].maxStr);
+	}
+
 	return snprintf(buf, n, setupmenu[item].formatstr, Setup_getValue(item));
 }
