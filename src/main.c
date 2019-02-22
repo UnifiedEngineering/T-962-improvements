@@ -18,6 +18,7 @@
  */
 
 #include "LPC214x.h"
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,12 +42,15 @@
 #include "max31855.h"
 #include "systemfan.h"
 #include "setup.h"
+#include "ui_extras.h"
 
 extern uint8_t logobmp[];
 extern uint8_t stopbmp[];
 extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
 extern uint8_t f3editbmp[];
+extern uint8_t graph2bmp[];
+extern uint8_t exitbmp[];
 
 // No version.c file generated for LPCXpresso builds, fall back to this
 __attribute__((weak)) const char* Version_GetGitVersion(void) {
@@ -76,11 +80,12 @@ static char* help_text = \
 " values                  Dump currently measured values\n" \
 "\n";
 
+
 static int32_t Main_Work(void);
 
 int main(void) {
 	char buf[22];
-	int len;
+	int len=0;
 
 	IO_JumpBootloader();
 
@@ -115,11 +120,11 @@ int main(void) {
 	IO_PrintResetReason();
 
 	len = IO_Partinfo(buf, sizeof(buf), "%s rev %c");
-	LCD_disp_str((uint8_t*)buf, len, 0, 64 - 6, FONT6X6);
+	//LCD_disp_str((uint8_t*)buf, len, 0, 64 - 6, FONT6X6);
 	printf("\nRunning on an %s", buf);
 
 	len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
-	LCD_disp_str((uint8_t*)buf, len, 128 - (len * 6), 0, FONT6X6);
+	//LCD_disp_str((uint8_t*)buf, len, 128 - (len * 6), 0, FONT6X6);
 
 	LCD_FB_Update();
 	Keypad_Init();
@@ -132,14 +137,14 @@ int main(void) {
 	SystemFan_Init();
 
 	Sched_SetWorkfunc(MAIN_WORK, Main_Work);
-	Sched_SetState(MAIN_WORK, 1, TICKS_SECS(2)); // Enable in 2 seconds
+	Sched_SetState(MAIN_WORK, 1, TICKS_SECS(3)); // Enable in 3 seconds
 
-	Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100));
+	Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(50));
 
 	while (1) {
 #ifdef ENABLE_SLEEP
-		int32_t sleeptime;
-		sleeptime = Sched_Do(0); // No fast-forward support
+//		int32_t sleeptime;
+//		sleeptime = Sched_Do(0); // No fast-forward support
 		//printf("\n%d ticks 'til next activity"),sleeptime);
 #else
 		Sched_Do(0); // No fast-forward support
@@ -155,12 +160,24 @@ typedef enum eMainMode {
 	MAIN_BAKE,
 	MAIN_SELECT_PROFILE,
 	MAIN_EDIT_PROFILE,
-	MAIN_REFLOW
+	MAIN_REFLOW,
+	MAIN_SCREENSAVER,
+	MAIN_INIT
 } MainMode_t;
+
+static char buf[25];
+static int len;
+static uint16_t animCnt=0;
+static int16_t animIX=0,animIY=0,animIZ=0;
+static uint8_t blinkCnt=0,blinkOn=0;
+
 
 static int32_t Main_Work(void) {
 	static MainMode_t mode = MAIN_HOME;
+	static MainMode_t prevMode = MAIN_INIT;
 	static uint16_t setpoint = 0;
+	static uint8_t modeChange=0;
+
 	if (setpoint == 0) {
 		Reflow_LoadSetpoint();
 		setpoint = Reflow_GetSetpoint();
@@ -172,9 +189,6 @@ static int32_t Main_Work(void) {
 	static uint8_t current_edit_profile;
 
 	int32_t retval = TICKS_MS(500);
-
-	char buf[22];
-	int len;
 
 	uint32_t keyspressed = Keypad_Get();
 
@@ -285,9 +299,32 @@ static int32_t Main_Work(void) {
 		}
 	}
 
+	// Set flag if mode was changed by user action (to minimise redraws)
+	if(mode!=prevMode){
+		prevMode=mode;
+		modeChange=1;
+		animCnt=0;
+		animIX=0;
+		animIY=0;
+		animIZ=0;
+	}else{
+		modeChange=0;
+		++animCnt;
+	}
+
+	if(++blinkCnt>=5){
+		blinkOn=(blinkOn==0?1:0);
+		blinkCnt=0;
+	}
+
+
+
+
 	// main menu state machine
+	// setup/calibration
 	if (mode == MAIN_SETUP) {
-		static uint8_t selected = 0;
+		static int8_t selected = 0;
+		static int8_t scrollPos = 0;
 		int y = 0;
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
@@ -317,11 +354,42 @@ static int32_t Main_Work(void) {
 		}
 
 		LCD_FB_Clear();
-		len = snprintf(buf, sizeof(buf), "Setup/calibration");
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT6X6);
-		y += 7;
+		retval = TICKS_MS(100);
 
-		for (int i = 0; i < Setup_getNumItems() ; i++) {
+		showHeader("Setup/calibration");
+		for(uint8_t n=0;n<128;n++){
+			LCD_SetPixel(n,7);
+			LCD_SetPixel(n,64-9);
+		}
+
+		y += 11;
+
+		int8_t maxItems=6;
+		int8_t numItems=Setup_getNumItems();
+		int8_t endItem=scrollPos+maxItems;
+
+		if(scrollPos>selected){
+			scrollPos=selected;
+			endItem=scrollPos+maxItems;
+		}else if(selected>=endItem){
+			endItem=selected+1;
+			scrollPos=endItem-maxItems;
+		}
+
+		if(scrollPos<0){
+			scrollPos=0;
+			endItem=maxItems;
+		}
+
+		if(endItem>numItems){
+			endItem=numItems;
+		}
+
+		if(endItem-scrollPos>maxItems){
+			endItem=scrollPos+maxItems;
+		}
+
+		for (int i = scrollPos; i < endItem ; i++) {
 			len = Setup_snprintFormattedValue(buf, sizeof(buf), i);
 			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6 | (selected == i) ? INVERT : 0);
 			y += 7;
@@ -341,49 +409,87 @@ static int32_t Main_Work(void) {
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
+
+
+
+	// About
 	} else if (mode == MAIN_ABOUT) {
-		LCD_FB_Clear();
-		LCD_BMPDisplay(logobmp, 0, 0);
+		if(modeChange){
+			LCD_FB_Clear();
+			LCD_BMPDisplay(logobmp, 0, 0);
+			uint8_t n,i;
 
-		len = snprintf(buf, sizeof(buf), "T-962 controller");
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT6X6);
+			for(n=0;n<8;n++){
+				for(i=0;i<5;i++){
+					if( (i>1) || (n>0 && i>0) || (n>1 && i==0) )
+						LCD_disp_str((uint8_t*)" ", 1, (128-8*6)+(n*6), 26+(i*7), FONT6X6|INVERT);
+				}
+			}
 
-		len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 64 - 6, FONT6X6);
+			for(n=0;n<22;n++){
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 2, FONT6X6);
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 64-10, FONT6X6);
+				LCD_disp_str((uint8_t*)" ", 1, n*6, 64-7, FONT6X6);
+			}
 
-		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+			for(n=0;n<128;n++){
+				LCD_SetPixel(n,7);
+				LCD_SetPixel(n,64-9);
+			}
+
+
+			len = snprintf(buf, sizeof(buf), "T-962 OVEN");
+			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), 20, FONT6X6);
+			len = snprintf(buf, sizeof(buf), "SMASHCAT UI");
+			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), 28, FONT6X6);
+			len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
+			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), 36, FONT6X6);
+			len = snprintf(buf, sizeof(buf), "UNIFIED ENGINEERING");
+			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), 44, FONT6X6);
+
+			LCD_disp_str((uint8_t*)"  ", 2, 128-12, 64-7, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"S", 1, 128-9, 64-7, FONT6X6 | INVERT);
+
+		}
+		retval = TICKS_MS(100);
+		showHeader("ABOUT");
 
 		// Leave about with any key.
 		if (keyspressed & KEY_ANY) {
 			mode = MAIN_HOME;
 			retval = 0; // Force immediate refresh
 		}
+
+
+	// Reflow active!
 	} else if (mode == MAIN_REFLOW) {
-		uint32_t ticks = RTC_Read();
 
-		len = snprintf(buf, sizeof(buf), "%03u", Reflow_GetSetpoint());
-		LCD_disp_str((uint8_t*)"SET", 3, 110, 7, FONT6X6);
-		LCD_disp_str((uint8_t*)buf, len, 110, 13, FONT6X6);
+		if(Reflow_IsDone()){
+			if(animIX==0){
+				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+				printf("\nReflow %s\n", "completed");
+				animIX=1;
+				Reflow_SetMode(REFLOW_STANDBY);
+			}
+		}
 
-		len = snprintf(buf, sizeof(buf), "%03u", Reflow_GetActualTemp());
-		LCD_disp_str((uint8_t*)"ACT", 3, 110, 20, FONT6X6);
-		LCD_disp_str((uint8_t*)buf, len, 110, 26, FONT6X6);
-
-		len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
-		LCD_disp_str((uint8_t*)"RUN", 3, 110, 33, FONT6X6);
-		LCD_disp_str((uint8_t*)buf, len, 110, 39, FONT6X6);
+		displayReflowScreen(keyspressed,modeChange,animIX);
+		retval = TICKS_MS(100);
 
 		// Abort reflow
-		if (Reflow_IsDone() || keyspressed & KEY_S) {
-			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
-			if (Reflow_IsDone()) {
-				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+		if (keyspressed & KEY_S) {
+			if(animIX==0){
+				printf("\nReflow %s\n", "interrupted by keypress");
 			}
 			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
 			retval = 0; // Force immediate refresh
 		}
 
+
+
+
+	// Select reflow profile
 	} else if (mode == MAIN_SELECT_PROFILE) {
 		int curprofile = Reflow_GetProfileIdx();
 		LCD_FB_Clear();
@@ -420,13 +526,24 @@ static int32_t Main_Work(void) {
 			retval = 0; // Force immediate refresh
 		}
 
+
+
+
+	// Manual bake mode
 	} else if (mode == MAIN_BAKE) {
 		LCD_FB_Clear();
-		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT6X6);
+		retval = TICKS_MS(100);
+		showHeader("MANUAL/BAKE MODE");
+		for(uint8_t n=0;n<128;n++){
+			LCD_SetPixel(n,7);
+			LCD_SetPixel(n,64-9);
+		}
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
-		if (keyrepeataccel < 1) keyrepeataccel = 1;
-		if (keyrepeataccel > 30) keyrepeataccel = 30;
+		if (keyrepeataccel < 1)
+			keyrepeataccel = 1;
+		if (keyrepeataccel > 30)
+			keyrepeataccel = 30;
 
 		// Setpoint-
 		if (keyspressed & KEY_F1) {
@@ -486,23 +603,26 @@ static int32_t Main_Work(void) {
 		}
 		LCD_disp_str((uint8_t*)"F4", 2, LCD_ALIGN_RIGHT(2), y, FONT6X6 | INVERT);
 
-		y = 26;
+		y = 27;
 		if (timer > 0) {
 			int time_left = Reflow_GetTimeLeft();
 			if (Reflow_IsPreheating()) {
 				len = snprintf(buf, sizeof(buf), "PREHEAT");
+				LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, (blinkOn==1?FONT6X6|INVERT:FONT6X6));
 			} else if (Reflow_IsDone() || time_left < 0) {
 				len = snprintf(buf, sizeof(buf), "DONE");
+				LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, (blinkOn==1?FONT6X6|INVERT:FONT6X6));
 			} else {
 				len = snprintf(buf, sizeof(buf), "%d:%02d", time_left / 60, time_left % 60);
+				LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT6X6);
 			}
-			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), y, FONT6X6);
 		}
 
-		len = snprintf(buf, sizeof(buf), "ACT %3.1f`", Sensor_GetTemp(TC_AVERAGE));
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+		y = 36;
+		len = snprintf(buf, sizeof(buf), "OVEN TEMP %3.1f`", Sensor_GetTemp(TC_AVERAGE));
+		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT6X6);
 
-		y = 34;
+		y = 44;
 		len = snprintf(buf, sizeof(buf), "  L %3.1f`", Sensor_GetTemp(TC_LEFT));
 		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
 		len = snprintf(buf, sizeof(buf), "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
@@ -521,18 +641,20 @@ static int32_t Main_Work(void) {
 		}
 
 		y = 50;
-		len = snprintf(buf, sizeof(buf), "COLDJUNCTION");
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
+		len = snprintf(buf, sizeof(buf), "COLD JUNCTION");
+		LCD_disp_str((uint8_t*)buf, len, 0, 64-7, FONT6X6);
 
 		y += 8;
 		if (Sensor_IsValid(TC_COLD_JUNCTION)) {
 			len = snprintf(buf, sizeof(buf), "%3.1f`", Sensor_GetTemp(TC_COLD_JUNCTION));
 		} else {
-			len = snprintf(buf, sizeof(buf), "NOT PRESENT");
+			len = snprintf(buf, sizeof(buf), "ERR");
 		}
-		LCD_disp_str((uint8_t*)buf, len, (12 * 6) - (len * 6), y, FONT6X6);
+		LCD_disp_str((uint8_t*)buf, len, 123-(7 * 6), 64-7, FONT6X6);
 
-		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+		//LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+		LCD_disp_str((uint8_t*)"  ", 2, 128-12, 64-7, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)"S", 1, 128-9, 64-7, FONT6X6 | INVERT);
 
 		Reflow_SetSetpoint(setpoint);
 
@@ -566,11 +688,17 @@ static int32_t Main_Work(void) {
 			retval = 0; // Force immediate refresh
 		}
 
+
+
+
+	// Edit profile
 	} else if (mode == MAIN_EDIT_PROFILE) { // Edit ee1 or 2
 		LCD_FB_Clear();
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
-		if (keyrepeataccel < 1) keyrepeataccel = 1;
-		if (keyrepeataccel > 30) keyrepeataccel = 30;
+		if (keyrepeataccel < 1)
+			keyrepeataccel = 1;
+		if (keyrepeataccel > 30)
+			keyrepeataccel = 30;
 
 		int16_t cursetpoint;
 		Reflow_SelectEEProfileIdx(current_edit_profile);
@@ -595,8 +723,8 @@ static int32_t Main_Work(void) {
 		Reflow_PlotProfile(profile_time_idx);
 		LCD_BMPDisplay(editbmp, 127 - 17, 0);
 
-		len = snprintf(buf, sizeof(buf), "%02u0s %03u`", profile_time_idx, cursetpoint);
-		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
+		len = snprintf(buf, sizeof(buf), "%01u:%02u %03u`", (profile_time_idx*10)/60,(profile_time_idx*10)%60 , cursetpoint);
+		LCD_disp_str((uint8_t*)buf, len, 33, 0, FONT6X6);
 
 		// Done editing
 		if (keyspressed & KEY_S) {
@@ -605,24 +733,56 @@ static int32_t Main_Work(void) {
 			retval = 0; // Force immediate refresh
 		}
 
-	} else { // Main menu
-		LCD_FB_Clear();
 
-		len = snprintf(buf, sizeof(buf),"MAIN MENU");
-		LCD_disp_str((uint8_t*)buf, len, 0, 6 * 0, FONT6X6);
-		LCD_disp_str((uint8_t*)"F1", 2, 0, 8 * 1, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"ABOUT", 5, 14, 8 * 1, FONT6X6);
-		LCD_disp_str((uint8_t*)"F2", 2, 0, 8 * 2, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"SETUP", 5, 14, 8 * 2, FONT6X6);
-		LCD_disp_str((uint8_t*)"F3", 2, 0, 8 * 3, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 14, 8 * 3, FONT6X6);
-		LCD_disp_str((uint8_t*)"F4", 2, 0, 8 * 4, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"SELECT PROFILE", 14, 14, 8 * 4, FONT6X6);
-		LCD_disp_str((uint8_t*)"S", 1, 3, 8 * 5, FONT6X6 | INVERT);
-		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, 8 * 5, FONT6X6);
+
+	// Edit profile
+	} else if (mode == MAIN_SCREENSAVER) {
+
+		if(animIY<58){
+			if(modeChange){
+				initSprites();
+			}
+			if(((++animIX)%4)==0 && (animIZ<5)){
+				++animIZ;
+			}
+			LCD_ScrollDisplay(animIZ);
+			animIY+=animIZ;
+		}else{
+			drawSprites();
+
+			if (keyspressed & KEY_S) {
+				retval=0;
+				mode=MAIN_HOME;
+			}
+		}
+		retval = TICKS_MS(50);	// approx 20fps - LCD panel on oven can't really update any quicker without looking terrible...
+
+	// Main menu
+	} else {
+		if(modeChange){
+			LCD_FB_Clear();
+			initScreensaverTimeout();
+			LCD_disp_str((uint8_t*)"F1", 2, 0,     (8 * 1)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"ABOUT", 5, 14, (8 * 1)+1, FONT6X6);
+			LCD_disp_str((uint8_t*)"F2", 2, 0,     (8 * 2)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"SETUP", 5, 14, (8 * 2)+1, FONT6X6);
+			LCD_disp_str((uint8_t*)"F3", 2, 0,     (8 * 3)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 14, (8 * 3)+1, FONT6X6);
+			LCD_disp_str((uint8_t*)"F4", 2, 0, (8 * 4)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"SELECT PROFILE", 14, 14, (8 * 4)+1, FONT6X6);
+			LCD_disp_str((uint8_t*)"  ", 2, 0, (8 * 5)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"S", 1, 3, (8 * 5)+1, FONT6X6 | INVERT);
+			LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 14, (8 * 5)+1, FONT6X6);
+			for(uint8_t n=0;n<128;n++){
+				LCD_SetPixel(n,7);
+				LCD_SetPixel(n,63-6);
+			}
+		}
+
+		showHeader("MAIN MENU");
 
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 8 * 6, FONT6X6 | INVERT);
+		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), (8 * 6)+1, FONT6X6 | INVERT);
 
 		len = snprintf(buf,sizeof(buf), "OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 64 - 6, FONT6X6);
@@ -631,6 +791,8 @@ static int32_t Main_Work(void) {
 		if (keyspressed) {
 			Buzzer_Beep(BUZZ_NONE, 0, 0);
 		}
+
+		retval = TICKS_MS(100);
 
 		// About
 		if (keyspressed & KEY_F1) {
@@ -662,12 +824,12 @@ static int32_t Main_Work(void) {
 			LCD_FB_Clear();
 			printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
 			Reflow_Init();
-			Reflow_PlotProfile(-1);
-			LCD_BMPDisplay(stopbmp, 127 - 17, 0);
-			len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
-			LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT6X6);
 			Reflow_SetMode(REFLOW_REFLOW);
 			retval = 0; // Force immediate refresh
+		}
+
+		if(timeForScreensaver()){
+			mode=MAIN_SCREENSAVER;
 		}
 	}
 

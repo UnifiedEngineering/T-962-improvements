@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include "lcd.h"
 #include "smallfont.h"
+#include "spriteDefs.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
@@ -57,23 +58,26 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	uint8_t yoffset = Y & 0x7;
 	Y >>= 3;
 
-#ifndef MINIMALISTIC
+//#ifndef MINIMALISTIC
 	uint8_t width = (theChar & 0x80) ? 7 : 6;
-#else
-	uint8_t width=6;
-#endif
+//#else
+//	uint8_t width=6;
+//#endif
 	for (uint8_t x = 0; x < width; x++) {
 		uint16_t temp=smallfont[fontoffset++];
-#ifndef MINIMALISTIC
-		if (theChar & 0x80) { temp ^= 0x7f; }
-#endif
+//#ifndef MINIMALISTIC
+		if (theChar & 0x80) {
+			temp ^= 0x7f;
+		}
+//#endif
 		temp = temp << yoffset; // Shift pixel data to the correct lines
 		uint16_t old = (FB[Y][X] | (FB[Y + 1][X] << 8));
-#ifndef MINIMALISTIC
+//#ifndef MINIMALISTIC
 		old &= ~(0x7f << yoffset); //Clean out old data
-#endif
+//#endif
 		temp |= old; // Merge old data in FB with new char
-		if (X >= (FB_WIDTH)) return; // make sure we don't overshoot
+		if (X >= (FB_WIDTH))
+			return; // make sure we don't overshoot
 		if (Y < ((FB_HEIGHT / 8) - 0)) {
 			FB[Y][X] = temp & 0xff;
 		}
@@ -186,6 +190,14 @@ void LCD_SetPixel(uint8_t x, uint8_t y) {
 		return;
 	}
 	FB[y >> 3][x] |= 1 << (y & 0x07);
+}
+
+void LCD_ClearPixel(uint8_t x, uint8_t y) {
+	if (x >= FB_WIDTH || y >= FB_HEIGHT) {
+		// No random memory overwrites thank you
+		return;
+	}
+	FB[y >> 3][x] &= ~(1 << (y & 0x07));
 }
 
 void LCD_SetBacklight(uint8_t backlight) {
@@ -345,5 +357,80 @@ void LCD_FB_Update() {
 			LCD_WriteData(FB[page][i], 0);
 			LCD_WriteData(FB[page][i + 64], 1);
 		}
+	}
+}
+
+// Draws 9 x 16 or 16 x 16 graphics - can draw partially on-screen sprites
+void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat){
+	// Big characters are 9 16bit words in size
+	int16_t n=9,yPos=(y>>3),yShift=(y & 0x07);
+	uint16_t c;
+	const uint16_t *p=sprite9x16+(num*9);;
+
+	if((theFormat&SPRITE16X16)>0){
+		p=sprite16x16+(num*16);
+		n=16;
+	}
+	uint8_t flipHoriz=( (theFormat & FLIP_HORIZONTAL) !=0);
+
+	if(flipHoriz)
+		x+=(n-1);
+	while(n-->0){
+		if(x>-1 && x<FB_WIDTH){
+			c=*p;
+			if((theFormat&INVERT)>0)
+				c^=0xFFFF;
+			if(yPos>-1 && yPos<(FB_HEIGHT/8)){
+				FB[yPos][x]^=(c<<yShift)&0xff;	// LSB is at top, to shift left to move pixels down
+			}
+			if(yPos+1>-1 && yPos+1<(FB_HEIGHT/8)){
+				FB[yPos+1][x]^=(c>>(8-yShift));	// next 8 pixels in high 8 bits, so shift them right, BUT then shift left by yShift
+			}
+			if(yShift>0 && (yPos+2>-1 && yPos+2<(FB_HEIGHT/8))){
+				FB[yPos+2][x]^=(c>>(16-yShift));
+			}
+		}
+		++p;
+		if(flipHoriz)
+			--x;
+		else
+			++x;
+	}
+}
+
+void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y,uint8_t theFormat){
+	while(numDigits>0){
+		--numDigits;
+		LCD_DrawSprite(num%10,x+(numDigits*10),y,theFormat);
+		num/=10;
+	}
+}
+
+// Scroll display UP by amt
+void LCD_ScrollDisplay(uint8_t amt){
+	uint8_t x,y;
+	if(amt>=FB_HEIGHT)
+		amt=FB_HEIGHT;
+	if(amt>7){
+		uint8_t step=amt>>3;
+		for(y=0;y<(FB_HEIGHT>>3)-step;y++){
+			for(x=0;x<FB_WIDTH;x++){
+				FB[y][x]=FB[y+step][x];
+			}
+		}
+		for(y=(FB_HEIGHT>>3)-step;y<(FB_HEIGHT>>3);y++){
+			for(x=0;x<FB_WIDTH;x++){
+				FB[y][x]=0;
+			}
+		}
+		amt&=0x07;
+	}
+	for(y=0;y<(FB_HEIGHT>>3)-1;y++){
+		for(x=0;x<FB_WIDTH;x++){
+			FB[y][x]=(FB[y][x]>>amt)|(FB[y+1][x]<<(7-amt));
+		}
+	}
+	for(x=0;x<FB_WIDTH;x++){
+		FB[y][x]>>=amt;
 	}
 }

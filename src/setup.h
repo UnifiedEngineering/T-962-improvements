@@ -2,12 +2,14 @@
 #define SETUP_H_
 
 typedef struct {
-	const char* formatstr;
-	const NVItem_t nvval;
-	const uint8_t minval;
-	const uint8_t maxval;
-	const int8_t offset;
-	const float multiplier;
+	const char * 	formatstr;
+	const NVItem_t 	nvval;
+	const uint8_t 	minval;
+	const uint8_t 	maxval;
+	const int8_t 	offset;
+	const float 	multiplier;
+	const char * 	minStr;		// String to use when at maximum setting
+	const char * 	maxStr;		// String to use when at minimum setting
 } setupMenuStruct;
 
 int Setup_getNumItems(void);
