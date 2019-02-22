@@ -47,3 +47,10 @@ graph2bmp:
 	.incbin "../src/images/graph-2-128x64.bmp"
 graph2bmpsize:
 	.word .-graph2bmp
+
+	.global exitbmp
+	.global exitbmpsize
+exitbmp:
+	.incbin "../src/images/exit-18x18.bmp"
+exitbmpsize:
+	.word .-exitbmp

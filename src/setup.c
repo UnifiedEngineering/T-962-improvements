@@ -24,14 +24,15 @@
 #include "setup.h"
 
 static setupMenuStruct setupmenu[] = {
-	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f, 		"Min fan speed     OFF","Min fan speed     MAX"},
-	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f, 		"Cycle done beep   OFF","Cycle done beep   MAX"},
-	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 		10, 190, 0, 0.01f,		"Left TC gain     0.10","Left TC gain     1.90"},
-	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 		 0, 200, -100, 0.25f,	"Left TC offset  -9.50","Left TC offset   9.50"},
-	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 		10, 190, 0, 0.01f,		"Right TC gain    0.10","Right TC gain    1.90"},
-	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 	 0, 200, -100, 0.25f,	"Right TC offset -9.50","Right TC offset  9.50"},
-	{"Screensaver mins %4.0f", SCREENSAVER_ACTIVE, 	 0, 60, 0, 1.0f,		"Screensaver       OFF","Screensaver    1 HOUR"},
+	{"Min fan speed    %4.0f",	REFLOW_MIN_FAN_SPEED,	 0, 254, 0, 1.0f, 		"Min fan speed     OFF","Min fan speed     MAX"},
+	{"Cycle done beep %4.1fs",	REFLOW_BEEP_DONE_LEN,	 0, 254, 0, 0.1f, 		"Cycle done beep   OFF","Cycle done beep   MAX"},
+	{"Left TC gain     %1.2f",	TC_LEFT_GAIN, 			10, 190, 0, 0.01f,		"Left TC gain     0.10","Left TC gain     1.90"},
+	{"Left TC offset %6.2f",	TC_LEFT_OFFSET, 		 0, 200, -100, 0.25f,	"Left TC offset -25.00","Left TC offset  25.00"},
+	{"Right TC gain    %1.2f",	TC_RIGHT_GAIN, 			10, 190, 0, 0.01f,		"Right TC gain    0.10","Right TC gain    1.90"},
+	{"Right TC offset%6.2f",	TC_RIGHT_OFFSET, 	 	 0, 200, -100, 0.25f,	"Right TC offset-25.00","Right TC offset 25.00"},
+	{"Screensaver mins %4.0f",	SCREENSAVER_ACTIVE, 	 0, 60, 0, 1.0f,		"Screensaver       OFF","Screensaver    1 HOUR"},
 };
+
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
 int Setup_getNumItems(void) {

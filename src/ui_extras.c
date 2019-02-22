@@ -28,6 +28,7 @@ extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
 extern uint8_t f3editbmp[];
 extern uint8_t graph2bmp[];
+extern uint8_t exitbmp[];
 
 uint8_t animTicker=0;
 uint8_t spriteAnimIX=0;
@@ -38,7 +39,8 @@ int8_t reflowDisplay=0;
 
 uint16_t screensaverTimeout=600;
 uint16_t screensaverCnt=0;
-
+uint16_t screensaverScore=0;
+uint8_t screensaverScoreMul[]={1,2,4,16};
 
 void showHeader(char *s){
 	LCD_disp_str((uint8_t*)" ", 1, 0, 0, FONT6X6);
@@ -69,12 +71,14 @@ void showBar(uint16_t v,uint8_t y){
 
 void initSprites(void){
 
+	screensaverScore=0;
+
 	int16_t initA[5][7]={
-		{-15,24, 2, 0, 3, 3, 0},
-		{42,-15, 3, 1, 1, 2, 6},
-		{84,-15, 3, 1, 2, 2, 6},
-		{62,63,  1, 1, 1, 2, 6},
-		{102,63, 1, 1, 2, 2, 6},
+		{-80,  24, 2, 0, 3, 4, 0},
+		{42,   63, 1, 1, 1, 2, 6},
+		{62,   70, 1, 1, 1, 2, 6},
+		{82,  127, 1, 1, 2, 2, 6},
+		{102, 141, 1, 1, 2, 2, 6},
 	};
 
 	for(uint8_t n=0;n<TOTAL_SPRITES;n++){
@@ -82,33 +86,47 @@ void initSprites(void){
 		sprite[n].x=			initA[n][0];
 		sprite[n].y=			initA[n][1];
 		sprite[n].dir=			initA[n][2];
-		sprite[n].changeCnt=	(rand()%60)+20;
+		sprite[n].changeCnt=	(rand()%10)+70;
 		sprite[n].animFrame=	initA[n][3];
 		sprite[n].speed=		initA[n][4];
 		sprite[n].startFrame=	initA[n][3];
 		sprite[n].totalFrames=	initA[n][5];
 		sprite[n].baseFrame=	initA[n][6];
-		sprite[n].state=		0;	// 0=normal, 1=eaten
+		sprite[n].state=		0;	// 0=normal, >0=eaten - value is score (100,200,800,1600)
 	}
 
 }
 
 void drawSprites(void){
+
+	uint8_t animFrame,spriteHorizFlip;
+
 	LCD_FB_Clear();
 
-	++spriteAnimIX;
+	if(spriteAnimIX>10){
+		LCD_drawBigNum(screensaverScore,4,34,1,SPRITE9X16);
+		LCD_DrawSprite(0,74,1,SPRITE9X16);
+		LCD_DrawSprite(0,84,1,SPRITE9X16);
+	}
+
+	if(++spriteAnimIX>20)
+		spriteAnimIX=0;
 
 	for(uint8_t n=0;n<TOTAL_SPRITES;n++){
 
-		uint8_t animFrame=sprite[n].animFrame;
-		uint8_t spriteHorizFlip=0;
-
 		if(sprite[n].state==0){
-			if(spriteAnimIX&1){
+
+			if((n==0) || (spriteAnimIX&1)){
 				if(++sprite[n].animFrame==sprite[n].totalFrames+sprite[n].startFrame){
 					sprite[n].animFrame=sprite[n].startFrame;
 				}
 			}
+
+			animFrame=sprite[n].animFrame;
+			if(animFrame==3)
+				animFrame=1;	// Special case for pacman :)
+
+			spriteHorizFlip=0;
 
 			switch(sprite[n].dir){
 
@@ -158,11 +176,18 @@ void drawSprites(void){
 			// Check for collision between ghost and pacman - pacman eats ghosts :)
 			if(n>0 && sprite[n].state==0){
 				if(!(sprite[n].x<sprite[0].x-10 || sprite[n].x>sprite[0].x+10 || sprite[n].y<sprite[0].y-10 || sprite[n].y>sprite[0].y+10)){
-					sprite[n].state=1;
+					uint8_t s=1;
+					for(uint8_t i=1;i<5;i++){
+						if(i!=n && sprite[i].state>0)
+							++s;
+					}
+					sprite[n].state=s;
+					screensaverScore+=screensaverScoreMul[s-1];
 				}
 			}
 		}else{
-			animFrame=7;
+			spriteHorizFlip=0;
+			animFrame=6+sprite[n].state;
 			if(--sprite[n].y<-10){
 				sprite[n].state=0;
 				switch(rand()%4){
@@ -194,7 +219,7 @@ void drawSprites(void){
 	}
 }
 
-void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange){
+void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange,uint8_t isDone){
 	uint32_t ticks = RTC_Read();
 	int8_t len=0;
 	char buf[22];
@@ -234,23 +259,26 @@ void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange){
 
 	int16_t diff=Reflow_GetSetpoint()-Reflow_GetActualTemp();
 
-	if(reflowDisplay==0){
+	if((isDone==1) || (reflowDisplay==0)){
 		Reflow_PlotDots();
 
-		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
+		if(isDone==1){
+			LCD_BMPDisplay(exitbmp, 128 - 18, 64-18);
+			LCD_disp_str((uint8_t*)"COMPLETED", 9, LCD_ALIGN_CENTER(9), 0, (blinkOn==1?FONT6X6|INVERT:FONT6X6));
+		}else{
+			LCD_BMPDisplay(stopbmp, 128 - 18, 0);
 
+			len = snprintf(buf, sizeof(buf), "SET %03u", Reflow_GetSetpoint());
+			LCD_disp_str((uint8_t*)buf, len, 15, 0, (diff>5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
 
-		len = snprintf(buf, sizeof(buf), "SET %03u", Reflow_GetSetpoint());
-		LCD_disp_str((uint8_t*)buf, len, 15, 0, (diff>5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
+			len = snprintf(buf, sizeof(buf), "ACTUAL %03u", Reflow_GetActualTemp());
 
-		len = snprintf(buf, sizeof(buf), "ACTUAL %03u", Reflow_GetActualTemp());
+			LCD_disp_str((uint8_t*)buf, len, 68, 0, (diff<-5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
 
-		LCD_disp_str((uint8_t*)buf, len, 68, 0, (diff<-5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
-
-		len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
-		LCD_disp_str((uint8_t*)"RUN", 3, 110, 31, FONT6X6);
-		LCD_disp_str((uint8_t*)buf, len, 110, 37, FONT6X6);
-
+			len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
+			LCD_disp_str((uint8_t*)"RUN", 3, 110, 31, FONT6X6);
+			LCD_disp_str((uint8_t*)buf, len, 110, 37, FONT6X6);
+		}
 	}else if(reflowDisplay==1){
 		LCD_FB_Clear();
 		LCD_BMPDisplay(graph2bmp, 0, 0);

@@ -50,6 +50,7 @@ extern uint8_t selectbmp[];
 extern uint8_t editbmp[];
 extern uint8_t f3editbmp[];
 extern uint8_t graph2bmp[];
+extern uint8_t exitbmp[];
 
 // No version.c file generated for LPCXpresso builds, fall back to this
 __attribute__((weak)) const char* Version_GetGitVersion(void) {
@@ -167,7 +168,7 @@ typedef enum eMainMode {
 static char buf[25];
 static int len;
 static uint16_t animCnt=0;
-static int16_t animIX=0,animIY=0;
+static int16_t animIX=0,animIY=0,animIZ=0;
 static uint8_t blinkCnt=0,blinkOn=0;
 
 
@@ -305,6 +306,7 @@ static int32_t Main_Work(void) {
 		animCnt=0;
 		animIX=0;
 		animIY=0;
+		animIZ=0;
 	}else{
 		modeChange=0;
 		++animCnt;
@@ -461,14 +463,23 @@ static int32_t Main_Work(void) {
 
 	// Reflow active!
 	} else if (mode == MAIN_REFLOW) {
-		displayReflowScreen(keyspressed,modeChange);
+
+		if(Reflow_IsDone()){
+			if(animIX==0){
+				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+				printf("\nReflow %s\n", "completed");
+				animIX=1;
+				Reflow_SetMode(REFLOW_STANDBY);
+			}
+		}
+
+		displayReflowScreen(keyspressed,modeChange,animIX);
 		retval = TICKS_MS(100);
 
 		// Abort reflow
-		if (Reflow_IsDone() || keyspressed & KEY_S) {
-			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
-			if (Reflow_IsDone()) {
-				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
+		if (keyspressed & KEY_S) {
+			if(animIX==0){
+				printf("\nReflow %s\n", "interrupted by keypress");
 			}
 			mode = MAIN_HOME;
 			Reflow_SetMode(REFLOW_STANDBY);
@@ -727,16 +738,15 @@ static int32_t Main_Work(void) {
 	// Edit profile
 	} else if (mode == MAIN_SCREENSAVER) {
 
-		if(animIY==0){
+		if(animIY<58){
 			if(modeChange){
 				initSprites();
 			}
-			if(++animIX==32){
-				animIY=1;
-			}else{
-				LCD_ScrollDisplay();
-				LCD_ScrollDisplay();
+			if(((++animIX)%4)==0 && (animIZ<5)){
+				++animIZ;
 			}
+			LCD_ScrollDisplay(animIZ);
+			animIY+=animIZ;
 		}else{
 			drawSprites();
 

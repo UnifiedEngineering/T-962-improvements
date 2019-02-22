@@ -406,14 +406,31 @@ void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y,uint8_t 
 	}
 }
 
-void LCD_ScrollDisplay(void){
+// Scroll display UP by amt
+void LCD_ScrollDisplay(uint8_t amt){
 	uint8_t x,y;
+	if(amt>=FB_HEIGHT)
+		amt=FB_HEIGHT;
+	if(amt>7){
+		uint8_t step=amt>>3;
+		for(y=0;y<(FB_HEIGHT>>3)-step;y++){
+			for(x=0;x<FB_WIDTH;x++){
+				FB[y][x]=FB[y+step][x];
+			}
+		}
+		for(y=(FB_HEIGHT>>3)-step;y<(FB_HEIGHT>>3);y++){
+			for(x=0;x<FB_WIDTH;x++){
+				FB[y][x]=0;
+			}
+		}
+		amt&=0x07;
+	}
 	for(y=0;y<(FB_HEIGHT>>3)-1;y++){
 		for(x=0;x<FB_WIDTH;x++){
-			FB[y][x]=(FB[y][x]>>1)|(FB[y+1][x]<<7);
+			FB[y][x]=(FB[y][x]>>amt)|(FB[y+1][x]<<(7-amt));
 		}
 	}
 	for(x=0;x<FB_WIDTH;x++){
-		FB[y][x]>>=1;
+		FB[y][x]>>=amt;
 	}
 }

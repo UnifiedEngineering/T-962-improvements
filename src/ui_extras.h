@@ -31,7 +31,7 @@ void showHeader(char *s);
 void showBar(uint16_t v,uint8_t y);
 void initSprites(void);
 void drawSprites(void);
-void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange);
+void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange,uint8_t isDone);
 uint8_t timeForScreensaver();
 void initScreensaverTimeout();
 

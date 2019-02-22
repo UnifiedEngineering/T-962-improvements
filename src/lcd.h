@@ -35,6 +35,6 @@ void LCD_FB_Clear(void);
 void LCD_FB_Update(void);
 void LCD_DrawSprite(uint8_t num,int16_t x,int16_t y,uint8_t theFormat);
 void LCD_drawBigNum(uint16_t num,uint8_t numDigits, int16_t x,int16_t y, uint8_t theFormat);
-void LCD_ScrollDisplay(void);
+void LCD_ScrollDisplay(uint8_t amt);
 
 #endif /* LCD_H_ */
