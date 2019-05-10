@@ -20,10 +20,13 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
+#include "log.h"
 #include "lcd.h"
 #include "smallfont.h"
+#include "config.h"
 
 // Frame buffer storage (each "page" is 8 pixels high)
 static uint8_t FB[FB_HEIGHT / 8][FB_WIDTH];
@@ -47,7 +50,11 @@ typedef struct __attribute__ ((packed)) {
 	uint32_t aColors[2]; // Palette data, first color is used if pixel bit is 0, second if pixel bit is 1
 } BMhdr_t;
 
-void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
+// font is 6 pixels, this results in 128 / 6 = 21 characters and 2 pixels unused
+#define LCD_ALIGN_RIGHT(x) (FB_WIDTH - 2 - (x) * 6)			// leave the 2 pixels unused
+#define LCD_ALIGN_CENTER(x) (LCD_ALIGN_RIGHT(x) / 2)
+
+static void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	// First of all, make lowercase into uppercase
 	// (as there are no lowercase letters in the font)
 	if ((theChar & 0x7f) >= 0x61 && (theChar & 0x7f) <= 0x7a) {
@@ -84,7 +91,7 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	}
 }
 
-void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat) {
+static void disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat) {
 #ifdef MINIMALISTIC
 	for (uint8_t q = 0; q < theLen; q++) {
 		charoutsmall(theStr[q], startx, y);
@@ -99,24 +106,30 @@ void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, ui
 #endif
 }
 
-void LCD_MultiLineH(uint8_t startx, uint8_t endx, uint64_t ymask) {
-	for (uint8_t x = startx; x <= endx; x++) {
-		FB[0][x] |= ymask & 0xff;
-		FB[1][x] |= ymask >> 8;
-		FB[2][x] |= ymask >> 16;
-		FB[3][x] |= ymask >> 24;
-#if FB_HEIGHT == 64
-		FB[4][x] |= ymask >> 32;
-		FB[5][x] |= ymask >> 40;
-		FB[6][x] |= ymask >> 48;
-		FB[7][x] |= ymask >> 56;
-#endif
+
+void LCD_printf(uint8_t x, uint8_t y, uint8_t flags, const char *format, ...) {
+	char buf[22];
+	uint8_t len;
+    va_list arg;
+
+    va_start(arg, format);
+	len = vsnprintf(buf, sizeof(buf), format, arg);
+
+	if (flags & CENTERED) {
+		x = LCD_ALIGN_CENTER(len);
+	} else if (flags & RIGHT_ALIGNED) {
+		x = LCD_ALIGN_RIGHT(len);
 	}
+	// filter flags again
+	flags &= ~(CENTERED | RIGHT_ALIGNED);
+	disp_str((uint8_t *) buf, len, x, y, flags);
+    va_end(arg);
 }
 
 /*
  * At the moment this is a very basic BMP file reader with the following limitations:
  * The bitmap must be 1-bit, uncompressed with a BITMAPINFOHEADER.
+ * NOTE: this will OR-in the bitmap content, i.e. only 1s survive!
  */
 uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset) {
 	BMhdr_t* bmhdr;
@@ -133,10 +146,10 @@ uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset) {
 	}
 	bmhdr = &temp;
 
-//	printf("\n%s: bfSize=%x biSize=%x", __FUNCTION__, (uint16_t)bmhdr->bfSize, (uint16_t)bmhdr->biSize);
-//	printf("\n%s: Image size is %d x %d", __FUNCTION__, (int16_t)bmhdr->biWidth, (int16_t)bmhdr->biHeight);
+	log(LOG_DEBUG, "%s: bfSize=%x biSize=%x", __FUNCTION__, (uint16_t)bmhdr->bfSize, (uint16_t)bmhdr->biSize);
+	log(LOG_DEBUG, "%s: Image size is %d x %d", __FUNCTION__, (int16_t)bmhdr->biWidth, (int16_t)bmhdr->biHeight);
 	if (bmhdr->biPlanes != 1 || bmhdr->biBitCount != 1 || bmhdr->biCompression != 0) {
-		printf("\n%s: Incompatible bitmap format!", __FUNCTION__);
+		log(LOG_WARN, "%s: Incompatible bitmap format!", __FUNCTION__);
 		return 1;
 	}
 	pixeloffset = bmhdr->bfOffBits;
@@ -148,7 +161,7 @@ uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset) {
 		upsidedown = 0;
 	}
 	if ((bmhdr->biWidth+xoffset > FB_WIDTH) || (bmhdr->biHeight+yoffset > FB_HEIGHT)) {
-		printf("\n%s: Image won't fit on display!", __FUNCTION__);
+		log(LOG_WARN, "%s: Image won't fit on display!", __FUNCTION__);
 		return 1;
 	}
 
@@ -156,7 +169,7 @@ uint8_t LCD_BMPDisplay(uint8_t* thebmp, uint8_t xoffset, uint8_t yoffset) {
 	// If the image is 132 pixels wide then the pixel lines will be 20 bytes (160 pixels)
 	// 132&31 is 4 which means that there are 3 bytes of padding
 	numpadbytes = (4 - ((((bmhdr->biWidth) & 0x1f) + 7) >> 3)) & 0x03;
-//	printf("\n%s: Skipping %d padding bytes after each line", __FUNCTION__, numpadbytes);
+	log(LOG_DEBUG, "%s: Skipping %d padding bytes after each line", __FUNCTION__, numpadbytes);
 
 	for (int8_t y = bmhdr->biHeight - 1; y >= 0; y--) {
 		uint8_t realY = upsidedown ? (uint8_t)y : (uint8_t)(bmhdr->biHeight) - y;

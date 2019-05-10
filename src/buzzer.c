@@ -19,7 +19,7 @@
 
 #include "LPC214x.h"
 #include "buzzer.h"
-#include <stdio.h>
+#include "log.h"
 #include "sched.h"
 
 static BuzzFreq_t requested_buzz_freq;
@@ -44,7 +44,7 @@ static int32_t Buzzer_Work(void) {
 }
 
 void Buzzer_Init(void) {
-	printf("\n%s ", __FUNCTION__);
+	log(LOG_DEBUG, "%s called", __FUNCTION__);
 
 	Sched_SetWorkfunc(BUZZER_WORK, Buzzer_Work);
 }

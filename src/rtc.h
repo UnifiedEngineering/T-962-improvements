@@ -3,6 +3,6 @@
 
 void RTC_Init(void);
 uint32_t RTC_Read(void);
-void RTC_Zero(void);
+// don't do this: void RTC_Zero(void);
 
 #endif /* RTC_H_ */

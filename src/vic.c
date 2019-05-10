@@ -38,25 +38,6 @@ void VIC_Init( void ) {
 	VICDefVectAddr = (uint32_t)VIC_Default_Handler;
 }
 
-uint32_t VIC_IsIRQDisabled( void ) {
-	uint32_t state;
-	asm("MRS %0,cpsr" : "=r" (state));
-	return !!(state&0x80);
-}
-
-uint32_t VIC_DisableIRQ( void ) {
-	uint32_t retval;
-	asm("MRS %0,cpsr" : "=r" (retval));
-	asm("MSR cpsr_c,#(0x1F | 0x80 | 0x40)");
-	//FIO0CLR = (1<<11); // Visualize interrupts being disabled by turning backlight off
-	return retval;
-}
-
-void VIC_RestoreIRQ( uint32_t mask ) {
-	//if(!(mask & 0x80)) FIO0SET = (1<<11); // Visualize when interrupts are enabled again by turning backlight on
-	asm("MSR cpsr_c,%0" : : "r" (mask));
-}
-
 int32_t VIC_RegisterHandler( VICInt_t num, void* ptr ) {
 	int32_t i, retval;
 	for( i = 0; i < 16 ; i++ ) { // Find empty vector slot

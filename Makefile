@@ -6,11 +6,12 @@
 BASE_NAME := T-962-controller
 
 SRC_DIR := ./src/
+CLI_DIR := ./src/SimpleCLI/src/
 BUILD_DIR := ./build/
 TARGET := $(BUILD_DIR)$(BASE_NAME).axf
 
 
-vpath %.c $(SRC_DIR)
+vpath %.c $(SRC_DIR):$(CLI_DIR)
 vpath %.o $(BUILD_DIR)
 vpath %.d $(BUILD_DIR)
 
@@ -29,16 +30,22 @@ COLOR_END = $(shell echo "\033[0m")
 
 # Source files
 C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
+CLI_SRCS := $(wildcard $(CLI_DIR)*.c)
 
 S_SRCS += $(wildcard $(SRC_DIR)*.s)
 
-OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
+OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) \
+		$(patsubst $(CLI_DIR)%.c,$(BUILD_DIR)%.o,$(CLI_SRCS)) \
+		$(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
+C_FLAGS := -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wextra -std=gnu99 -Isrc -fmessage-length=0 -fno-builtin \
+	-ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi
 
 all: axf
 
 $(BUILD_DIR)version.c: $(BUILD_DIR)tag
+	@echo $(OBJS)
 	git describe --tag --always --dirty | \
 		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
 
@@ -51,21 +58,26 @@ $(BUILD_DIR)tag:
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -std=gnu99 -DNDEBUG -D__NEWLIB__ -Os -g -Wall -Wunused -c -fmessage-length=0 -fno-builtin -ffunction-sections -fdata-sections -flto -ffat-lto-objects -mcpu=arm7tdmi -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	$(CC) $(C_FLAGS) -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
+	@echo ' '
+
+$(BUILD_DIR)%.o: $(CLI_DIR)%.c $(BUILD_DIR)tag
+	@echo 'Building file: $<'
+	$(CC) $(C_FLAGS) -c -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
 	@echo 'Building file: $<'
-	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
+	$(CC) $(C_FLAGS) -c -x assembler-with-cpp -I $(BUILD_DIR) -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
-
 
 axf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MCU Linker'
-	$(CC) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections -flto -Os -mcpu=arm7tdmi --specs=nano.specs -u _printf_float -u _scanf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
+	$(CC) $(C_FLAGS) -nostdlib -Xlinker -Map="$(BUILD_DIR)$(BASE_NAME).map" -Xlinker --gc-sections --specs=nano.specs -u _printf_float -u _scanf_float -T "$(BASE_NAME).ld" -o "$(TARGET)" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $(COLOR_GREEN)$@$(COLOR_END)'
 	@echo ' '
 	$(MAKE) --no-print-directory post-build

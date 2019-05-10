@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
 #include "sched.h"
@@ -68,7 +67,7 @@ void Sched_SetWorkfunc(Task_t tasknum, SchedCall_t func) {
 
 int32_t Sched_Do(uint32_t fastforward) {
 	static uint32_t oldTick = 0;
-	int32_t shortestwait = 0x7fffffff;
+	uint32_t shortestwait = 0x7fffffff;	// max for int32_t!
 	uint32_t curTick = Sched_GetTick();
 
 	// How many ticks will we should roll forward (including sleep time)
@@ -97,11 +96,5 @@ int32_t Sched_Do(uint32_t fastforward) {
 	}
 	// Unless a (wake-up) interrupt calls Sched_SetState, this is how
 	// long it's OK to sleep until next task is due
-	return shortestwait;
-}
-
-void BusyWait( uint32_t numticks ) {
-	T0IR = 0x01; // Reset interrupt
-	T0MR0 = 1 + T0TC + numticks; // It's perfectly fine if this wraps
-	while (!(T0IR & 0x01)); // Wait for match
+	return (int32_t) shortestwait;
 }

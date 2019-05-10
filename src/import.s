@@ -20,6 +20,13 @@ stopbmp:
 stopbmpsize:
 	.word .-stopbmp
 
+	.global coolbmp
+	.global coolbmpsize
+coolbmp:
+	.incbin "../src/images/cool-89x64.bmp"
+coolbmpsize:
+	.word .-coolbmp
+
 	.global selectbmp
 	.global selectbmpsize
 selectbmp:

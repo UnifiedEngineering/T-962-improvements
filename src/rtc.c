@@ -26,6 +26,13 @@
 #define RTCINTDIV ((PCLKFREQ / 32768)-1)
 #define RTCFRACDIV (PCLKFREQ-((RTCINTDIV+1)*32768))
 
+// don't expose this!
+static void RTC_Zero(void) {
+	CCR |= (1<<1);
+	SEC = MIN = HOUR = 0; // Maybe need day for bake as well?
+	CCR &= ~(1<<1);
+}
+
 void RTC_Init(void) {
 	PREINT = RTCINTDIV;
 	PREFRAC = RTCFRACDIV;
@@ -44,8 +51,3 @@ uint32_t RTC_Read(void) {
 	return retval;
 }
 
-void RTC_Zero(void) {
-	CCR |= (1<<1);
-	SEC = MIN = HOUR = 0; // Maybe need day for bake as well?
-	CCR &= ~(1<<1);
-}

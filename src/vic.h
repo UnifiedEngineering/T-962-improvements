@@ -28,11 +28,33 @@ typedef enum eVICInt {
 } VICInt_t;
 
 void VIC_Init( void );
-uint32_t VIC_IsIRQDisabled( void );
-uint32_t VIC_DisableIRQ( void );
-void VIC_RestoreIRQ( uint32_t mask );
 int32_t VIC_RegisterHandler( VICInt_t num, void* ptr );
 int32_t VIC_EnableHandler( VICInt_t num );
 int32_t VIC_DisableHandler( VICInt_t num );
+
+/*
+ * some static inlines to allow inlining :-)
+ *   link time optimization might have resolved this anyway?!
+ */
+
+static inline uint32_t VIC_IsIRQDisabled( void ) {
+	uint32_t state;
+	asm("MRS %0,cpsr" : "=r" (state));
+	return !!(state&0x80);
+}
+
+static inline uint32_t VIC_DisableIRQ( void ) {
+	uint32_t retval;
+	asm("MRS %0,cpsr" : "=r" (retval));
+	asm("MSR cpsr_c,#(0x1F | 0x80 | 0x40)");
+	//FIO0CLR = (1<<11); // Visualize interrupts being disabled by turning backlight off
+	return retval;
+}
+
+static inline void VIC_RestoreIRQ( uint32_t mask ) {
+	//if(!(mask & 0x80)) FIO0SET = (1<<11); // Visualize when interrupts are enabled again by turning backlight on
+	asm("MSR cpsr_c,%0" : : "r" (mask));
+}
+
 
 #endif /* VIC_H_ */

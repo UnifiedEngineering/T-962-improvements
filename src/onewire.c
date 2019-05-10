@@ -20,31 +20,30 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
+#include "log.h"
 #include "onewire.h"
 #include "sched.h"
 #include "vic.h"
+#include "config.h"
 
-static inline void setpin0() {
-	FIO0CLR = (1<<7);
-	FIO0DIR |= (1<<7);
-}
-
-static inline void setpin1() {
-	FIO0SET = (1<<7);
-	FIO0DIR |= (1<<7);
-}
-
-static inline void setpinhiz() {
-	FIO0DIR &= ~(1<<7);
-}
-
-static inline uint32_t getpin() {
-	return !!(FIO0PIN & (1<<7));
-}
+#ifdef USE_SECONDARY_HEATER
+// this needs the PWM2 output, originally this is patched to 1-wire
+// switch this to P0.5 (which is only available at the uC pin 29)
+static inline void setpin0() { FIO0CLR = (1<<5); FIO0DIR |= (1<<5); }
+static inline void setpin1() { FIO0SET = (1<<5); FIO0DIR |= (1<<5); }
+static inline void setpinhiz() { FIO0DIR &= ~(1<<5); }
+static inline uint32_t getpin() { return !!(FIO0PIN & (1<<5)); }
+#else
+static inline void setpin0() { FIO0CLR = (1<<7); FIO0DIR |= (1<<7); }
+static inline void setpin1() { FIO0SET = (1<<7); FIO0DIR |= (1<<7); }
+static inline void setpinhiz() { FIO0DIR &= ~(1<<7); }
+static inline uint32_t getpin() { return !!(FIO0PIN & (1<<7)); }
+#endif
 
 static inline uint32_t xferbyte(uint32_t thebyte) {
+	uint32_t save = VIC_DisableIRQ();
+
 	for (uint32_t bits = 0; bits < 8; bits++) {
 		setpin0();
 		BusyWait(TICKS_US(1.5)); // 1.5us
@@ -56,10 +55,14 @@ static inline uint32_t xferbyte(uint32_t thebyte) {
 		setpinhiz();
 		BusyWait(TICKS_US(10));
 	}
+	VIC_RestoreIRQ(save);
+
 	return thebyte;
 }
 
 static inline uint32_t xferbit(uint32_t thebit) {
+	uint32_t save = VIC_DisableIRQ();
+
 	setpin0();
 	BusyWait(TICKS_US(1.5));
 	if (thebit) setpinhiz();
@@ -69,11 +72,15 @@ static inline uint32_t xferbit(uint32_t thebit) {
 	BusyWait(TICKS_US(45));
 	setpinhiz();
 	BusyWait(TICKS_US(10));
+	VIC_RestoreIRQ(save);
+
 	return thebit;
 }
 
+// TODO: reset bus timings are minimal timings, interrupts are ok!
 static inline uint32_t resetbus(void) {
 	uint32_t devicepresent = 0;
+	uint32_t save = VIC_DisableIRQ();
 
 	setpin0();
 	BusyWait(TICKS_US(480));
@@ -81,6 +88,7 @@ static inline uint32_t resetbus(void) {
 	BusyWait(TICKS_US(70));
 	if (getpin() == 0) devicepresent = 1;
 	BusyWait(TICKS_US(410));
+	VIC_RestoreIRQ(save);
 
 	return devicepresent;
 }
@@ -104,6 +112,12 @@ static int16_t extrareadout[MAX_OW_DEVICES]; // Keeps last readout from each dev
 static int numowdevices = 0;
 static int8_t tcidmapping[16]; // Map TC ID to ROM ID index
 static int8_t tempidx; // Which ROM ID index that contains the temperature sensor
+
+// helper to cast 8byte ID into 2 32bit values
+typedef struct {
+	unsigned int lower;
+	unsigned int higher;
+} two_32bits;
 
 // OW functions from Application note 187 (modified for readability)
 // global search state
@@ -287,7 +301,6 @@ static int32_t OneWire_Work(void) {
 	int32_t retval = 0;
 
 	if (mystate == 0) {
-		uint32_t save = VIC_DisableIRQ();
 		if (resetbus()) {
 			xferbyte(OW_SKIP_ROM); // All devices on the bus are addressed here
 			xferbyte(OW_CONVERT_T);
@@ -296,16 +309,13 @@ static int32_t OneWire_Work(void) {
 			retval = TICKS_MS(100); // TC interface needs max 100ms to be ready
 			mystate++;
 		}
-		VIC_RestoreIRQ( save );
 	} else if (mystate == 1) {
 		for (int i = 0; i < numowdevices; i++) {
-			uint32_t save = VIC_DisableIRQ();
 			selectdevbyidx(i);
 			xferbyte(OW_READ_SCRATCHPAD);
 			for (uint32_t iter = 0; iter < 4; iter++) { // Read four bytes
 				scratch[iter] = xferbyte(0xff);
 			}
-			VIC_RestoreIRQ(save);
 			int16_t tmp = scratch[1]<<8 | scratch[0];
 			devreadout[i] = tmp;
 			tmp = scratch[3]<<8 | scratch[2];
@@ -320,35 +330,30 @@ static int32_t OneWire_Work(void) {
 }
 
 uint32_t OneWire_Init(void) {
-	printf("\n%s called", __FUNCTION__);
+	log(LOG_DEBUG, "%s called", __FUNCTION__);
 	Sched_SetWorkfunc(ONEWIRE_WORK, OneWire_Work);
-	printf("\nScanning 1-wire bus...");
+	log(LOG_INFO, "Scanning 1-wire bus...");
 
 	tempidx = -1; // Assume we don't find a temperature sensor
-	for (int i = 0; i < sizeof(tcidmapping); i++) {
+	for (unsigned i = 0; i < sizeof(tcidmapping); i++) {
 		tcidmapping[i] = -1; // Assume we don't find any thermocouple interfaces
 	}
 
-	uint32_t save = VIC_DisableIRQ();
 	int rslt = OWFirst();
-	VIC_RestoreIRQ( save );
 
 	numowdevices = 0;
 	while (rslt && numowdevices < MAX_OW_DEVICES) {
 		memcpy(owdeviceids[numowdevices], ROM_NO, sizeof(ROM_NO));
 		numowdevices++;
-		save = VIC_DisableIRQ();
 		rslt = OWNext();
-		VIC_RestoreIRQ( save );
 	}
 
 	if (numowdevices) {
 		for (int iter = 0; iter < numowdevices; iter++) {
-			printf("\n Found ");
-			for (int idloop = 7; idloop >= 0; idloop--) {
-				printf("%02x", owdeviceids[iter][idloop]);
-			}
 			uint8_t family = owdeviceids[iter][0];
+			// all but portable!
+			two_32bits *debug_id = (two_32bits *) &owdeviceids[iter];
+
 			if (family == OW_FAMILY_TEMP1 || family == OW_FAMILY_TEMP2 || family == OW_FAMILY_TEMP3) {
 				const char* sensorname = "UNKNOWN";
 				if (family == OW_FAMILY_TEMP1) {
@@ -358,17 +363,16 @@ uint32_t OneWire_Init(void) {
 				} else if (family == OW_FAMILY_TEMP3) {
 					sensorname = "DS18S20";
 				}
-				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_WRITE_SCRATCHPAD);
 				xferbyte(0x00);
 				xferbyte(0x00);
 				xferbyte(0x1f); // Reduce resolution to 0.5C to keep conversion time reasonable
-				VIC_RestoreIRQ(save);
 				tempidx = iter; // Keep track of where we saw the last/only temperature sensor
-				printf(" [%s Temperature sensor]", sensorname);
+				log(LOG_INFO, "Found %08x%08x [%s Temperature sensor]",
+						debug_id->higher, debug_id->lower,
+						sensorname);
 			} else if (family == OW_FAMILY_TC) {
-				save = VIC_DisableIRQ();
 				selectdevbyidx(iter);
 				xferbyte(OW_READ_SCRATCHPAD);
 				xferbyte(0xff);
@@ -376,13 +380,14 @@ uint32_t OneWire_Init(void) {
 				xferbyte(0xff);
 				xferbyte(0xff);
 				uint8_t tcid = xferbyte(0xff) & 0x0f;
-				VIC_RestoreIRQ( save );
 				tcidmapping[tcid] = iter; // Keep track of the ID mapping
-				printf(" [Thermocouple interface, ID %x]",tcid);
+				log(LOG_INFO, "Found %08x%08x [Thermocouple interface, ID 0x%x]",
+						debug_id->higher, debug_id->lower,
+						(unsigned int) tcid);
 			}
 		}
 	} else {
-		printf(" No devices found!");
+		log(LOG_INFO, "No 1-wire devices found!");
 	}
 
 	if (numowdevices) {
@@ -391,6 +396,7 @@ uint32_t OneWire_Init(void) {
 	return numowdevices;
 }
 
+/* probably this should not log! */
 float OneWire_GetTempSensorReading(void) {
 	float retval = 999.0f; // Report invalid temp if not found
 	if(tempidx >= 0) {
@@ -416,7 +422,7 @@ int OneWire_IsTCPresent(uint8_t tcid) {
 float OneWire_GetTCReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
 	if (tcid < sizeof(tcidmapping)) {
-		uint8_t idx = tcidmapping[tcid];
+		int8_t idx = tcidmapping[tcid];
 		if (idx >=0) { // Is this ID present?
 			if (devreadout[idx] & 0x01) { // Fault detected
 				retval = 999.0f; // Invalid
@@ -433,7 +439,7 @@ float OneWire_GetTCReading(uint8_t tcid) {
 float OneWire_GetTCColdReading(uint8_t tcid) {
 	float retval = 0.0f; // Report 0C for missing sensors
 	if (tcid < sizeof(tcidmapping)) {
-		uint8_t idx = tcidmapping[tcid];
+		int8_t idx = tcidmapping[tcid];
 		if (idx >=0) { // Is this ID present?
 			if (extrareadout[idx] & 0x07) { // Any fault detected
 				retval = 999.0f; // Invalid

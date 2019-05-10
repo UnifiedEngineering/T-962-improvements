@@ -19,8 +19,8 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
 #include "t962.h"
+#include "log.h"
 #include "keypad.h"
 #include "io.h"
 #include "sched.h"
@@ -80,18 +80,43 @@ static int32_t Keypad_Work(void) {
 	return TICKS_MS(100);
 }
 
-uint32_t Keypad_Get(void) {
-	uint32_t retval = latchedkeypadstate;
+/*
+ * get pressed key info: mask, acceleration and priorized key
+ */
+fkey_t Keypad_Get(uint16_t lowlimit, uint16_t highlimit) {
+	fkey_t retval;
+
+	retval.acceleration = latchedkeypadstate >> 16;
+	if (retval.acceleration > highlimit)
+		retval.acceleration = highlimit;
+	if (retval.acceleration < lowlimit)
+		retval.acceleration = lowlimit;
+
+	retval.keymask = latchedkeypadstate & 0xffff;
+
+	// ternery ?: has pretty unpredictable precedence, so be more eplicit
+	retval.priorized_key = 0;
+	if (retval.keymask & KEY_S)
+		retval.priorized_key = KEY_S;
+	else if (retval.keymask & KEY_F1)
+		retval.priorized_key = KEY_F1;
+	else if (retval.keymask & KEY_F2)
+		retval.priorized_key = KEY_F2;
+	else if (retval.keymask & KEY_F3)
+		retval.priorized_key = KEY_F3;
+	else if (retval.keymask & KEY_F4)
+		retval.priorized_key = KEY_F4;
+
 	latchedkeypadstate = 0;
 	return retval;
 }
 
 void Keypad_Init(void) {
 	Sched_SetWorkfunc(KEYPAD_WORK, Keypad_Work);
-	printf("\nWaiting for keys to be released... ");
+	log(LOG_DEBUG, "Waiting for keys to be released ...");
 	// Note that if this takes longer than ~1 second the watchdog will bite
-	while (Keypad_GetRaw());
-	printf("Done!");
+	while (Keypad_GetRaw()) ;
+	log(LOG_DEBUG, "Done waiting for keys");
 
 	// Potential noise gets suppressed as well
 	Sched_SetState(KEYPAD_WORK, 1, TICKS_MS(250)); // Wait 250ms before starting to scan the keypad

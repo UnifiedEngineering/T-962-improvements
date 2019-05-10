@@ -24,9 +24,10 @@
 #include "t962.h"
 #include "eeprom.h"
 #include "i2c.h"
+#include "log.h"
+#include "config.h"
 
 #define EEADDR (0x50<<1)
-//#define DUMP_EEPROM
 
 void EEPROM_Init(void) {
 	#ifdef DUMP_EEPROM
@@ -39,7 +40,7 @@ void EEPROM_Dump(void) {
 	uint8_t dumpbuf[256];
 	EEPROM_Read(dumpbuf, 0, sizeof(dumpbuf));
 	printf("\nEEPROM contents:");
-	for (int i = 0; i < sizeof(dumpbuf); i++) {
+	for (unsigned i = 0; i < sizeof(dumpbuf); i++) {
 		if ((i & 0x0f) == 0){
 			printf("\n0x%04x:", i);
 		}
@@ -61,6 +62,8 @@ int32_t EEPROM_Read(uint8_t* dest, uint32_t startpos, uint32_t len) {
 
 int32_t EEPROM_Write(uint32_t startdestpos, uint8_t* src, uint32_t len) {
 	int32_t retval = 0;
+
+	log(LOG_DEBUG, "EEPROM_Write %lu bytes to %lu", len, startdestpos);
 	if (startdestpos < 256 && len && len <= 256) {
 		uint8_t tmpbuf[9];
 		uint8_t i = startdestpos;

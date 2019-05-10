@@ -33,7 +33,7 @@
 
 #include "LPC214x.h"
 #include <stdint.h>
-#include <stdio.h>
+#include "log.h"
 #include "systemfan.h"
 #include "sched.h"
 #include "sensor.h"
@@ -44,14 +44,15 @@ static uint32_t syspwmval = 0;
 
 static int32_t SystemFanPWM_Work(void) {
 	static uint8_t state = 0;
+	// in reality either this is -1 or positive (including 0)
 	int32_t retval;
 
 	if (state) {
 		FIO0CLR = (syspwmval != SYSFAN_PWM_PERIOD) ? (1<<25) : 0; // SysFan off
-		retval = syspwmval ? (SYSFAN_PWM_PERIOD - syspwmval) : -1;
+		retval = syspwmval ? (int32_t) (SYSFAN_PWM_PERIOD - syspwmval) : -1;
 	} else {
 		FIO0SET = syspwmval ? (1<<25) : 0; // SysFan on
-		retval = (syspwmval != SYSFAN_PWM_PERIOD) ? syspwmval : -1;
+		retval = (syspwmval != SYSFAN_PWM_PERIOD) ? (int32_t) syspwmval : -1;
 	}
 	state ^= 1;
 	return retval;
@@ -92,7 +93,7 @@ static int32_t SystemFanSense_Work(void) {
 }
 
 void SystemFan_Init(void) {
-	printf("\n%s", __FUNCTION__);
+	log(LOG_DEBUG, "%s", __FUNCTION__);
 	Sched_SetWorkfunc(SYSFANPWM_WORK, SystemFanPWM_Work);
 	Sched_SetWorkfunc(SYSFANSENSE_WORK, SystemFanSense_Work);
 

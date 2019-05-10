@@ -2,6 +2,8 @@
 #define SCHED_H_
 
 #include "t962.h" // For frequency constant
+#include "LPC214x.h"
+
 
 // This is the prescaler used to initialize the timer so we run a minimum of 6 times per us
 // (for 55.296MHz 7 results in 7.899 ticks per us)
@@ -29,6 +31,7 @@ typedef enum eTask {
 	REFLOW_WORK,
 	SYSFANSENSE_WORK,
 	NV_WORK,
+	SHELL_WORK,
 	SCHED_NUM_ITEMS // Last value
 } Task_t;
 
@@ -38,6 +41,13 @@ void Sched_SetState(Task_t tasknum, uint8_t enable, int32_t future);
 uint8_t Sched_IsOverride(void);
 void Sched_SetWorkfunc(Task_t tasknum, SchedCall_t func);
 int32_t Sched_Do(uint32_t fastforward);
-void BusyWait( uint32_t numticks );
+
+// to be inlined even if LTO off
+static inline void BusyWait( uint32_t numticks ) {
+	T0IR = 0x01; // Reset interrupt
+	T0MR0 = 1 + T0TC + numticks; // It's perfectly fine if this wraps
+	while (!(T0IR & 0x01)); // Wait for match
+}
+
 
 #endif /* SCHED_H_ */
