@@ -285,6 +285,8 @@ static int32_t OneWire_Work(void) {
 	static uint8_t mystate = 0;
 	uint8_t scratch[9];
 	int32_t retval = 0;
+	int     numBytesToRead = 4;
+	int16_t tmp;
 
 	if (mystate == 0) {
 		uint32_t save = VIC_DisableIRQ();
@@ -302,14 +304,25 @@ static int32_t OneWire_Work(void) {
 			uint32_t save = VIC_DisableIRQ();
 			selectdevbyidx(i);
 			xferbyte(OW_READ_SCRATCHPAD);
-			for (uint32_t iter = 0; iter < 4; iter++) { // Read four bytes
+			uint8_t family = owdeviceids[i][0];
+			if (family == OW_FAMILY_TEMP3) numBytesToRead = 7;			// AD: for the DS18S20 read 7 bytes into scratchpad
+			for (uint32_t iter = 0; iter < numBytesToRead; iter++) {	// Read bytes into scratch
 				scratch[iter] = xferbyte(0xff);
 			}
 			VIC_RestoreIRQ(save);
-			int16_t tmp = scratch[1]<<8 | scratch[0];
-			devreadout[i] = tmp;
-			tmp = scratch[3]<<8 | scratch[2];
-			extrareadout[i] = tmp;
+			if (family == OW_FAMILY_TEMP3) {  // AD: DS18S20
+				tmp = scratch[0];
+				if (scratch[1]) tmp = tmp * -1;
+				// For the DS18S20, use COUNT_REMAIN to calculate 12 bit value
+				devreadout[i] = ((tmp & 0xFFFE) << 3) +12 - scratch[6]; // 6:COUNT_REMAIN
+				//printf("%s: [%d] read: %d(%d), devreadout: %d, COUNT_REMAIN: %d Scratchpad: %02x %02x %02x %02x %02x %02x %02x %02x\n", __FUNCTION__, i, tmp, numBytesToRead,devreadout[i], scratch[6],
+				//  scratch[0],scratch[1],scratch[2],scratch[3],scratch[4],scratch[5],scratch[6],scratch[7]);
+			} else {
+				tmp = scratch[1]<<8 | scratch[0];
+				devreadout[i] = tmp;
+				tmp = scratch[3]<<8 | scratch[2];
+				extrareadout[i] = tmp;
+			}
 		}
 		mystate = 0;
 	} else {
