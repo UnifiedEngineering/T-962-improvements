@@ -37,7 +37,7 @@ uint8_t blinkCnt=0,blinkOn=0;
 int16_t totalReflowTicks=0;
 int8_t reflowDisplay=0;
 
-uint16_t screensaverTimeout=600;
+uint16_t screensaverTimeout=30;
 uint16_t screensaverCnt=0;
 uint16_t screensaverScore=0;
 uint8_t screensaverScoreMul[]={1,2,4,16};
@@ -230,16 +230,12 @@ void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange,uint8_t isDone
 	}
 
 	if (keyspressed & KEY_F1) {
-		--reflowDisplay;
+		if(++reflowDisplay>=TOTAL_REFLOW_DISPLAYS)
+			reflowDisplay=0;
 	}
 	if (keyspressed & KEY_F2) {
-		++reflowDisplay;
-	}
-
-	if(reflowDisplay>1){
-		reflowDisplay=0;
-	}else if(reflowDisplay<0){
-		reflowDisplay=1;
+		Reflow_TogglePause();
+		// Pause timer, to allow heat to soak at current set point
 	}
 
 	if(modeChange){
@@ -275,31 +271,31 @@ void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange,uint8_t isDone
 
 			LCD_disp_str((uint8_t*)buf, len, 68, 0, (diff<-5 && blinkOn==1?FONT6X6|INVERT:FONT6X6));
 
-			len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
-			LCD_disp_str((uint8_t*)"RUN", 3, 110, 31, FONT6X6);
-			LCD_disp_str((uint8_t*)buf, len, 110, 37, FONT6X6);
+			len = snprintf(buf, sizeof(buf), "%02u:%02u", (unsigned int)(ticks/60),(unsigned int)(ticks%60));
+
+			LCD_disp_str((uint8_t*)buf, len, 98, 7, (Reflow_IsPaused() && blinkOn==1)?FONT6X6|INVERT:FONT6X6);
 		}
 	}else if(reflowDisplay==1){
 		LCD_FB_Clear();
 		LCD_BMPDisplay(graph2bmp, 0, 0);
 
 		uint16_t v=(((13000*4)/200)*Reflow_GetSetpoint())/1000;	// use Sensor_GetTemp() for float
-		showBar(v,3);
+		showBar(v,1);
 
 		v=(((13000*4)/200)*Reflow_GetActualTemp())/1000;
 		showBar(v,24);
 
 		v=((52000/totalReflowTicks)*(unsigned int)ticks)/1000;
-		showBar(52-v,45);
+		showBar(52-v,47);
 
 		if(blinkOn==1 && diff>5){
-			LCD_DrawSprite(10,63,3,SPRITE9X16);
-			LCD_DrawSprite(10,73,3,SPRITE9X16);
-			LCD_DrawSprite(10,83,3,SPRITE9X16);
-			LCD_DrawSprite(10,96,3,SPRITE9X16);
+			LCD_DrawSprite(10,63,1,SPRITE9X16);
+			LCD_DrawSprite(10,73,1,SPRITE9X16);
+			LCD_DrawSprite(10,83,1,SPRITE9X16);
+			LCD_DrawSprite(10,96,1,SPRITE9X16);
 		}else{
-			LCD_drawBigNum(Reflow_GetSetpoint(),3, 63,3,SPRITE9X16|INVERT);
-			LCD_DrawSprite(0,96,3,SPRITE9X16|INVERT);
+			LCD_drawBigNum(Reflow_GetSetpoint(),3, 63,1,SPRITE9X16|INVERT);
+			LCD_DrawSprite(0,96,1,SPRITE9X16|INVERT);
 		}
 
 		uint16_t t=(Sensor_GetTemp(TC_AVERAGE)*10);
@@ -313,8 +309,15 @@ void displayReflowScreen(uint32_t keyspressed, uint8_t modeChange,uint8_t isDone
 			LCD_DrawSprite((int8_t)(t%10),96,24,SPRITE9X16|INVERT);
 		}
 
-		LCD_drawBigNum((totalReflowTicks-ticks)/60,2, 63,45,SPRITE9X16|INVERT);
-		LCD_drawBigNum((totalReflowTicks-ticks)%60,2, 86,45,SPRITE9X16|INVERT);
+		if(Reflow_IsPaused() && blinkOn==1){
+			LCD_DrawSprite(10,63,47,SPRITE9X16);
+			LCD_DrawSprite(10,73,47,SPRITE9X16);
+			LCD_DrawSprite(10,86,47,SPRITE9X16);
+			LCD_DrawSprite(10,96,47,SPRITE9X16);
+		}else{
+			LCD_drawBigNum((totalReflowTicks-ticks)/60,2, 63,47,SPRITE9X16|INVERT);
+			LCD_drawBigNum((totalReflowTicks-ticks)%60,2, 86,47,SPRITE9X16|INVERT);
+		}
 
 	}
 }

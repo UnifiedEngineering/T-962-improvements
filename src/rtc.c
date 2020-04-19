@@ -48,4 +48,14 @@ void RTC_Zero(void) {
 	CCR |= (1<<1);
 	SEC = MIN = HOUR = 0; // Maybe need day for bake as well?
 	CCR &= ~(1<<1);
+	RTC_Resume();
+}
+
+void RTC_Hold(void){
+	CCR &=~ (1<<0); // Disable RTC
+
+}
+
+void RTC_Resume(void){
+	CCR |= (1<<0); // Enable RTC
 }

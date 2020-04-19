@@ -19,6 +19,8 @@ typedef enum eReflowMode {
 #define BAKE_TIMER_MAX (60 * 60 * 36)
 
 void Reflow_Init(void);
+void Reflow_TogglePause(void);
+int Reflow_IsPaused(void);
 void Reflow_SetMode(ReflowMode_t themode);
 void Reflow_SetSetpoint(uint16_t thesetpoint);
 void Reflow_LoadSetpoint(void);

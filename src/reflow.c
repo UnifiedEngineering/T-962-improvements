@@ -53,6 +53,7 @@ static uint16_t numticks = 0;
 static int standby_logging = 0;
 
 uint8_t plotDot[TOTAL_DOTS];
+static int reflowPaused=0;
 
 static int32_t Reflow_Work(void) {
 	static ReflowMode_t oldmode = REFLOW_INITIAL;
@@ -184,9 +185,23 @@ void Reflow_Init(void) {
 	for(uint8_t n=0;n<TOTAL_DOTS;n++){
 		plotDot[n]=0;
 	}
+	reflowPaused=0;
 
 	// Start work
 	Sched_SetState(REFLOW_WORK, 2, 0);
+}
+
+void Reflow_TogglePause(void){
+	reflowPaused=(reflowPaused==1?0:1);
+	if(reflowPaused){
+		RTC_Hold();
+	}else{
+		RTC_Resume();
+	}
+}
+
+int Reflow_IsPaused(void){
+	return reflowPaused;
 }
 
 void Reflow_SetMode(ReflowMode_t themode) {

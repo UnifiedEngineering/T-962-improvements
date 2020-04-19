@@ -596,6 +596,7 @@ static int32_t Main_Work(void) {
 		} else {
 			len = snprintf(buf, sizeof(buf), "- TIMER %3d:%02d +", timer / 60, timer % 60);
 		}
+
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT6X6);
 
 		if (timer >= 0) {
@@ -627,6 +628,9 @@ static int32_t Main_Work(void) {
 		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT6X6);
 		len = snprintf(buf, sizeof(buf), "  R %3.1f`", Sensor_GetTemp(TC_RIGHT));
 		LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT6X6);
+
+
+
 
 		if (Sensor_IsValid(TC_EXTRA1) || Sensor_IsValid(TC_EXTRA2)) {
 			y = 42;
@@ -735,7 +739,7 @@ static int32_t Main_Work(void) {
 
 
 
-	// Edit profile
+	// Show screensaver
 	} else if (mode == MAIN_SCREENSAVER) {
 
 		if(animIY<58){
@@ -784,7 +788,7 @@ static int32_t Main_Work(void) {
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), (8 * 6)+1, FONT6X6 | INVERT);
 
-		len = snprintf(buf,sizeof(buf), "OVEN TEMPERATURE %d`", Reflow_GetActualTemp());
+		len = snprintf(buf,sizeof(buf), " OVEN TEMPERATURE %d` ", Reflow_GetActualTemp());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 64 - 6, FONT6X6);
 
 		// Make sure reflow complete beep is silenced when pressing any key

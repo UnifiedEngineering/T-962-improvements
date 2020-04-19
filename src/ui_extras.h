@@ -10,7 +10,8 @@
 #ifndef UI_EXTRAS_H_
 #define UI_EXTRAS_H_
 
-#define TOTAL_SPRITES	5
+#define TOTAL_SPRITES			5
+#define TOTAL_REFLOW_DISPLAYS	2
 
 typedef struct {
 
