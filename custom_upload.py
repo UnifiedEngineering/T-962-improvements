@@ -17,9 +17,9 @@ def on_upload(source, target, env):
     firmware_path = firmware_path[:-3] + "hex"
     print("Firmware path: %s" % firmware_path)
     # find out what executable to call
-    uploader = "lpc21isp_linux"
+    uploader = "./lpc21isp_linux"
     if platform.system() == "Windows":
-        uploader = "lpc21isp_win.exe"        
+        uploader = "lpc21isp_win.exe"
     # do something
     env.Execute("%s %s %s %s %s" % (uploader, firmware_path, env.subst("$UPLOAD_PORT"), flash_baud, mcu_clock))
 
