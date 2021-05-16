@@ -3,8 +3,6 @@ import os
 import platform
 from platformio.builder.tools.pioupload import AutodetectUploadPort
 
-AutodetectUploadPort(env)
-
 config = env.GetProjectConfig()
 mcu_clock = config.get("upload_settings", "MCU_CLOCK")
 flash_baud = config.get("upload_settings", "FLASH_BAUD")
@@ -12,6 +10,7 @@ flash_baud = config.get("upload_settings", "FLASH_BAUD")
 
 # Python callback
 def on_upload(source, target, env):
+    AutodetectUploadPort(env)
     #print(source, target)
     firmware_path = str(source[0])
     # replace .bin with .hex. Upload needs .hex not .bin
