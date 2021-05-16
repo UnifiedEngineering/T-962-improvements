@@ -5,7 +5,7 @@ Import("env")
 def create_version_c(*args, **kwargs):
     print("Creating version.c file from git describe..")
     try:
-        git_tag_cmd = "git describe --tag --always --dirty"
+        git_tag_cmd = ["git", "describe", "--tag", "--always", "--dirty"]
         git_tag = subprocess.check_output(git_tag_cmd).decode('utf-8').strip()
         print("Got tag: %s" % git_tag)
         file_content = 'const char* Version_GetGitVersion(void) { return "%s"; }' % git_tag
