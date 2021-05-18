@@ -10,8 +10,8 @@ def create_version_c(*args, **kwargs):
     if not os.path.isdir(".git"):
         print("Aborting creation of version.c since this project was not cloned via `git`...")
         return
-    # sanity check: do we have git? 
-    if shutil.which("git") is None: 
+    # sanity check: do we have git?
+    if shutil.which("git") is None:
         print("Command `git` is not available, aborting creation of src/version.c..")
         return
     try:
@@ -23,7 +23,7 @@ def create_version_c(*args, **kwargs):
             out_file.write(file_content)
         print("Writing version.c okay.")
     except Exception as exc:
-        print("Exception during creation of version.c occured: exc" % str(exc))
+        print("Exception during creation of version.c occured: %s" % str(exc))
         print(traceback.format_exc())
         os.remove("src/version.c")
 
