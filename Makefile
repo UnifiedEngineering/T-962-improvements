@@ -41,6 +41,9 @@ all: axf
 $(BUILD_DIR)version.c: $(BUILD_DIR)tag
 	git describe --tag --always --dirty | \
 		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
+	# platformio will generate a version.c in this place, which messes with the build.
+	# remove it we're building from the makefile..
+	rm -f $(SRC_DIR)version.c
 
 # Always regenerate the git version
 .PHONY: $(BUILD_DIR)version.c
@@ -55,7 +58,7 @@ $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
 	@echo ' '
 
-$(BUILD_DIR)%.o: $(SRC_DIR)%.s $(BUILD_DIR)tag
+$(BUILD_DIR)%.o: $(SRC_DIR)%.S $(BUILD_DIR)tag
 	@echo 'Building file: $<'
 	$(CC) -c -x assembler-with-cpp -I $(BUILD_DIR) -DNDEBUG -D__NEWLIB__ -mcpu=arm7tdmi -o "$@" "$<"
 	@echo 'Finished building: $(COLOR_GREEN)$<$(COLOR_END)'
