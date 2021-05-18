@@ -32,6 +32,10 @@ C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
 
 S_SRCS += $(wildcard $(SRC_DIR)*.S)
 
+# filter out src/version.c created by PlatformIO
+TMPVAR := $(C_SRCS)
+C_SRCS = $(filter-out $(SRC_DIR)version.c, $(TMPVAR))
+
 OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.S,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
