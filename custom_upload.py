@@ -21,6 +21,6 @@ def on_upload(source, target, env):
     if platform.system() == "Windows":
         uploader = "lpc21isp_win.exe"
     # do something
-    env.Execute("%s %s %s %s %s" % (uploader, firmware_path, env.subst("$UPLOAD_PORT"), flash_baud, mcu_clock))
+    env.Execute("%s \"%s\" %s %s %s" % (uploader, firmware_path, env.subst("$UPLOAD_PORT"), flash_baud, mcu_clock))
 
 env.Replace(UPLOADCMD=on_upload)
