@@ -39,17 +39,17 @@ C_DEPS := $(wildcard *.d)
 all: axf
 
 $(BUILD_DIR)version.c: $(BUILD_DIR)tag
-	$(RM) $(SRC_DIR)version.c && git describe --tag --always --dirty | \
+	git describe --tag --always --dirty | \
 		sed 's/.*/const char* Version_GetGitVersion(void) { return "&"; }/' > $@
-	# platformio will generate a version.c in this place, which messes with the build.
-	# remove it we're building from the makefile..
-
 # Always regenerate the git version
 .PHONY: $(BUILD_DIR)version.c
 
 $(BUILD_DIR)tag:
+	$(RM) $(SRC_DIR)version.c 
 	mkdir -p $(BUILD_DIR)
 	touch $(BUILD_DIR)tag
+	# platformio will generate a version.c in this place, which messes with the build.
+	# remove it we're building from the makefile..
 
 $(BUILD_DIR)%.o: $(SRC_DIR)%.c $(BUILD_DIR)tag
 	@echo 'Building file: $<'
