@@ -32,7 +32,7 @@ C_SRCS += $(wildcard $(SRC_DIR)*.c) $(BUILD_DIR)version.c
 
 S_SRCS += $(wildcard $(SRC_DIR)*.S)
 
-OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.s,$(BUILD_DIR)%.o,$(S_SRCS))
+OBJS := $(patsubst $(SRC_DIR)%.c,$(BUILD_DIR)%.o,$(C_SRCS)) $(patsubst $(SRC_DIR)%.S,$(BUILD_DIR)%.o,$(S_SRCS))
 
 C_DEPS := $(wildcard *.d)
 
