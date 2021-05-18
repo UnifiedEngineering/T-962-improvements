@@ -1,0 +1,32 @@
+{
+  "build": {
+    "cpu": "arm7tdmi",
+    "f_cpu": "55296000L",
+    "mcu": "lpc2134"
+  },
+  "connectivity": [
+  ],
+  "debug": {
+    "jlink_device": "LPC2134",
+    "pyocd_target": "lpc2134",
+    "svd_path": "LPC176x5x_v0.2.svd"
+  },
+  "frameworks": [
+    "mbed"
+  ],
+  "name": "NXP LPC2134/01",
+  "upload": {
+    "maximum_ram_size": 16384,
+    "maximum_size": 131072,
+    "protocol": "mbed",
+    "protocols": [
+      "jlink",
+      "blackmagic",
+      "cmsis-dap",
+      "mbed"
+    ]
+  },
+  "url": "https://www.nxp.com/products/processors-and-microcontrollers/arm-microcontrollers/general-purpose-mcus/lpc2000-arm7/single-chip-16-32-bit-microcontrollers-32-64-128-256-512-kb-isp-iap-flash-with-10-bit-adc-and-dac:LPC2134FBD64",
+  "vendor": "NXP"
+}
+
