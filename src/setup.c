@@ -22,14 +22,17 @@
 #include "nvstorage.h"
 #include "reflow_profiles.h"
 #include "setup.h"
+#include "lcd.h"
+
+char setup_buf[40];
 
 static setupMenuStruct setupmenu[] = {
-	{"Min fan speed    %4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
-	{"Cycle done beep %4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
-	{"Left TC gain     %1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
-	{"Left TC offset  %+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
-	{"Right TC gain    %1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
-	{"Right TC offset %+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
+	{"Min fan speed    %s%4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
+	{"Cycle done beep %s%4.1fs", REFLOW_BEEP_DONE_LEN, 0, 254, 0, 0.1f},
+	{"Left TC gain     %s%1.2f", TC_LEFT_GAIN, 10, 190, 0, 0.01f},
+	{"Left TC offset  %s%+1.2f", TC_LEFT_OFFSET, 0, 200, -100, 0.25f},
+	{"Right TC gain    %s%1.2f", TC_RIGHT_GAIN, 10, 190, 0, 0.01f},
+	{"Right TC offset %s%+1.2f", TC_RIGHT_OFFSET, 0, 200, -100, 0.25f},
 };
 #define NUM_SETUP_ITEMS (sizeof(setupmenu) / sizeof(setupmenu[0]))
 
@@ -76,10 +79,19 @@ void Setup_decreaseValue(int item, int amount) {
 	Setup_setValue(item, curval);
 }
 
+char* Setup_filler(int item) {
+	uint16_t len=FB_WIDTH/12;
+	len-=snprintf(setup_buf,sizeof(setup_buf),setupmenu[item].formatstr,"",Setup_getValue(item));
+	for (int i=0;i<len;i++) {
+		setup_buf[i]=0x20;
+	}
+	setup_buf[len]=0;
+	return setup_buf;
+}
 void Setup_printFormattedValue(int item) {
 	printf(setupmenu[item].formatstr, Setup_getValue(item));
 }
 
 int Setup_snprintFormattedValue(char* buf, int n, int item) {
-	return snprintf(buf, n, setupmenu[item].formatstr, Setup_getValue(item));
+	return snprintf(buf, n, setupmenu[item].formatstr, Setup_filler(item), Setup_getValue(item));
 }

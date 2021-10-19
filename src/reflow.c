@@ -49,6 +49,8 @@ static float avgtemp;
 static uint8_t reflowdone = 0;
 static ReflowMode_t mymode = REFLOW_STANDBY;
 static uint16_t numticks = 0;
+static uint16_t roldx=XAXIS;
+static uint16_t roldy=YAXIS-SETPOINT_MIN;
 
 static int standby_logging = 0;
 
@@ -58,6 +60,10 @@ static int32_t Reflow_Work(void) {
 	uint8_t fan, heat;
 	uint32_t ticks = RTC_Read();
 
+	if (reflowdone) {
+		roldx=XAXIS;
+		roldy=YAXIS-SETPOINT_MIN;
+	}
 	Sensor_DoConversion();
 	avgtemp = Sensor_GetTemp(TC_AVERAGE);
 
@@ -67,6 +73,7 @@ static int32_t Reflow_Work(void) {
 	if (mymode == REFLOW_STANDBY || mymode == REFLOW_STANDBYFAN) {
 		intsetpoint = STANDBYTEMP;
 		// Cool to standby temp but don't heat to get there
+		roldx=roldy=FB_WIDTH+FB_HEIGHT;
 		Reflow_Run(0, avgtemp, &heat, &fan, intsetpoint);
 		heat = 0;
 
@@ -277,10 +284,13 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 
 	if (!manualsetpoint) {
 		// Plot actual temperature on top of desired profile
-		int realx = (thetime / 5) + XAXIS;
-		int y = (uint16_t)(meastemp * 0.2f);
+		int realx = (int)(thetime * ((FB_WIDTH-20)/470.0) + XAXIS);
+		int y = (uint16_t)(meastemp * (FB_HEIGHT/300.0));
 		y = YAXIS - y;
-		LCD_SetPixel(realx, y);
+		TFT_SetPixel(realx, y);
+		TFT_DrawLine(roldx,roldy,realx,y);
+		roldx=realx;
+		roldy=y;
 	}
 
 	PID.myInput = meastemp;

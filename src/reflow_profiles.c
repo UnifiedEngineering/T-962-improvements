@@ -1,6 +1,7 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include "t962.h"
 #include "lcd.h"
 #include "nvstorage.h"
@@ -208,20 +209,27 @@ void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
 }
 
 void Reflow_PlotProfile(int highlight) {
-	LCD_BMPDisplay(graphbmp, 0, 0);
+	TFT_DrawGrid(XAXIS,20,300,YAXIS,0,0,480,320,12);
 
 	// No need to plot first value as it is obscured by Y-axis
+	uint16_t lastx=XAXIS;
+	uint16_t lasty=YAXIS-profiles[profileidx]->temperatures[0];
 	for(int x = 1; x < NUMPROFILETEMPS; x++) {
-		int realx = (x << 1) + XAXIS;
-		int y = profiles[profileidx]->temperatures[x] / 5;
+
+		int realx = x*((FB_WIDTH-XAXIS)/NUMPROFILETEMPS) + XAXIS;
+		double yr = (double)profiles[profileidx]->temperatures[x]*(double)(FB_HEIGHT/300.0);
+		uint16_t y = (uint16_t)ceil(yr);
 		y = YAXIS - y;
-		LCD_SetPixel(realx, y);
+		TFT_DrawLine(lastx,lasty,realx,y);
+		lastx=realx;
+		lasty=y;
+		TFT_SetPixel(realx, y);
 
 		if (highlight == x) {
-			LCD_SetPixel(realx - 1, y - 1);
-			LCD_SetPixel(realx + 1, y + 1);
-			LCD_SetPixel(realx - 1, y + 1);
-			LCD_SetPixel(realx + 1, y - 1);
+			TFT_DrawLine(realx - 5, y - 5, realx + 5, y + 5);
+			TFT_DrawLine(realx - 5, y + 5, realx + 5, y - 5);
+			TFT_DrawLine(realx, y -5, realx, y + 5);
+			TFT_DrawLine(realx - 5, y, realx + 5, y);
 		}
 	}
 }
