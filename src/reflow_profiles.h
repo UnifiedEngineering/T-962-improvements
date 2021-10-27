@@ -4,8 +4,17 @@
 // Number of temperature settings in a reflow profile
 #define NUMPROFILETEMPS (48)
 
+#ifndef USES_ORIGINAL_DISPLAY
+
 #define YAXIS (220)
 #define XAXIS (24)
+
+#else
+
+#define YAXIS (57)
+#define XAXIS (12)
+
+#endif
 
 typedef struct {
 	const char* name;

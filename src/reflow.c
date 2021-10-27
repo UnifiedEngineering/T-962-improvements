@@ -23,7 +23,7 @@
 #include "t962.h"
 #include "reflow_profiles.h"
 #include "io.h"
-#include "lcd.h"
+#include "display.h"
 #include "rtc.h"
 #include "PID_v1.h"
 #include "sched.h"
@@ -284,13 +284,20 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 
 	if (!manualsetpoint) {
 		// Plot actual temperature on top of desired profile
+#ifndef USES_ORIGINAL_DISPLAY
 		int realx = (int)(thetime * ((FB_WIDTH-20)/470.0) + XAXIS);
 		int y = (uint16_t)(meastemp * (FB_HEIGHT/300.0));
 		y = YAXIS - y;
-		TFT_SetPixel(realx, y);
-		TFT_DrawLine(roldx,roldy,realx,y);
+		Display_SetPixel(realx, y);
+		Display_DrawLine(roldx,roldy,realx,y);
 		roldx=realx;
 		roldy=y;
+#else
+		int realx = (thetime / 5) + XAXIS;
+		int y = (uint16_t)(meastemp * 0.2f);
+		y = YAXIS - y;
+		LCD_SetPixel(realx, y);
+#endif
 	}
 
 	PID.myInput = meastemp;

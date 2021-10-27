@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "serial.h"
-#include "lcd.h"
+#include "display.h"
 #include "io.h"
 #include "sched.h"
 #include "onewire.h"
@@ -111,23 +111,23 @@ int main(void) {
 	EEPROM_Init();
 	NV_Init();
 
-//	LCD_Init();
-	TFT_Init();
-//	TFT_FB_Clear();
-	LCD_BMPDisplay(logobmp, FB_WIDTH/2-64, FB_HEIGHT/2-32);
+//	Display_Init();
+	Display_Init();
+//	Display_FB_Clear();
+	Display_BMPDisplay(logobmp, FB_WIDTH/2-64, FB_HEIGHT/2-32);
 
 //	IO_InitWatchdog();
 //	IO_PrintResetReason();
 
 	len = IO_Partinfo(buf, sizeof(buf), "%s rev %c");
-	LCD_disp_str((uint8_t*)buf, len, 0, FB_HEIGHT - 16, FONT12X16);
+	Display_disp_str((uint8_t*)buf, len, 0, FB_HEIGHT - 16, DEFAULTFONT);
 	printf("\nRunning on an %s", buf);
 
 	len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
-	LCD_disp_str((uint8_t*)buf, len, FB_WIDTH - (len * 12), 0, FONT12X16);
+	Display_disp_str((uint8_t*)buf, len, FB_WIDTH - (len * 12), 0, DEFAULTFONT);
 
-//	LCD_FB_Update();
-	TFT_FB_Update();
+//	Display_FB_Update();
+	Display_FB_Update();
 	Keypad_Init();
 	Buzzer_Init();
 	ADC_Init();
@@ -194,12 +194,13 @@ static int32_t Main_Work(void) {
 
 	int32_t retval = TICKS_MS(500);
 
-	char buf[40];
+	char buf[160];
 	int len;
 
 	uint32_t keyspressed = Keypad_Get();
 
 	char serial_cmd[255] = "";
+	for (int i=0;i<255;i++) serial_cmd[i]=0;
 	char* cmd_select_profile = "select profile %d";
 	char* cmd_bake = "bake %d %d";
 	char* cmd_dump_profile = "dump profile %d";
@@ -361,31 +362,32 @@ static int32_t Main_Work(void) {
 		}
 #endif
 
-		TFT_FB_Clear();
+		Display_FB_Clear();
 		len = snprintf(buf, sizeof(buf), "Setup/calibration");
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), y, DEFAULTFONT);
 		y += 20;
 
 		for (int i = 0; i < Setup_getNumItems() ; i++) {
-			len = Setup_snprintFormattedValue(buf, sizeof(buf), i);
-			LCD_disp_str((uint8_t*)buf, len, 0, y, FONT12X16 | (selected == i) ? INVERT : 0);
+			len = Setup_snprintFormattedValue(buf, sizeof(buf), i, DEFAULTFONT);
+			printf("formatted string with filler: %d\n",len);
+			Display_disp_str((uint8_t*)buf, len, 0, y, DEFAULTFONT | ((selected == i) ? INVERT : 0x00));
 			y += 20;
 		}
 
 		// buttons
 		y = FB_HEIGHT - 16;
 #ifdef T962C
-		LCD_disp_str((uint8_t*)" - ", 3, 0, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" + ", 3, 20, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" < ", 3, 45, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" > ", 3, 65, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" DONE ", 6, 91, y, FONT12X16 | INVERT);
+		Display_disp_str((uint8_t*)" - ", 3, 0, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" + ", 3, 20, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" < ", 3, 45, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" > ", 3, 65, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" DONE ", 6, 91, y, DEFAULTFONT | INVERT);
 #else
-		LCD_disp_str((uint8_t*)" < ", 3, 0, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" > ", 3, 20, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" - ", 3, 45, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" + ", 3, 65, y, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)" DONE ", 6, 91, y, FONT12X16 | INVERT);
+		Display_disp_str((uint8_t*)" < ", 3, 0, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" > ", 3, 20, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" - ", 3, 45, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" + ", 3, 65, y, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)" DONE ", 6, 91, y, DEFAULTFONT | INVERT);
 
 #endif
 		// Leave setup
@@ -395,17 +397,19 @@ static int32_t Main_Work(void) {
 			retval = 0; // Force immediate refresh
 		}
 	} else if (mode == MAIN_ABOUT) {
-//		LCD_FB_Clear();
-		TFT_FB_Clear();
-		LCD_BMPDisplay(logobmp, FB_WIDTH/2-64, FB_HEIGHT/2-32);
+//		Display_FB_Clear();
+		Display_FB_Clear();
+		Display_BMPDisplay(logobmp, FB_WIDTH/2-64, FB_HEIGHT/2-32);
 
 		len = snprintf(buf, sizeof(buf), "T-962 controller");
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), 0, DEFAULTFONT);
+		printf("project name disaplayed\n");
 
 		len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), FB_HEIGHT-16, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), FB_HEIGHT-16, DEFAULTFONT);
+		printf("getgitversion name disaplayed\n");
 
-		LCD_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
+		Display_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
 
 		// Leave about with any key.
 		if (keyspressed & KEY_ANY) {
@@ -416,20 +420,20 @@ static int32_t Main_Work(void) {
 		uint32_t ticks = RTC_Read();
 
 		len = snprintf(buf, sizeof(buf), "%03u", Reflow_GetSetpoint());
-		LCD_disp_str((uint8_t*)"SET", 3, LCD_ALIGN_RIGHT(3)-3, 16, FONT12X16);
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(3)-3, 32, FONT12X16);
+		Display_disp_str((uint8_t*)"SET", 3, DISPLAY_ALIGN_RIGHT(3)-3, 16, DEFAULTFONT);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_RIGHT(3)-3, 32, DEFAULTFONT);
 
 		len = snprintf(buf, sizeof(buf), "%03u", Reflow_GetActualTemp());
-		LCD_disp_str((uint8_t*)"ACT", 3, LCD_ALIGN_RIGHT(3)-3, 64, FONT12X16);
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(3)-3, 80, FONT12X16);
+		Display_disp_str((uint8_t*)"ACT", 3, DISPLAY_ALIGN_RIGHT(3)-3, 64, DEFAULTFONT);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_RIGHT(3)-3, 80, DEFAULTFONT);
 
 		len = snprintf(buf, sizeof(buf), "%03u", (unsigned int)ticks);
-		LCD_disp_str((uint8_t*)"RUN", 3, LCD_ALIGN_RIGHT(3)-3, 112, FONT12X16);
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(3)-3, 128, FONT12X16);
+		Display_disp_str((uint8_t*)"RUN", 3, DISPLAY_ALIGN_RIGHT(3)-3, 112, DEFAULTFONT);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_RIGHT(3)-3, 128, DEFAULTFONT);
 
 		// Abort reflow
 		if (Reflow_IsDone() || keyspressed & KEY_S) {
-			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
+//			printf("\nReflow %s\n", (Reflow_IsDone() ? "done" : "interrupted by keypress"));
 			if (Reflow_IsDone()) {
 				Buzzer_Beep(BUZZ_1KHZ, 255, TICKS_MS(100) * NV_GetConfig(REFLOW_BEEP_DONE_LEN));
 			}
@@ -440,8 +444,8 @@ static int32_t Main_Work(void) {
 
 	} else if (mode == MAIN_SELECT_PROFILE) {
 		int curprofile = Reflow_GetProfileIdx();
-//		LCD_FB_Clear();
-		TFT_FB_Clear();
+//		Display_FB_Clear();
+		Display_FB_Clear();
 
 		// Prev profile
 		if (keyspressed & KEY_F1) {
@@ -455,13 +459,13 @@ static int32_t Main_Work(void) {
 		Reflow_SelectProfileIdx(curprofile);
 
 		Reflow_PlotProfile(-1);
-		LCD_BMPDisplay(selectbmp, FB_WIDTH - 20, 20);
+		Display_BMPDisplay(selectbmp, FB_WIDTH - 20, 20);
 		int eeidx = Reflow_GetEEProfileIdx();
 		if (eeidx) { // Display edit button
-			LCD_BMPDisplay(f3editbmp, FB_WIDTH - 20, 20+29);
+			Display_BMPDisplay(f3editbmp, FB_WIDTH - 20, 20+29);
 		}
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
-		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, 13, 0, DEFAULTFONT);
 
 		if (eeidx && keyspressed & KEY_F3) { // Edit ee profile
 			mode = MAIN_EDIT_PROFILE;
@@ -476,9 +480,9 @@ static int32_t Main_Work(void) {
 		}
 
 	} else if (mode == MAIN_BAKE) {
-//		LCD_FB_Clear();
-		TFT_FB_Clear();
-		LCD_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, FONT12X16);
+//		Display_FB_Clear();
+		Display_FB_Clear();
+		Display_disp_str((uint8_t*)"MANUAL/BAKE MODE", 16, 0, 0, DEFAULTFONT);
 
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
@@ -529,17 +533,17 @@ static int32_t Main_Work(void) {
 		// display F1 button only if setpoint can be decreased
 		char f1function = ' ';
 		if (setpoint > SETPOINT_MIN) {
-			LCD_disp_str((uint8_t*)"F1", 2, 0, y, FONT12X16 | INVERT);
+			Display_disp_str((uint8_t*)"F1", 2, 0, y, DEFAULTFONT | INVERT);
 			f1function = '-';
 		}
 		// display F2 button only if setpoint can be increased
 		char f2function = ' ';
 		if (setpoint < SETPOINT_MAX) {
-			LCD_disp_str((uint8_t*)"F2", 2, LCD_ALIGN_RIGHT(2), y, FONT12X16 | INVERT);
+			Display_disp_str((uint8_t*)"F2", 2, DISPLAY_ALIGN_RIGHT(2), y, DEFAULTFONT | INVERT);
 			f2function = '+';
 		}
-		len = snprintf(buf, sizeof(buf), "%c SETPOINT %d%c %c", f1function, (int)setpoint, 0xf8, f2function);
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT12X16);
+		len = snprintf(buf, sizeof(buf), "%c SETPOINT %d%c %c", f1function, (int)setpoint, 0x7F, f2function);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), y, DEFAULTFONT);
 
 
 
@@ -552,18 +556,18 @@ static int32_t Main_Work(void) {
 		} else {
 			len = snprintf(buf, sizeof(buf), "- TIMER %3d:%02d +", timer / 60, timer % 60);
 		}
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), y, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), y, DEFAULTFONT);
 
 #ifdef T962C
 		if (timer >= 0) {
-			LCD_disp_str((uint8_t*)"F4", 2, 0, y, FONT12X16 | INVERT);
+			Display_disp_str((uint8_t*)"F4", 2, 0, y, DEFAULTFONT | INVERT);
 		}
-		LCD_disp_str((uint8_t*)"F3", 2, LCD_ALIGN_RIGHT(2), y, FONT12X16 | INVERT);
+		Display_disp_str((uint8_t*)"F3", 2, DISPLAY_ALIGN_RIGHT(2), y, DEFAULTFONT | INVERT);
 #else
 		if (timer >= 0) {
-			LCD_disp_str((uint8_t*)"F3", 2, 0, y, FONT12X16 | INVERT);
+			Display_disp_str((uint8_t*)"F3", 2, 0, y, DEFAULTFONT | INVERT);
 		}
-		LCD_disp_str((uint8_t*)"F4", 2, LCD_ALIGN_RIGHT(2), y, FONT12X16 | INVERT);
+		Display_disp_str((uint8_t*)"F4", 2, DISPLAY_ALIGN_RIGHT(2), y, DEFAULTFONT | INVERT);
 #endif
 		y = 96;
 		if (timer > 0) {
@@ -575,43 +579,43 @@ static int32_t Main_Work(void) {
 			} else {
 				len = snprintf(buf, sizeof(buf), "%d:%02d", time_left / 60, time_left % 60);
 			}
-			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), y, FONT12X16);
+			Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_RIGHT(len), y, DEFAULTFONT);
 		}
 
-		len = snprintf(buf, sizeof(buf), "ACT %3.1f%c", Sensor_GetTemp(TC_AVERAGE),0xf8);
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT12X16);
+		len = snprintf(buf, sizeof(buf), "ACT %3.1f%c", Sensor_GetTemp(TC_AVERAGE),0x7F);
+		Display_disp_str((uint8_t*)buf, len, 0, y, DEFAULTFONT);
 
 		y = 128;
-		len = snprintf(buf, sizeof(buf), "  L %3.1f%c", Sensor_GetTemp(TC_LEFT),0xf8);
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT12X16);
-		len = snprintf(buf, sizeof(buf), "  R %3.1f%c", Sensor_GetTemp(TC_RIGHT),0xf8);
-		LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT12X16);
+		len = snprintf(buf, sizeof(buf), "  L %3.1f%c", Sensor_GetTemp(TC_LEFT),0x7F);
+		Display_disp_str((uint8_t*)buf, len, 0, y, DEFAULTFONT);
+		len = snprintf(buf, sizeof(buf), "  R %3.1f%c", Sensor_GetTemp(TC_RIGHT),0x7F);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_CENTER, y, DEFAULTFONT);
 
 		if (Sensor_IsValid(TC_EXTRA1) || Sensor_IsValid(TC_EXTRA2)) {
 			y = 144;
 			if (Sensor_IsValid(TC_EXTRA1)) {
-				len = snprintf(buf, sizeof(buf), " X1 %3.1f%c", Sensor_GetTemp(TC_EXTRA1),0xf8);
-				LCD_disp_str((uint8_t*)buf, len, 0, y, FONT12X16);
+				len = snprintf(buf, sizeof(buf), " X1 %3.1f%c", Sensor_GetTemp(TC_EXTRA1),0x7F);
+				Display_disp_str((uint8_t*)buf, len, 0, y, DEFAULTFONT);
 			}
 			if (Sensor_IsValid(TC_EXTRA2)) {
-				len = snprintf(buf, sizeof(buf), " X2 %3.1f%c", Sensor_GetTemp(TC_EXTRA2),0xf8);
-				LCD_disp_str((uint8_t*)buf, len, LCD_CENTER, y, FONT12X16);
+				len = snprintf(buf, sizeof(buf), " X2 %3.1f%c", Sensor_GetTemp(TC_EXTRA2),0x7F);
+				Display_disp_str((uint8_t*)buf, len, DISPLAY_CENTER, y, DEFAULTFONT);
 			}
 		}
 
 		y = 160;
 		len = snprintf(buf, sizeof(buf), "COLDJUNCTION");
-		LCD_disp_str((uint8_t*)buf, len, 0, y, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, 0, y, DEFAULTFONT);
 
 		y += 16;
 		if (Sensor_IsValid(TC_COLD_JUNCTION)) {
-			len = snprintf(buf, sizeof(buf), "%3.1f%c", Sensor_GetTemp(TC_COLD_JUNCTION),0xf8);
+			len = snprintf(buf, sizeof(buf), "%3.1f%c", Sensor_GetTemp(TC_COLD_JUNCTION),0x7F);
 		} else {
 			len = snprintf(buf, sizeof(buf), "NOT PRESENT");
 		}
-		LCD_disp_str((uint8_t*)buf, len, (12 * 12) - (len * 12), y, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, (12 * 12) - (len * 12), y, DEFAULTFONT);
 
-		LCD_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
+		Display_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
 
 
 
@@ -631,7 +635,7 @@ static int32_t Main_Work(void) {
 					Reflow_SetBakeTimer(0);
 				} else if (timer > 0) {
 					Reflow_SetBakeTimer(timer);
-					printf("\nSetting bake timer to %d\n", timer);
+//					printf("\nSetting bake timer to %d\n", timer);
 				}
 				Reflow_SetMode(REFLOW_BAKE);
 			}
@@ -639,7 +643,7 @@ static int32_t Main_Work(void) {
 
 		// Abort bake
 		if (keyspressed & KEY_S) {
-			printf("\nEnd bake mode by keypress\n");
+//			printf("\nEnd bake mode by keypress\n");
 
 			mode = MAIN_HOME;
 			Reflow_SetBakeTimer(0);
@@ -648,8 +652,8 @@ static int32_t Main_Work(void) {
 		}
 
 	} else if (mode == MAIN_EDIT_PROFILE) { // Edit ee1 or 2
-//		LCD_FB_Clear();
-		TFT_FB_Clear();
+//		Display_FB_Clear();
+		Display_FB_Clear();
 		int keyrepeataccel = keyspressed >> 17; // Divide the value by 2
 		if (keyrepeataccel < 1) keyrepeataccel = 1;
 		if (keyrepeataccel > 30) keyrepeataccel = 30;
@@ -683,10 +687,10 @@ static int32_t Main_Work(void) {
 		Reflow_SetSetpointAtIdx(profile_time_idx, cursetpoint);
 
 		Reflow_PlotProfile(profile_time_idx);
-		LCD_BMPDisplay(editbmp, FB_WIDTH - 20, FB_HEIGHT-64);
+		Display_BMPDisplay(editbmp, FB_WIDTH - 20, FB_HEIGHT-64);
 
 		len = snprintf(buf, sizeof(buf), "%02u0s %03u`", profile_time_idx, cursetpoint);
-		LCD_disp_str((uint8_t*)buf, len, 13, 0, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, 13, 0, DEFAULTFONT);
 
 		// Done editing
 		if (keyspressed & KEY_S) {
@@ -696,32 +700,32 @@ static int32_t Main_Work(void) {
 		}
 
 	} else { // Main menu
-//		LCD_FB_Clear();
-		TFT_FB_Clear();
+//		Display_FB_Clear();
+		Display_FB_Clear();
 
 		len = snprintf(buf, sizeof(buf),"MAIN MENU");
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 16 * 0, FONT12X16);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), 16 * 0, DEFAULTFONT);
 
-		LCD_disp_str((uint8_t*)"F1", 2, 0, 20 * 2, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)"ABOUT", 5, 30, 20 * 2, FONT12X16);
+		Display_disp_str((uint8_t*)"F1", 2, 0, 20 * 2, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)"ABOUT", 5, 30, 20 * 2, DEFAULTFONT);
 
-		LCD_disp_str((uint8_t*)"F2", 2, 0, 20 * 3, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)"SETUP", 5, 30, 20 * 3, FONT12X16);
+		Display_disp_str((uint8_t*)"F2", 2, 0, 20 * 3, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)"SETUP", 5, 30, 20 * 3, DEFAULTFONT);
 
-		LCD_disp_str((uint8_t*)"F3", 2, 0, 20 * 4, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 30, 20 * 4, FONT12X16);
+		Display_disp_str((uint8_t*)"F3", 2, 0, 20 * 4, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)"BAKE/MANUAL MODE", 16, 30, 20 * 4, DEFAULTFONT);
 
-		LCD_disp_str((uint8_t*)"F4", 2, 0, 20 * 5, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)"SELECT PROFILE", 14, 30, 20 * 5, FONT12X16);
+		Display_disp_str((uint8_t*)"F4", 2, 0, 20 * 5, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)"SELECT PROFILE", 14, 30, 20 * 5, DEFAULTFONT);
 
-		LCD_disp_str((uint8_t*)" S", 2, 0, 20 * 6, FONT12X16 | INVERT);
-		LCD_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 30, 20 * 6, FONT12X16);
+		Display_disp_str((uint8_t*)" S", 2, 0, 20 * 6, DEFAULTFONT | INVERT);
+		Display_disp_str((uint8_t*)"RUN REFLOW PROFILE", 18, 30, 20 * 6, DEFAULTFONT);
 
 		len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_RIGHT(len), 20 * 7, FONT12X16 | INVERT);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_RIGHT(len), 20 * 7, DEFAULTFONT | INVERT);
 
-		len = snprintf(buf,sizeof(buf), "OVEN TEMPERATURE %d%c", Reflow_GetActualTemp(),0xf8);
-		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), FB_HEIGHT-16, FONT12X16);
+		len = snprintf(buf,sizeof(buf), "OVEN TEMPERATURE %d%c", Reflow_GetActualTemp(),0x7F);
+		Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), FB_HEIGHT-16, DEFAULTFONT);
 
 
 		// Make sure reflow complete beep is silenced when pressing any key
@@ -756,21 +760,21 @@ static int32_t Main_Work(void) {
 		// Start reflow
 		if (keyspressed & KEY_S) {
 			mode = MAIN_REFLOW;
-//			LCD_FB_Clear();
-			TFT_FB_Clear();
-			printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
+//			Display_FB_Clear();
+			Display_FB_Clear();
+//			printf("\nStarting reflow with profile: %s", Reflow_GetProfileName());
 			Reflow_Init();
 			Reflow_PlotProfile(-1);
 			len = snprintf(buf, sizeof(buf), "%s", Reflow_GetProfileName());
-			LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT12X16);
+			Display_disp_str((uint8_t*)buf, len, DISPLAY_ALIGN_CENTER(len), 0, DEFAULTFONT);
 			Reflow_SetMode(REFLOW_REFLOW);
-			LCD_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
+			Display_BMPDisplay(stopbmp, FB_WIDTH - 20, FB_HEIGHT-64);
 			retval = 0; // Force immediate refresh
 		}
 	}
 
-	//LCD_FB_Update();
-	TFT_FB_Update();
+	//Display_FB_Update();
+	Display_FB_Update();
 
 
 	return retval;

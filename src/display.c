@@ -38,6 +38,8 @@
 
 #include "lcd.h"
 
+extern uint8_t graphbmp[];
+
 void Display_disp_str(uint8_t* theStr, uint8_t theLen, uint16_t startx, uint16_t y, uint8_t theFormat) {
 	if ((startx<256)&&(y<256)) {
 		LCD_disp_str(theStr,theLen,(uint8_t)startx,(uint8_t)y,theFormat);
@@ -59,7 +61,9 @@ void Display_SetPixel(uint16_t x, uint16_t y) {
 
 // two not used function for standard display (no use with 128x64 pixel resolution)
 void Display_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {}
-void Display_DrawGrid(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t xmin, uint16_t ymin, uint16_t xmax, uint16_t ymax,uint16_t density) {}
+void Display_DrawGrid(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t xmin, uint16_t ymin, uint16_t xmax, uint16_t ymax,uint16_t density) {
+	LCD_BMPDisplay(graphbmp, 0, 0);
+}
 
 void Display_SetBacklight(uint8_t backlight) {
 	LCD_SetBacklight(backlight);

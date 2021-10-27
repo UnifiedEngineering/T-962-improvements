@@ -8,6 +8,7 @@
 #ifndef DISPLAY_H_
 #define DISPLAY_H_
 
+//#define USES_ORIGINAL_DISPLAY
 #define USES_FRAMEBUFFER
 #define USES_TFT_DISPLAY
 
@@ -51,9 +52,6 @@ typedef struct sFontStruct{
 	const uint8_t *data;
 }sFontStruct;
 
-
-#endif /* Display HAL */
-
 uint32_t fontbytesize(sFontStruct* font);
 uint32_t fontbytesperfont(sFontStruct* font);
 sFontStruct* fontget(uint8_t fontno);
@@ -63,6 +61,9 @@ uint32_t fontgetcharaddress(sFontStruct* font,uint8_t theChar);
 uint32_t fontgetwidth(sFontStruct* font, uint8_t theChar);
 
 uint32_t charoutbig(uint8_t theChar, uint16_t X, uint16_t Y, uint8_t theFormat);
+
+#endif /* Display HAL */
+
 void Display_disp_str(uint8_t* theStr, uint8_t theLen, uint16_t startx, uint16_t y, uint8_t theFormat);
 uint32_t Display_get_str_lenght(uint8_t* theStr, uint8_t theLen, uint8_t theFormat);
 uint8_t Display_BMPDisplay(uint8_t* thebmp, uint16_t xoffset, uint16_t yoffset);

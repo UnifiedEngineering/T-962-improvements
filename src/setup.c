@@ -22,9 +22,9 @@
 #include "nvstorage.h"
 #include "reflow_profiles.h"
 #include "setup.h"
-#include "lcd.h"
+#include "display.h"
 
-char setup_buf[40];
+char setup_buf[120];
 
 static setupMenuStruct setupmenu[] = {
 	{"Min fan speed    %s%4.0f", REFLOW_MIN_FAN_SPEED, 0, 254, 0, 1.0f},
@@ -79,19 +79,34 @@ void Setup_decreaseValue(int item, int amount) {
 	Setup_setValue(item, curval);
 }
 
-char* Setup_filler(int item) {
-	uint16_t len=FB_WIDTH/12;
-	len-=snprintf(setup_buf,sizeof(setup_buf),setupmenu[item].formatstr,"",Setup_getValue(item));
-	for (int i=0;i<len;i++) {
-		setup_buf[i]=0x20;
+char* Setup_filler(int item,uint8_t theFormat) {
+	setup_buf[0]=0x00;
+#ifndef USES_ORIGINAL_DISPLAY
+	sFontStruct* font=fontget(theFormat & 0x7f);
+	// get length in characters of formatted string
+	uint32_t len=snprintf(setup_buf,sizeof(setup_buf),setupmenu[item].formatstr,"",Setup_getValue(item));
+	// recalculate length to pixels
+	len=Display_get_str_lenght((uint8_t*)setup_buf,len,theFormat);
+	// get the width of space character
+	int spacewidth=fontgetwidth(font, 0x20);
+	if (len<FB_WIDTH) {
+		len=(FB_WIDTH-len)/spacewidth;
+		for (int i=0;i<len;i++) {
+			setup_buf[i]=0x20;
+		}
+		setup_buf[len]=0x00;
+	} else {
+		setup_buf[0]=0x00;
 	}
-	setup_buf[len]=0;
+#endif
+
 	return setup_buf;
 }
+
 void Setup_printFormattedValue(int item) {
 	printf(setupmenu[item].formatstr, Setup_getValue(item));
 }
 
-int Setup_snprintFormattedValue(char* buf, int n, int item) {
-	return snprintf(buf, n, setupmenu[item].formatstr, Setup_filler(item), Setup_getValue(item));
+int Setup_snprintFormattedValue(char* buf, int n, int item, uint8_t theFormat) {
+	return snprintf(buf, n, setupmenu[item].formatstr, Setup_filler(item,theFormat), Setup_getValue(item));
 }
