@@ -103,5 +103,11 @@ int32_t Sched_Do(uint32_t fastforward) {
 void BusyWait( uint32_t numticks ) {
 	T0IR = 0x01; // Reset interrupt
 	T0MR0 = 1 + T0TC + numticks; // It's perfectly fine if this wraps
-	while (!(T0IR & 0x01)); // Wait for match
+	while (!(T0IR & 0x01)) {	// Wait for match
+/*		uint32_t save = VIC_DisableIRQ();
+		WDFEED = 0xaa; // Feed watchdog
+		WDFEED = 0x55;
+		VIC_RestoreIRQ(save);
+*/
+	}
 }

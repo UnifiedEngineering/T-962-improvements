@@ -26,22 +26,44 @@
 #include "sched.h"
 #include "vic.h"
 
+// for some reason MCU i have in my oven has base pint (port 0, bit 7) damaged, or so it seems, and the other one was easy enough to solder to
+#define ALT_ONEWIRE_PIN (1<<24)
+#define BASE_ONEWIRE_PIN (1<<7)
+
 static inline void setpin0() {
-	FIO0CLR = (1<<7);
-	FIO0DIR |= (1<<7);
+#ifdef ALT_ONEWIRE_PIN
+	FIO1CLR = ALT_ONEWIRE_PIN;
+	FIO1DIR |= ALT_ONEWIRE_PIN;
+#else
+	FIO0CLR = BASE_ONEWIRE_PIN;
+	FIO0DIR |=BASE_ONEWIRE_PIN;
+#endif
 }
 
 static inline void setpin1() {
-	FIO0SET = (1<<7);
-	FIO0DIR |= (1<<7);
+#ifdef ALT_ONEWIRE_PIN
+	FIO1SET = ALT_ONEWIRE_PIN;
+	FIO1DIR |= ALT_ONEWIRE_PIN;
+#else
+	FIO0SET = BASE_ONEWIRE_PIN;
+	FIO0DIR |= BASE_ONEWIRE_PIN;
+#endif
 }
 
 static inline void setpinhiz() {
-	FIO0DIR &= ~(1<<7);
+#ifdef ALT_ONEWIRE_PIN
+	FIO1DIR &= ~ALT_ONEWIRE_PIN;
+#else
+	FIO0DIR &= ~BASE_ONEWIRE_PIN;
+#endif
 }
 
 static inline uint32_t getpin() {
-	return !!(FIO0PIN & (1<<7));
+#ifdef ALT_ONEWIRE_PIN
+	return !!(FIO1PIN & ALT_ONEWIRE_PIN);
+#else
+	return !!(FIO0PIN & BASE_ONEWIRE_PIN);
+#endif
 }
 
 static inline uint32_t xferbyte(uint32_t thebyte) {

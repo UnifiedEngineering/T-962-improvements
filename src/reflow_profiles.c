@@ -1,8 +1,9 @@
 #include "LPC214x.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include "t962.h"
-#include "lcd.h"
+#include "display.h"
 #include "nvstorage.h"
 #include "eeprom.h"
 #include "reflow.h"
@@ -12,7 +13,6 @@
 #define RAMPTEST
 #define PIDTEST
 
-extern uint8_t graphbmp[];
 
 // Amtech 4300 63Sn/37Pb leaded profile
 static const profile am4300profile = {
@@ -208,22 +208,45 @@ void Reflow_SetSetpointAtIdx(uint8_t idx, uint16_t value) {
 }
 
 void Reflow_PlotProfile(int highlight) {
-	LCD_BMPDisplay(graphbmp, 0, 0);
-
+	Display_DrawGrid(XAXIS,20,300,YAXIS,0,0,480,320,12);
+#ifndef USES_ORIGINAL_DISPLAY
 	// No need to plot first value as it is obscured by Y-axis
+	uint16_t lastx=XAXIS;
+	uint16_t lasty=YAXIS-profiles[profileidx]->temperatures[0];
 	for(int x = 1; x < NUMPROFILETEMPS; x++) {
-		int realx = (x << 1) + XAXIS;
-		int y = profiles[profileidx]->temperatures[x] / 5;
+
+		int realx = x*((FB_WIDTH-XAXIS)/NUMPROFILETEMPS) + XAXIS;
+		double yr = (double)profiles[profileidx]->temperatures[x]*(double)(FB_HEIGHT/300.0);
+		uint16_t y = (uint16_t)ceil(yr);
 		y = YAXIS - y;
-		LCD_SetPixel(realx, y);
+		Display_DrawLine(lastx,lasty,realx,y);
+		lastx=realx;
+		lasty=y;
+		Display_SetPixel(realx, y);
 
 		if (highlight == x) {
-			LCD_SetPixel(realx - 1, y - 1);
-			LCD_SetPixel(realx + 1, y + 1);
-			LCD_SetPixel(realx - 1, y + 1);
-			LCD_SetPixel(realx + 1, y - 1);
+			Display_DrawLine(realx - 5, y - 5, realx + 5, y + 5);
+			Display_DrawLine(realx - 5, y + 5, realx + 5, y - 5);
+			Display_DrawLine(realx, y -5, realx, y + 5);
+			Display_DrawLine(realx - 5, y, realx + 5, y);
 		}
 	}
+#else
+	// No need to plot first value as it is obscured by Y-axis
+		for(int x = 1; x < NUMPROFILETEMPS; x++) {
+			int realx = (x << 1) + XAXIS;
+			int y = profiles[profileidx]->temperatures[x] / 5;
+			y = YAXIS - y;
+			Display_SetPixel(realx, y);
+
+			if (highlight == x) {
+				Display_SetPixel(realx - 1, y - 1);
+				Display_SetPixel(realx + 1, y + 1);
+				Display_SetPixel(realx - 1, y + 1);
+				Display_SetPixel(realx + 1, y - 1);
+			}
+		}
+#endif
 }
 
 void Reflow_DumpProfile(int profile) {

@@ -69,7 +69,7 @@ static int32_t Sleep_Work(void) {
 void IO_InitWatchdog(void) {
 	// Setup watchdog
 	// Some margin (PCLKFREQ/4 would be exactly the period the WD is fed by sleep_work)
-	WDTC = PCLKFREQ / 3;
+	WDTC = PCLKFREQ / 1;
 	WDMOD = 0x03; // Enable
 	WDFEED = 0xaa;
 	WDFEED = 0x55;
@@ -163,10 +163,10 @@ void IO_Init(void) {
 	PINSEL1 = 0b00000101000000000000000000000000; // ADC0 1+2
 
 	FIO0MASK = 0b01001101000000100000010001100000; // Mask out all unknown/unused pins
-	FIO1MASK = 0b11111111000000001111111111111111; // Only LCD D0-D7
+	FIO1MASK = 0b11101110000000001111111111111111; // Only LCD D0-D7
 
 	FIO0DIR = 0b10000010011011000011101100000001; // Default output pins
-	FIO1DIR = 0b00000000000000000000000000000000;
+	FIO1DIR = 0b00001001000000000000000000000000;
 
 	FIO0PIN = 0x00; // Turn LED on and make PWM outputs active when in GPIO mode (to help 100% duty cycle issue)
 
