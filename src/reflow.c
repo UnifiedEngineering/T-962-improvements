@@ -54,8 +54,7 @@ uint16_t reflow_profile[] = {
     0,   0,  0,  0
 };
 uint8_t num_reflow_state = sizeof(reflow_profile) / sizeof(uint16_t) / 4;
-
-
+uint16_t target_temp = 0;
 
 // Standby temperature in degrees Celsius
 #define STANDBYTEMP (50)
@@ -347,17 +346,13 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 }
 */
 
-uint16_t target_temp = 0;
 // returns -1 if the reflow process is done.
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
-	int32_t retval = 0;
-
 	target_temp = reflow_profile[reflow_state * 4];
 	uint16_t ramp_speed = reflow_profile[reflow_state * 4 + 1];
 	uint16_t duration = reflow_profile[reflow_state * 4 + 2];
 	uint16_t ramp = reflow_profile[reflow_state * 4 + 3];
 
-	uint16_t out = 0;
 	if (ramp == 1){
 	  // temperature rising
 	  if (meastemp > target_temp) reflow_state++;
