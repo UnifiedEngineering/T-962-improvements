@@ -31,6 +31,32 @@
 #include "sensor.h"
 #include "reflow.h"
 
+/*
+{ T1, s1, t1, r1, T2, s2, t2, r1, T3, s3, t3, r3, ..., 0, 0, 0, 0}
+
+wait until temperature reaches T1 with speed of s1, ramp=r1 -> keep t1
+wait until temperature reaches T2 with speed of s2, ramp=r2 -> keep t2
+wait until temperature reaches T3 with speed of s3, ramp=r3 -> keep t3
+(until {Tn, sn, tn} = {0, 0, 0}
+
+-----
+{ 180, 255, 100, 1 }
+{ 255, 255, 10,  1 }
+{ 50 , 255, 10,  2 }
+{ 0  ,   0,  0,  0 }
+*/
+
+uint8_t reflow_state = 0;
+uint16_t reflow_profile[] = {
+  180, 255, 100, 1, 
+  255, 255, 10,  1, 
+   50, 255, 10,  2, 
+    0,   0,  0,  0
+};
+uint8_t num_reflow_state = sizeof(reflow_profile) / sizeof(uint16_t) / 4;
+
+
+
 // Standby temperature in degrees Celsius
 #define STANDBYTEMP (50)
 
@@ -91,7 +117,8 @@ static int32_t Reflow_Work(void) {
 	Set_Fan(fan);
 
 	if (mymode != oldmode) {
-		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
+	  //		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set,Actual, Heat, Fan,  ColdJ, Mode");
+		printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set, Actual, state, Heat, Fan,  ColdJ, Mode");
 		oldmode = mymode;
 		numticks = 0;
 	} else if (mymode == REFLOW_BAKE) {
@@ -112,7 +139,8 @@ static int32_t Reflow_Work(void) {
 	}
 
 	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
-		printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
+	  /*
+	  printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %3u, %5.1f,  %3u, %3u,  %5.1f, %s",
 		       ((float)numticks / TICKS_PER_SECOND),
 		       Sensor_GetTemp(TC_LEFT),
 		       Sensor_GetTemp(TC_RIGHT),
@@ -122,6 +150,22 @@ static int32_t Reflow_Work(void) {
 		       heat, fan,
 		       Sensor_GetTemp(TC_COLD_JUNCTION),
 		       modestr);
+	  */
+	  printf("\n# Time,  Temp0, Temp1, Temp2, Temp3,  Set, Actual, state, Heat, Fan,  ColdJ, Mode");
+
+	  printf("\n%6.1f,  %5.1f, %5.1f, %5.1f, %5.1f,  %5.1f, %5.1f,  %d, %3u, %3u,  %5.1f, %s",
+		 ((float)numticks / TICKS_PER_SECOND),
+		 Sensor_GetTemp(TC_LEFT),
+		 Sensor_GetTemp(TC_RIGHT),
+		 Sensor_GetTemp(TC_EXTRA1),
+		 Sensor_GetTemp(TC_EXTRA2),
+		 (float)target_temp,
+		 avgtemp,
+		 reflow_state,
+		 heat, fan,
+		 Sensor_GetTemp(TC_COLD_JUNCTION),
+		 modestr);
+
 	}
 
 	if (numticks & 1) {
@@ -235,6 +279,7 @@ int Reflow_GetTimeLeft(void) {
 	return (bake_timer - numticks) / TICKS_PER_SECOND;
 }
 
+/*
 // returns -1 if the reflow process is done.
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
 	int32_t retval = 0;
@@ -300,6 +345,39 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	}
 	return retval;
 }
+*/
+
+uint16_t target_temp = 0;
+// returns -1 if the reflow process is done.
+int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
+	int32_t retval = 0;
+
+	target_temp = reflow_profile[reflow_state * 4];
+	uint16_t ramp_speed = reflow_profile[reflow_state * 4 + 1];
+	uint16_t duration = reflow_profile[reflow_state * 4 + 2];
+	uint16_t ramp = reflow_profile[reflow_state * 4 + 3];
+
+	uint16_t out = 0;
+	if (ramp == 1){
+	  // temperature rising
+	  if (meastemp > target_temp) reflow_state++;
+	  else{
+	    *pheat = ramp_speed;
+	    *pfan = 0;
+	  }
+	}
+	else{
+	  // temperature falling
+	  if (meastemp < target_temp) reflow_state++;
+	  else{
+	    *pheat = 0;
+	    *pfan = ramp_speed;
+	  }
+	}
+	
+	if (reflow_state == num_reflow_state) return(-1); else return(0);
+}
+
 
 void Reflow_ToggleStandbyLogging(void) {
 	standby_logging = !standby_logging;
