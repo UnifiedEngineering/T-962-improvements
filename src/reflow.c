@@ -44,7 +44,7 @@ uint8_t reflow_state = 0;
 uint16_t reflow_profile[] = {
   150, 200, 255, 100, 1, 
   250, 260, 255,  10, 1, 
-   40,  50, 255,   1, 2
+   50,  40, 255,   1, 2
 };
 uint8_t num_reflow_state = sizeof(reflow_profile) / sizeof(uint16_t) / 5;
 uint16_t target_temp_a = 0, target_temp_b = 0;
