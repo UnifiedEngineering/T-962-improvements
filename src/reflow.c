@@ -42,7 +42,7 @@ wait until temperature reaches T2a with speed of s2, ramp=r2 -> keep [T2a, T2b] 
 
 uint8_t reflow_state = 0;
 uint16_t reflow_profile[] = {
-  150, 200, 255, 100, 1, 
+  150, 190, 255, 100, 1, 
   250, 260, 255,  10, 1, 
    50,  40, 255,   1, 2
 };
@@ -283,9 +283,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	else{
 	  if (thetime_retain_start + duration > thetime){
 	    // in reatin state
-	    if (meastemp > target_temp_b){ *pheat = 0; *pfan = 255; }
-	    else if (meastemp < target_temp_a){ *pheat = 0; *pfan = 255; }
-	    else{ *pheat = 200, *pfan = 0; }
+	    if (meastemp > target_temp_b){ *pheat = 0; *pfan = 100; }
+	    else if (meastemp < target_temp_a){ *pheat = 255; *pfan = 0; }
+	    else{ *pheat = 180, *pfan = 0; }
 	  }
 	  else{
 	    // retain finished
