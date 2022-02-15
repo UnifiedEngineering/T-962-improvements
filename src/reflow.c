@@ -45,9 +45,15 @@ uint16_t reflow_profile[] = {
   150, 190, 255, 100, 1, 
   250, 260, 255,  10, 1, 
    50,  40, 255,   1, 2
+  /*
+  190, 100,
+  260, 10,
+  50, 1,
+  */
 };
 uint8_t num_reflow_state = sizeof(reflow_profile) / sizeof(uint16_t) / 5;
 uint16_t target_temp_a = 0, target_temp_b = 0;
+//uint16_t target_temp = 0;
 uint8_t f_retain = 0;
 uint32_t thetime_retain_start = 0;
 
@@ -134,11 +140,13 @@ static int32_t Reflow_Work(void) {
 
 	if (!(mymode == REFLOW_STANDBY && standby_logging == 0)) {
 	  printf("\n%6.1f, %5.1f, %5.1f, %5.1f, %5.1f, %5.1f, %5.1f, %5.1f, %2d, %2d, %3u, %3u,  %5.1f, %s",
+		 //	  printf("\n%6.1f, %5.1f, %5.1f, %5.1f, %5.1f, %5.1f, %5.1f, %2d, %2d, %3u, %3u,  %5.1f, %s",
 		 ((float)numticks / TICKS_PER_SECOND),
 		 Sensor_GetTemp(TC_LEFT),
 		 Sensor_GetTemp(TC_RIGHT),
 		 Sensor_GetTemp(TC_EXTRA1),
 		 Sensor_GetTemp(TC_EXTRA2),
+		 //(float)target_temp,
 		 (float)target_temp_a,
 		 (float)target_temp_b,
 		 avgtemp,
@@ -262,15 +270,13 @@ int Reflow_GetTimeLeft(void) {
 
 // returns -1 if the reflow process is done.
 int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pfan, int32_t manualsetpoint) {
+
+	
 	target_temp_a = reflow_profile[reflow_state * 5 + 0];
 	target_temp_b = reflow_profile[reflow_state * 5 + 1];
 	uint16_t ramp_speed = reflow_profile[reflow_state * 5 + 2];
 	uint16_t duration = reflow_profile[reflow_state * 5 + 3];
 	uint16_t ramp = reflow_profile[reflow_state * 5 + 4];
-
-	PID.mySetpoint = (float)target_temp_a;
-	
-	/*
 	if (f_retain == 0){
 	  if (ramp == 1){
 	    // temperature rising
@@ -295,8 +301,10 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	    reflow_state++; f_retain = 0;
 	  }
 	}
-	if (reflow_state == num_reflow_state) return(-1); else return(0);
-	*/
+	/*
+	target_temp = reflow_profile[reflow_state * 2 + 0];
+	uint16_t duration = reflow_profile[reflow_state * 2 + 1];
+	PID.mySetpoint = (float)target_temp;
 	uint32_t out;
 	if (f_retain == 0
 	    || (f_retain == 1 && thetime_retain_start + duration <= thetime)){
@@ -315,13 +323,14 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	    *pfan = NV_GetConfig(REFLOW_MIN_FAN_SPEED);
 	  }
 	}
-	printf("\n%d : out = %d / fan = %d / heat - %d", f_retain, out, *pfan, *pheat);
+	//	printf("\n%d : out = %d / fan = %d / heat - %d", f_retain, out, *pfan, *pheat);
 	if (*pfan > 255) *pfan = 255;
 	if (*pheat > 255) *pheat = 255;
 	if (f_retain == 1 && thetime_retain_start + duration > thetime){
 	  // retain finished
 	  reflow_state++; f_retain = 0;
-	}
+	  }*/
+	
 	if (reflow_state == num_reflow_state) return(-1); else return(0);
 }
 
