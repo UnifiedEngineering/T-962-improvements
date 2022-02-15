@@ -22,7 +22,8 @@ void PID_init(PidType* pid, FloatType Kp, FloatType Ki, FloatType Kd,
   pid->lastInput = 0;
   pid->inAuto = false;
 
-  PID_SetOutputLimits(pid, 0, 0xffff);
+  //  PID_SetOutputLimits(pid, 0, 0xffff);
+  PID_SetOutputLimits(pid, -300.0, 300.0);
 
   //default Controller Sample Time is 0.1 seconds
   pid->SampleTime = 100;
@@ -59,7 +60,6 @@ bool PID_Compute(PidType* pid) {
 
     /*Compute PID Output*/
     FloatType output = pid->kp * error + pid->ITerm - pid->kd * dInput;
-
     if (output > pid->outMax)
       output = pid->outMax;
     else if (output < pid->outMin)
