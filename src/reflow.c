@@ -268,6 +268,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	uint16_t duration = reflow_profile[reflow_state * 5 + 3];
 	uint16_t ramp = reflow_profile[reflow_state * 5 + 4];
 
+	PID.mySetpoint = (float)target_temp_a;
+	
+	/*
 	if (f_retain == 0){
 	  if (ramp == 1){
 	    // temperature rising
@@ -292,7 +295,33 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	    reflow_state++; f_retain = 0;
 	  }
 	}
-	
+	if (reflow_state == num_reflow_state) return(-1); else return(0);
+	*/
+	if (f_retain == 0
+	    || (f_retain == 1 && thetime_retain_start + duration <= thetime)){
+	  PID.myInput = meastemp;
+	  PID_Compute(&PID);
+	  uint32_t out = PID.myOutput;
+	  if (out < 248) { // Fan in reverse
+	    *pfan = 255 - out;
+	    *pheat = 0;
+	  } else {
+	    *pheat = out - 248;
+	    // When heating like crazy make sure we can reach our setpoint
+	    // if(*pheat>192) { *pfan=2; } else { *pfan=2; }
+	    
+	    // Run at a low fixed speed during heating for now
+	    *pfan = NV_GetConfig(REFLOW_MIN_FAN_SPEED);
+	  }
+	}
+	printf("\n%d : out = %d / fan = %d / heat - %d", f_retain, out, *pfan, *pheat);
+	if (*pfan > 255) *pfan = 255;
+	if (*pheat > 255) *pheat = 255;
+	if (f_reatin == 1 && thetime_retain_start + duration > thetime){
+	    // retain finished
+	    reflow_state++; f_retain = 0;
+	  }
+	}
 	if (reflow_state == num_reflow_state) return(-1); else return(0);
 }
 
