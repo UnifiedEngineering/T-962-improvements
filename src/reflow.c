@@ -269,7 +269,7 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	uint16_t duration = reflow_profile[reflow_state * 2 + 1];
 
 	PID.mySetpoint = (float)target_temp;
-	printf("%f %f\n", PID.outMax, PID.outMin);
+	printf("\n%f %f\n", PID.outMax, PID.outMin);
 
 	uint32_t out = 0;
 	FloatType o = 0.0;
