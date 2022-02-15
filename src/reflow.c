@@ -297,11 +297,12 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	}
 	if (reflow_state == num_reflow_state) return(-1); else return(0);
 	*/
+	uint32_t out;
 	if (f_retain == 0
 	    || (f_retain == 1 && thetime_retain_start + duration <= thetime)){
 	  PID.myInput = meastemp;
 	  PID_Compute(&PID);
-	  uint32_t out = PID.myOutput;
+	  out = PID.myOutput;
 	  if (out < 248) { // Fan in reverse
 	    *pfan = 255 - out;
 	    *pheat = 0;
@@ -317,10 +318,9 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	printf("\n%d : out = %d / fan = %d / heat - %d", f_retain, out, *pfan, *pheat);
 	if (*pfan > 255) *pfan = 255;
 	if (*pheat > 255) *pheat = 255;
-	if (f_reatin == 1 && thetime_retain_start + duration > thetime){
-	    // retain finished
-	    reflow_state++; f_retain = 0;
-	  }
+	if (f_retain == 1 && thetime_retain_start + duration > thetime){
+	  // retain finished
+	  reflow_state++; f_retain = 0;
 	}
 	if (reflow_state == num_reflow_state) return(-1); else return(0);
 }
