@@ -271,16 +271,15 @@ int32_t Reflow_Run(uint32_t thetime, float meastemp, uint8_t* pheat, uint8_t* pf
 	PID.mySetpoint = (float)target_temp;
 	PID.outMax = 1000.0;
 	PID.outMin = -1000.0;
-	printf("\n%f %f\n", PID.outMax, PID.outMin);
 
 	uint32_t out = 0;
 	FloatType o = 0.0;
 	PID.myInput = meastemp;
 	PID_Compute(&PID);
 	o = PID.myOutput;
+	printf("\n%f %f %f", PID.outMax, PID.outMin, o);
 
-	if (f_retain == 0
-	    || (f_retain == 1 && thetime_retain_start + duration <= thetime)){
+	if (f_retain == 0 || (f_retain == 1 && thetime_retain_start + duration <= thetime)){
 	  if (o > 0.0){
 	    if (o > 255) *pheat = 255;
 	    else *pheat = (uint8_t)o;
