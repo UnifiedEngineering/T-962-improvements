@@ -59,13 +59,15 @@ bool PID_Compute(PidType* pid) {
     FloatType dInput = (input - pid->lastInput);
 
     /*Compute PID Output*/
-    FloatType output = pid->kp * error + pid->ITerm - pid->kd * dInput;
+    FloatType output = pid->kp * error + pid->ki * pid->ITerm - pid->kd * dInput;
     if (output > pid->outMax)
       output = pid->outMax;
     else if (output < pid->outMin)
       output = pid->outMin;
     pid->myOutput = output;
 
+    //    printf("\nPID: %f %f / e=%f / I=%f / d=%f / o=%f", input, pid->mySetpoint, error, pid->ITerm, dInput, output);
+    
     /*Remember some variables for next time*/
     pid->lastInput = input;
 //    pid->lastTime = now;
