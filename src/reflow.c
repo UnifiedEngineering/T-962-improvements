@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-// modified by akita11 (akita@ifdl.jp), 2022/02/14: P control and keep temperature for specified period
+// modified by akita11 (akita@ifdl.jp), 2022/02/16: PID control and keep temperature for specified period
 
 #include "LPC214x.h"
 #include <stdint.h>
@@ -33,14 +33,14 @@
 #include "sensor.h"
 #include "reflow.h"
 
-/*
-{ T1a, T1b, s1, t1, r1, 
+uint8_t reflow_state = 0;
 
-wait until temperature reaches T1a with speed of s1, ramp=r1 -> keep [T1a, T1b] for t1
-wait until temperature reaches T2a with speed of s2, ramp=r2 -> keep [T2a, T2b] for t2
+/*
+{ T1a, T1b, t1 }
+
+control heatr&fan for temperature going T1a, when temperature reaches T1b, retain for t1
 */
 
-uint8_t reflow_state = 0;
 uint16_t reflow_profile[] = {
   190, 150, 100,
   240, 230, 10,
@@ -195,9 +195,7 @@ void Reflow_Init(void) {
 	PID_init(&PID, 0, 0, 0, PID_Direction_Direct); // Can't supply tuning to PID_Init when not using the default timebase
 	PID_SetSampleTime(&PID, PID_TIMEBASE);
 	//	PID_SetTunings(&PID, 20, 0.016, 62.5); // Adjusted values to compensate for the incorrect timebase earlier
-
-	PID_SetTunings(&PID, 30, 0.016, 60); // working
-
+	PID_SetTunings(&PID, 30, 0.016, 60); // tentative by akita11
 	//PID_SetTunings(&PID, 80, 0, 0); // This results in oscillations with 14.5s cycle time
 	//PID_SetTunings(&PID, 30, 0, 0); // This results in oscillations with 14.5s cycle time
 	//PID_SetTunings(&PID, 15, 0, 0);
