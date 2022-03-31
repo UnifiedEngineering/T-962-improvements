@@ -118,7 +118,7 @@ int main(void) {
 	LCD_disp_str((uint8_t*)buf, len, 0, 64 - 6, FONT6X6);
 	printf("\nRunning on an %s", buf);
 
-	len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
+	len = snprintf(buf, 21, "%s", Version_GetGitVersion());
 	LCD_disp_str((uint8_t*)buf, len, 128 - (len * 6), 0, FONT6X6);
 
 	LCD_FB_Update();
@@ -348,7 +348,7 @@ static int32_t Main_Work(void) {
 		len = snprintf(buf, sizeof(buf), "T-962 controller");
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 0, FONT6X6);
 
-		len = snprintf(buf, sizeof(buf), "%s", Version_GetGitVersion());
+		len = snprintf(buf, 21, "%s", Version_GetGitVersion());
 		LCD_disp_str((uint8_t*)buf, len, LCD_ALIGN_CENTER(len), 64 - 6, FONT6X6);
 
 		LCD_BMPDisplay(stopbmp, 127 - 17, 0);
