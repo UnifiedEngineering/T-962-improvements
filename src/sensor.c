@@ -101,16 +101,22 @@ void Sensor_DoConversion(void) {
 	// Assume no CJ sensor
 	cjsensorpresent = 0;
 	if (tcpresent[0] && tcpresent[1]) {
-		avgtemp = (tctemp[0] + tctemp[1]) / 2.0f;
-		temperature[0] = tctemp[0];
-		temperature[1] = tctemp[1];
+		// Adjust values with calibration settings
+		float t0 = tctemp[0] * adcgainadj[0]  + adcoffsetadj[0];
+		float t1 = tctemp[1] * adcgainadj[1]  + adcoffsetadj[1];
+		avgtemp = (t0 + t1) / 2.0f;
+		temperature[0] = t0;
+		temperature[1] = t1;
 		tempvalid |= 0x03;
 		coldjunction = (tccj[0] + tccj[1]) / 2.0f;
 		cjsensorpresent = 1;
 	} else if (tcpresent[2] && tcpresent[3]) {
-		avgtemp = (tctemp[2] + tctemp[3]) / 2.0f;
-		temperature[0] = tctemp[2];
-		temperature[1] = tctemp[3];
+		// Adjust values with calibration settings
+		float t0 = tctemp[2] * adcgainadj[0]  + adcoffsetadj[0];
+		float t1 = tctemp[3] * adcgainadj[1]  + adcoffsetadj[1];
+		avgtemp = (t0 + t1) / 2.0f;
+		temperature[0] = t0;
+		temperature[1] = t1;
 		tempvalid |= 0x03;
 		tempvalid &= ~0x0C;
 		coldjunction = (tccj[2] + tccj[3]) / 2.0f;
