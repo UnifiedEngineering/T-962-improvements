@@ -55,14 +55,14 @@ void Sensor_ValidateNV(void) {
 		temp = 100;
 		NV_SetConfig(TC_LEFT_OFFSET, temp); // Default +/-0 offset
 	}
-	adcoffsetadj[0] = ((float)(temp - 100)) * 0.25f;
+	adcoffsetadj[0] = ((float)(temp - 127)) * 0.5f;
 
 	temp = NV_GetConfig(TC_RIGHT_OFFSET);
 	if (temp == 255) {
 		temp = 100;
 		NV_SetConfig(TC_RIGHT_OFFSET, temp); // Default +/-0 offset
 	}
-	adcoffsetadj[1] = ((float)(temp - 100)) * 0.25f;
+	adcoffsetadj[1] = ((float)(temp - 127)) * 0.5f;
 }
 
 
