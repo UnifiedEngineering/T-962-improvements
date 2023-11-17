@@ -50,6 +50,8 @@ typedef struct __attribute__ ((packed)) {
 void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 	// First of all, make lowercase into uppercase
 	// (as there are no lowercase letters in the font)
+	if (theChar < 0x20)
+		return;
 	if ((theChar & 0x7f) >= 0x61 && (theChar & 0x7f) <= 0x7a) {
 		theChar -= 0x20;
 	}
@@ -86,13 +88,13 @@ void charoutsmall(uint8_t theChar, uint8_t X, uint8_t Y) {
 
 void LCD_disp_str(uint8_t* theStr, uint8_t theLen, uint8_t startx, uint8_t y, uint8_t theFormat) {
 #ifdef MINIMALISTIC
-	for (uint8_t q = 0; q < theLen; q++) {
+	for (uint8_t q = 0; q < theLen && theStr[q]; q++) {
 		charoutsmall(theStr[q], startx, y);
 		startx += 6;
 	}
 #else
 	uint8_t invmask = theFormat & 0x80;
-	for(uint8_t q = 0; q < theLen; q++) {
+	for(uint8_t q = 0; q < theLen && theStr[q]; q++) {
 		charoutsmall(theStr[q] | invmask, startx, y);
 		startx += 6;
 	}
