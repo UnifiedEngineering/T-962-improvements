@@ -14,6 +14,22 @@
 
 extern uint8_t graphbmp[];
 
+// SAC305 profile
+static const profile sac305profile = {
+	"SAC305 Leadfree", {
+		// Preheat
+		50,  65,  80,  90,  92,  94,  96,  97,  98,  99, 100, 100,
+		105, 115, 125, 135, 140,
+		// Flux activation
+		145, 150, 155, 160, 165, 170, 175, 180, 
+		// reflow peak
+		195, 210, 235, 245, 225, 205, 185, 165,
+		// cool down
+		155, 145, 140, 135, 130, 125, 120, 115, 110, 105, 100,
+		0,   0 // 360-470 s
+	}
+};
+
 // Amtech 4300 63Sn/37Pb leaded profile
 static const profile am4300profile = {
 	"4300 63SN/37PB", {
@@ -70,6 +86,7 @@ static ramprofile ee1 = { "CUSTOM #1" };
 static ramprofile ee2 = { "CUSTOM #2" };
 
 static const profile* profiles[] = {
+	&sac305profile,
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
