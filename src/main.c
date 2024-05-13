@@ -56,7 +56,7 @@ __attribute__((weak)) const char* Version_GetGitVersion(void) {
 static char* format_about = \
 "\nT-962-controller open source firmware (%s)" \
 "\n" \
-"\nSee https://github.com/UnifiedEngineering/T-962-improvement for more details." \
+"\nSee https://github.com/UnifiedEngineering/T-962-improvements for more details." \
 "\n" \
 "\nInitializing improved reflow oven...";
 
