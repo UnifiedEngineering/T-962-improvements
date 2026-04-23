@@ -115,6 +115,13 @@ void Sensor_DoConversion(void) {
 		tempvalid &= ~0x0C;
 		coldjunction = (tccj[2] + tccj[3]) / 2.0f;
 		cjsensorpresent = 1;
+	} else if (tcpresent[0]) {
+		avgtemp = tctemp[0];
+		temperature[0] = tctemp[0];
+		temperature[1] = tctemp[0];
+		tempvalid |= 0x01;
+		coldjunction = tccj[0];
+		cjsensorpresent = 1;
 	} else {
 		// If the external TC interface is not present we fall back to the
 		// built-in ADC, with or without compensation
