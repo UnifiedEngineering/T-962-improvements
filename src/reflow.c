@@ -158,7 +158,7 @@ void Reflow_Init(void) {
 	//PID_SetTunings(&PID, 30, 0, 0); // This results in oscillations with 14.5s cycle time
 	//PID_SetTunings(&PID, 15, 0, 0);
 	//PID_SetTunings(&PID, 10, 0, 0); // no oscillations, but offset
-	//PID_SetTunings(&PID, 10, 0.020, 0); // getting there
+	PID_SetTunings(&PID, 60, 0.1, 120); // With 2x 150C CTP hot plate
 	//PID_SetTunings(&PID, 10, 0.013, 0);
 	//PID_SetTunings(&PID, 10, 0.0066, 0);
 	//PID_SetTunings(&PID, 10, 0.2, 0);

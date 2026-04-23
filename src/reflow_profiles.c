@@ -14,6 +14,38 @@
 
 extern uint8_t graphbmp[];
 
+// SAC305 profile
+static const profile sac305profile = {
+	"SAC305 Leadfree 10s", {
+		// Preheat
+		50,  55,  60,  65,  70,  75,  80,  85,  90,  90, 90, 95,
+		105, 120, 135, 145,
+		// Flux activation
+		150, 155, 160, 165, 170, 175, 180, 185, 190, 
+		// reflow peak
+		200, 215, 230, 245, 245, 225, 205, 185, 165,
+		// cool down
+		155, 145, 140, 135, 130, 125, 120, 115, 110, 105, 100,
+		0,   0 // 360-470 s
+	}
+};
+
+static const profile sac305longprofile = {
+
+	"SAC305 Leadfree 30s", {
+		// Preheat
+		50,  55,  60,  65,  70,  75,  80,  85,  90,  90, 90, 95,
+		105, 120, 135, 145,
+		// Flux activation
+		150, 155, 160, 165, 170, 175, 180, 185, 190, 
+		// reflow peak
+		200, 215, 230, 245, 245, 245, 245, 225, 205, 185, 165,
+		// cool down
+		155, 145, 140, 135, 130, 125, 120, 115, 110, 105, 100,
+		0,   0 // 360-470 s
+	}
+};
+
 // Amtech 4300 63Sn/37Pb leaded profile
 static const profile am4300profile = {
 	"4300 63SN/37PB", {
@@ -44,10 +76,10 @@ static const profile syntechlfprofile = {
 #ifdef RAMPTEST
 // Ramp speed test temp profile
 static const profile rampspeed_testprofile = {
-	"RAMP SPEED TEST", {
-		 50, 50, 50, 50,245,245,245,245,245,245,245,245,245,245,245,245, // 0-150s
-		245,245,245,245,245,245,245,245,245, 50, 50, 50, 50, 50, 50, 50, // 160-310s
-		 50, 50, 50, 50, 50, 50, 50, 50,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
+	"RAMP UP TEST", {
+		245,245,245,245,245,245,245,245,245,245,245,245,245,245,245,245, // 0-150s
+		245,245,245,245,245,245,245,245,245,245,245,245,245,245,245,245, // 160-310s
+		245,245,245,245,245,245,245,245,245,245,245,245,245,245,245,245 // 320-470s
 	}
 };
 #endif
@@ -55,10 +87,10 @@ static const profile rampspeed_testprofile = {
 #ifdef PIDTEST
 // PID gain adjustment test profile (5% setpoint change)
 static const profile pidcontrol_testprofile = {
-	"PID CONTROL TEST",	{
-		171,171,171,171,171,171,171,171,171,171,171,171,171,171,171,171, // 0-150s
-		180,180,180,180,180,180,180,180,171,171,171,171,171,171,171,171, // 160-310s
-		  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0  // 320-470s
+	"RAMP DOWN TEST",	{
+		 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, // 0-150s
+		 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, // 160-310s
+		 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50  // 320-470s
 	}
 };
 #endif
@@ -70,6 +102,8 @@ static ramprofile ee1 = { "CUSTOM #1" };
 static ramprofile ee2 = { "CUSTOM #2" };
 
 static const profile* profiles[] = {
+	&sac305profile,
+	&sac305longprofile,
 	&syntechlfprofile,
 	&nc31profile,
 	&am4300profile,
