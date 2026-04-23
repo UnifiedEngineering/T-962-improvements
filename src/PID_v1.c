@@ -51,10 +51,10 @@ bool PID_Compute(PidType* pid) {
     FloatType input = pid->myInput;
     FloatType error = pid->mySetpoint - input;
     pid->ITerm += (pid->ki * error);
-    if (pid->ITerm > pid->outMax)
-      pid->ITerm = pid->outMax;
-    else if (pid->ITerm < pid->outMin)
-      pid->ITerm = pid->outMin;
+    if (pid->ITerm > pid->outMax*5/8)
+      pid->ITerm = pid->outMax*5/8;
+    else if (pid->ITerm < pid->outMax*1/4)
+      pid->ITerm = pid->outMax*1/4;
     FloatType dInput = (input - pid->lastInput);
 
     /*Compute PID Output*/
@@ -64,6 +64,7 @@ bool PID_Compute(PidType* pid) {
       output = pid->outMax;
     else if (output < pid->outMin)
       output = pid->outMin;
+
     pid->myOutput = output;
 
     /*Remember some variables for next time*/
